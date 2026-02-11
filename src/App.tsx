@@ -18,6 +18,14 @@ function AppContent() {
   /* Splash Screen State */
   const [showSplash, setShowSplash] = React.useState(true);
 
+  /* App State */
+  const [currentPage, setCurrentPage] = React.useState('home');
+  const [user, setUser] = React.useState<{ name: string; age: number } | null>(() => {
+    const saved = localStorage.getItem('user_profile');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const { theme, toggleTheme } = useTheme();
+
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
