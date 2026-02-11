@@ -10,15 +10,20 @@ import { OnboardingPage } from './pages/OnboardingPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { InstallPrompt } from './components/InstallPrompt';
+import { SplashScreen } from './components/SplashScreen';
 import { Sun, Moon } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = React.useState('home');
-  const [user, setUser] = React.useState<{ name: string; age: number } | null>(() => {
-    const saved = localStorage.getItem('user_profile');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const { theme, toggleTheme } = useTheme();
+  /* Splash Screen State */
+  const [showSplash, setShowSplash] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500); // 2.5s total display time
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleRegister = (userData: { name: string; age: number }) => {
     localStorage.setItem('user_profile', JSON.stringify(userData));
@@ -55,18 +60,31 @@ function AppContent() {
 
   return (
     <div className="relative h-[100dvh] w-screen overflow-hidden transition-colors duration-300 bg-[var(--bg-primary)]">
-      <InstallPrompt />
-      <div className="absolute top-6 right-6 z-[1000]">
-        <button
-          onClick={toggleTheme}
-          className="p-3 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] shadow-lg hover:scale-110 transition-all safe-area-top"
+      <AnimatePresence>
+        {showSplash && <SplashScreen key="splash" />}
+      </AnimatePresence>
+
+      {!showSplash && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-full h-full"
         >
-          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-        </button>
-      </div>
-      <div className="w-full h-full overflow-hidden">
-        {renderPage()}
-      </div>
+          <InstallPrompt />
+          <div className="absolute top-6 right-6 z-[1000]">
+            <button
+              onClick={toggleTheme}
+              className="p-3 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] shadow-lg hover:scale-110 transition-all safe-area-top"
+            >
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+          </div>
+          <div className="w-full h-full overflow-hidden">
+            {renderPage()}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
