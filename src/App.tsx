@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { MobileFrame } from './components/MobileFrame';
 import { HomePage } from './pages/HomePage';
 import { RideRequestPage } from './pages/RideRequestPage';
 import { DriverRegistrationPage } from './pages/DriverRegistrationPage';
@@ -10,6 +9,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { InstallPrompt } from './components/InstallPrompt';
 import { Sun, Moon } from 'lucide-react';
 
 function AppContent() {
@@ -54,16 +54,19 @@ function AppContent() {
   };
 
   return (
-    <div className="relative min-h-screen transition-colors duration-300">
+    <div className="relative h-[100dvh] w-screen overflow-hidden transition-colors duration-300 bg-[var(--bg-primary)]">
+      <InstallPrompt />
       <div className="absolute top-6 right-6 z-[1000]">
         <button
           onClick={toggleTheme}
-          className="p-3 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] shadow-lg hover:scale-110 transition-all"
+          className="p-3 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] shadow-lg hover:scale-110 transition-all safe-area-top"
         >
           {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
         </button>
       </div>
-      <MobileFrame>{renderPage()}</MobileFrame>
+      <div className="w-full h-full overflow-hidden">
+        {renderPage()}
+      </div>
     </div>
   );
 }
