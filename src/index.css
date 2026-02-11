@@ -1,0 +1,44 @@
+/* URL IMPORTS (SUCH AS FONT IMPORTS) SHOULD BE KEPT ABOVE TAILWIND IMPORTS - DO NOT DELETE THIS COMMENT */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
+
+/* PLEASE NOTE: THESE TAILWIND IMPORTS SHOULD NEVER BE DELETED - DO NOT DELETE THIS COMMENT */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+/* DO NOT DELETE THESE TAILWIND IMPORTS, OTHERWISE THE STYLING WILL NOT RENDER AT ALL - DO NOT DELETE THIS COMMENT */
+
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --border-color: #e5e7eb;
+  --primary-color: #FBBF24;
+}
+
+[data-theme='dark'] {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #1a1a1a;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --border-color: #2a2a2a;
+}
+
+* {
+  font-family: 'Montserrat', sans-serif;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.leaflet-container {
+  /* Dynamic map filter based on theme */
+  filter: var(--map-filter, none);
+}
+
+[data-theme='dark'] .leaflet-container {
+  --map-filter: grayscale(1) invert(0.9) contrast(1.1);
+}

@@ -1,0 +1,663 @@
+import * as React from 'react';
+import { Header } from '../components/Header';
+import { Button } from '../components/ui/Button';
+import {
+  MapPin,
+  Navigation,
+  ChevronRight,
+  Route as RouteIcon,
+  AlertCircle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { QUELIMANE_LOCATIONS, Location as LocationType } from '../constants';
+import { supabase } from '../lib/supabase';
+import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
+
+interface SearchResult {
+  description: string;
+  place_id: string;
+  is_local?: boolean;
+  lat?: string;
+  lon?: string;
+  type?: string;
+}
+
+interface RideRequestPageProps {
+  onNavigate: (page: string) => void;
+}
+
+// Haversine formula to calculate distance in KM
+function calculateDistance(loc1: LocationType, loc2: LocationType): number {
+  const R = 6371;
+  const dLat = (loc2.lat - loc1.lat) * (Math.PI / 180);
+  const dLon = (loc2.lng - loc1.lng) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(loc1.lat * (Math.PI / 180)) * Math.cos(loc2.lat * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
+  const [step, setStep] = React.useState(1);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [pickup, setPickup] = React.useState<LocationType | null>(null);
+  const [destination, setDestination] = React.useState<LocationType | null>(null);
+  const [paymentMethod, setPaymentMethod] = React.useState<'cash' | 'mpesa' | 'emola'>('cash');
+  const [serviceType, setServiceType] = React.useState<'moto' | 'txopela'>('moto');
+
+  const [mapCenter, setMapCenter] = React.useState<[number, number]>([-17.8764, 36.8878]);
+  const [userLocation, setUserLocation] = React.useState<[number, number] | null>(null);
+  const [distance, setDistance] = React.useState(0);
+  const [estimatedPrice, setEstimatedPrice] = React.useState(0);
+
+  // Search state
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [searchResults, setSearchResults] = React.useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = React.useState(false);
+  const [activeSearchField, setActiveSearchField] = React.useState<'pickup' | 'destination' | null>(null);
+
+  // Match state
+  const [matchStatus, setMatchStatus] = React.useState<'idle' | 'searching' | 'found' | 'busy'>('idle');
+  const [driverInfo, setDriverInfo] = React.useState<any>(null);
+  const [eta, setEta] = React.useState(0);
+
+  const [nearbyDrivers, setNearbyDrivers] = React.useState<any[]>([]);
+
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      if (data && data.address) {
+        // Construct a short readable name
+        const road = data.address.road || data.address.pedestrian || data.address.suburb || data.address.neighbourhood;
+        return road || 'Local Desconhecido';
+      }
+    } catch (error) {
+      console.error("Reverse geocoding error:", error);
+    }
+    return null;
+  };
+
+  const fetchDrivers = async () => {
+    // 1. Try to get real drivers from Supabase
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, current_lat, current_lng, vehicle_type, is_available, status')
+      .eq('role', 'driver')
+      .eq('is_available', true)
+      .eq('status', 'active');
+
+    let validDrivers: any[] = [];
+
+    if (data && data.length > 0) {
+      validDrivers = data
+        .filter(d => typeof d.current_lat === 'number' && typeof d.current_lng === 'number')
+        .map(d => ({
+          id: d.id,
+          lat: d.current_lat,
+          lng: d.current_lng,
+          type: d.vehicle_type || 'moto'
+        }));
+    }
+
+    // 2. If no real drivers, generate MOCK drivers around the current center (or User)
+    // This allows the user to see "activity" even if no real driver is online yet
+    if (validDrivers.length === 0) {
+      const centerLat = mapCenter[0];
+      const centerLng = mapCenter[1];
+
+      // Generate 3-5 mock drivers
+      const mockCount = 5;
+      for (let i = 0; i < mockCount; i++) {
+        // Random offset within ~2km
+        const latOffset = (Math.random() - 0.5) * 0.02;
+        const lngOffset = (Math.random() - 0.5) * 0.02;
+        validDrivers.push({
+          id: `mock_${i}`,
+          lat: centerLat + latOffset,
+          lng: centerLng + lngOffset,
+          type: Math.random() > 0.5 ? 'moto' : 'car'
+        });
+      }
+    }
+
+    setNearbyDrivers(validDrivers);
+  };
+
+  React.useEffect(() => {
+    fetchDrivers();
+
+    let watchId: number;
+
+    // 1. Get initial location immediately
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          const coords: [number, number] = [latitude, longitude];
+          setUserLocation(coords);
+
+          // Center on user immediately if no pickup is set yet
+          if (!pickup && !destination) {
+            setMapCenter(coords);
+
+            // Reverse geocode to get street name
+            const addressName = await reverseGeocode(latitude, longitude);
+            setPickup({
+              name: addressName || 'Minha Localização',
+              lat: latitude,
+              lng: longitude
+            });
+          }
+        },
+        (error) => {
+          console.error("Error getting initial location:", error);
+          if (!mapCenter) setMapCenter([-17.8764, 36.8878]);
+        },
+        { enableHighAccuracy: true }
+      );
+
+      // 2. Watch for updates
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation([latitude, longitude]);
+        },
+        (error) => console.error("Watch location error:", error),
+        { enableHighAccuracy: true, distanceFilter: 10 }
+      );
+    }
+
+    // 3. Subscribe to driver updates
+    const channelName = 'drivers-realtime-request';
+
+    // Pequeno delay para evitar churn de conexão em remounts rápidos
+    const timeoutId = setTimeout(() => {
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'profiles',
+            filter: 'role=eq.driver'
+          },
+          () => fetchDrivers()
+        )
+        .subscribe();
+
+      (window as any)[`supabase_${channelName}`] = channel;
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+      const ch = (window as any)[`supabase_${channelName}`];
+      if (ch) {
+        supabase.removeChannel(ch);
+        delete (window as any)[`supabase_${channelName}`];
+      }
+    };
+  }, []);
+
+  const handleSearch = async (query: string) => {
+    setSearchTerm(query);
+    if (!query) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+
+    // 1. Busca local (Constants de Quelimane) - PRIORIDADE MÁXIMA
+    const normalizedQuery = query.toLowerCase().trim();
+    const localResults = QUELIMANE_LOCATIONS
+      .filter(loc => loc.name.toLowerCase().includes(normalizedQuery))
+      .map(loc => ({
+        description: `${loc.name}, Quelimane`,
+        place_id: `local-${loc.name}`,
+        lat: loc.lat.toString(),
+        lon: loc.lng.toString(),
+        is_local: true,
+        type: loc.type
+      }));
+
+    // Se houver correspondência exata ou muito forte com nossos dados locais, NÃO buscar na API para evitar erros
+    const hasStrongLocalMatch = localResults.some(r => r.description.toLowerCase().startsWith(normalizedQuery));
+
+    if (hasStrongLocalMatch || query.length < 3) {
+      setSearchResults(localResults as any);
+      setIsSearching(false);
+      return;
+    }
+
+    // 2. Nominatim (OpenStreetMap) - Apenas se não tiver certeza localmente
+    try {
+      // Bounding Box Estrita para Quelimane:
+      // minLon: 36.80, minLat: -17.95
+      // maxLon: 37.05, maxLat: -17.80 (Inclui Zalala e Cidade)
+      const viewbox = '36.80,-17.95,37.05,-17.80';
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=${viewbox}&bounded=1&limit=10&addressdetails=1&countrycodes=mz`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Accept-Language': 'pt-MZ,pt;q=0.9'
+        }
+      });
+      const data = await response.json();
+
+      const osmResults = data.map((item: any) => ({
+        description: item.display_name, // Nome completo do OSM
+        place_id: item.place_id.toString(),
+        lat: item.lat,
+        lon: item.lon,
+        is_local: false,
+        type: item.type || 'landmark' // Pode ser 'bakery', 'bank', etc.
+      }));
+
+      // Combinar, mas manter locais no topo
+      setSearchResults([...localResults, ...osmResults] as any);
+    } catch (error) {
+      console.error('Nominatim search error:', error);
+      setSearchResults(localResults as any);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectLocation = (result: any) => {
+    const loc: LocationType = {
+      name: result.description.split(',')[0],
+      lat: parseFloat(result.lat),
+      lng: parseFloat(result.lon)
+    };
+
+    if (activeSearchField === 'pickup') setPickup(loc);
+    else if (activeSearchField === 'destination') setDestination(loc);
+
+    setActiveSearchField(null);
+    setSearchResults([]);
+    setSearchTerm('');
+  };
+
+  // Rebuild the driver list when map center changes significantly to keep "mock" drivers around
+  // In a real app, this would query a backend with a bounding box
+  React.useEffect(() => {
+    if (nearbyDrivers.length > 0 && nearbyDrivers[0].id.startsWith('mock_')) {
+      fetchDrivers();
+    }
+  }, [pickup, destination]); // Removing the geolocation logic from here as it's now handled in the initial useEffect
+
+  React.useEffect(() => {
+    if (pickup && destination) {
+      const dist = calculateDistance(pickup, destination);
+      setDistance(dist);
+
+      // Basic pricing logic
+      const baseFare = serviceType === 'moto' ? 50 : 100;
+      const ratePerKm = serviceType === 'moto' ? 25 : 45;
+      const price = Math.max(baseFare, Math.round(baseFare + (dist * ratePerKm)));
+      setEstimatedPrice(price);
+
+      // Center map between points
+      setMapCenter([(pickup.lat + destination.lat) / 2, (pickup.lng + destination.lng) / 2]);
+    } else if (pickup) {
+      setMapCenter([pickup.lat, pickup.lng]);
+    } else if (userLocation) {
+      setMapCenter(userLocation);
+    }
+  }, [pickup, destination, serviceType, userLocation]);
+
+  const handleConfirmRide = async () => {
+    if (!pickup || !destination) return;
+    setIsLoading(true);
+    setMatchStatus('searching');
+    setStep(3);
+
+    try {
+      // 1. Create ride entry in Supabase
+      const { data: ride, error: rideError } = await supabase
+        .from('rides')
+        .insert([{
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          pickup_location: pickup.name,
+          destination_location: destination.name,
+          pickup_lat: pickup.lat,
+          pickup_lng: pickup.lng,
+          dest_lat: destination.lat,
+          dest_lng: destination.lng,
+          payment_method: paymentMethod,
+          estimate: estimatedPrice.toString(),
+          distance: distance,
+          status: 'pending'
+        }])
+        .select()
+        .single();
+
+      if (rideError) throw rideError;
+
+      // 2. Matching logic - Busca e ordena pelo mais próximo
+      const { data: drivers, error: driverError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'driver')
+        .eq('is_available', true)
+        .eq('status', 'active');
+
+      if (driverError) throw driverError;
+
+      setTimeout(async () => {
+        if (!drivers || drivers.length === 0) {
+          setMatchStatus('busy');
+        } else {
+          // Ordenar por distância do pickup usando a fórmula de Haversine já definida no arquivo
+          const sortedDrivers = [...drivers].sort((a, b) => {
+            const distA = calculateDistance(
+              { lat: a.current_lat, lng: a.current_lng, name: 'A' },
+              pickup
+            );
+            const distB = calculateDistance(
+              { lat: b.current_lat, lng: b.current_lng, name: 'B' },
+              pickup
+            );
+            return distA - distB;
+          });
+
+          const driver = sortedDrivers[0];
+          const distToDriver = calculateDistance(
+            { lat: driver.current_lat, lng: driver.current_lng, name: 'Driver' },
+            pickup
+          );
+
+          setDriverInfo(driver);
+          setMatchStatus('found');
+          // ETA: Média de 5 min por KM em Quelimane
+          setEta(Math.max(1, Math.round(distToDriver * 5)));
+
+          await supabase
+            .from('rides')
+            .update({ status: 'accepted', driver_id: driver.id })
+            .eq('id', ride.id);
+        }
+        setIsLoading(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error('Ride error:', error);
+      setIsLoading(false);
+      setMatchStatus('busy');
+    }
+  };
+
+  return (
+    <div className="h-full relative bg-black overflow-hidden">
+      <Header
+        title="Pedir Viagem"
+        onBack={step === 1 ? () => onNavigate('home') : () => setStep(1)}
+      />
+
+      {/* Map Background */}
+      <div className="absolute inset-0 z-0">
+        <MapComponent
+          center={mapCenter}
+          pickup={pickup}
+          destination={destination}
+          userLocation={userLocation || undefined}
+          drivers={nearbyDrivers}
+          height="100%"
+        />
+      </div>
+
+      {/* Recenter Button */}
+      {userLocation && (
+        <button
+          onClick={() => {
+            setMapCenter(userLocation);
+            if (!pickup) setPickup({ name: 'Minha Localização', lat: userLocation[0], lng: userLocation[1] });
+          }}
+          className="absolute bottom-32 right-4 z-30 bg-white/10 backdrop-blur-md p-3 rounded-full border border-white/20 shadow-lg text-white hover:bg-white/20 transition-all"
+        >
+          <Navigation size={24} className="text-[#FBBF24]" />
+        </button>
+      )}
+
+      {/* Floating Search Container - Uber Style */}
+      {step === 1 && (
+        <div className="absolute top-[88px] left-4 right-4 z-40">
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="bg-[#1a1a1a]/95 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-3"
+          >
+            <div className="relative space-y-3">
+              <div className="absolute left-[13px] top-6 bottom-6 w-[1px] bg-white/20"></div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)] z-10"></div>
+                <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2.5">
+                  <input
+                    placeholder="Local de Partida"
+                    className="bg-transparent border-none text-white text-sm w-full focus:ring-0 placeholder:text-gray-600 font-medium"
+                    value={activeSearchField === 'pickup' ? searchTerm : (pickup?.name || '')}
+                    onFocus={() => { setActiveSearchField('pickup'); setSearchTerm(''); }}
+                    onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 bg-[#FBBF24] shadow-[0_0_10px_rgba(251,191,36,0.6)] z-10"></div>
+                <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2.5">
+                  <input
+                    placeholder="Para onde vais?"
+                    className="bg-transparent border-none text-white text-sm w-full focus:ring-0 placeholder:text-gray-600 font-medium"
+                    value={activeSearchField === 'destination' ? searchTerm : (destination?.name || '')}
+                    onFocus={() => { setActiveSearchField('destination'); setSearchTerm(''); }}
+                    onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {activeSearchField && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-2 bg-black/40 rounded-2xl overflow-hidden border border-white/5 max-h-[250px] overflow-y-auto"
+                >
+                  {(searchTerm ? searchResults : QUELIMANE_LOCATIONS.slice(0, 8).map(l => ({ description: `${l.name}, Quelimane`, is_local: true, type: l.type, lat: l.lat.toString(), lon: l.lng.toString() }))).map((result: any, index) => {
+                    const name = result.description.split(',')[0];
+                    const type = result.type || 'landmark';
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => selectLocation(result)}
+                        className="w-full p-4 text-left hover:bg-white/10 border-b border-white/5 last:border-none flex items-center gap-4 transition-colors group"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-500 group-hover:text-[#FBBF24] transition-colors">
+                          {type === 'street' ? <Navigation size={18} /> : <MapPin size={18} />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{name}</p>
+                          <p className="text-[10px] text-gray-500 truncate">Quelimane, Moçambique</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Bottom Sheet UI */}
+      <div className="absolute bottom-0 left-0 right-0 z-40">
+        <div className="bg-[#1a1a1a]/95 backdrop-blur-2xl rounded-t-[40px] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] p-6 pb-12">
+          <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-6"></div>
+
+          <AnimatePresence mode="wait">
+            {step === 1 ? (
+              <motion.div
+                key="bottom_step1"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 20, opacity: 0 }}
+                className="space-y-6"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setServiceType('moto')}
+                    className={`relative overflow-hidden p-4 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center gap-2 ${serviceType === 'moto'
+                      ? 'border-[#FBBF24] bg-[#FBBF24]/10'
+                      : 'border-white/5 bg-white/5'
+                      }`}
+                  >
+                    <img src="/mota.png" alt="Moto" className="w-20 h-14 object-contain" />
+                    <span className="text-sm font-bold text-white">Moto Taxi</span>
+                    <span className="text-[9px] uppercase font-black text-[#FBBF24] tracking-widest">Rápido</span>
+                  </button>
+
+                  <button
+                    onClick={() => setServiceType('txopela')}
+                    className={`relative overflow-hidden p-4 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center gap-2 ${serviceType === 'txopela'
+                      ? 'border-[#FBBF24] bg-[#FBBF24]/10'
+                      : 'border-white/5 bg-white/5'
+                      }`}
+                  >
+                    <img src="/txopela.png" alt="Txopela" className="w-20 h-14 object-contain" />
+                    <span className="text-sm font-bold text-white">Txopela</span>
+                    <span className="text-[9px] uppercase font-black text-gray-500 tracking-widest">Conforto</span>
+                  </button>
+                </div>
+
+                {distance > 0 && (
+                  <div className="flex justify-between items-center px-2">
+                    <div className="flex items-center gap-2 text-white/50 text-xs font-bold uppercase tracking-widest">
+                      <RouteIcon size={14} />
+                      {distance.toFixed(1)} km
+                    </div>
+                    <div className="text-2xl font-black text-[#FBBF24]">
+                      {estimatedPrice} <span className="text-xs">MZN</span>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  className="w-full h-16 text-xl rounded-2xl shadow-xl shadow-[#FBBF24]/20"
+                  disabled={!pickup || !destination}
+                  onClick={() => setStep(2)}
+                >
+                  Confirmar <ChevronRight className="ml-2" />
+                </Button>
+              </motion.div>
+            ) : step === 2 ? (
+              <motion.div
+                key="bottom_step2"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 20, opacity: 0 }}
+                className="space-y-6"
+              >
+                {/* Trip Details Card */}
+                <div className="bg-white/10 p-5 rounded-3xl border border-white/10 space-y-4">
+                  {/* Trip Stats Row */}
+                  <div className="flex justify-between items-center bg-black/20 p-4 rounded-2xl">
+                    <div className="flex flex-col items-center flex-1 border-r border-white/10">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Distância</span>
+                      <div className="flex items-center gap-1.5 text-white">
+                        <RouteIcon size={16} className="text-[#3B82F6]" />
+                        <span className="text-lg font-bold">{distance?.toFixed(1)} km</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center flex-1">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Tempo</span>
+                      <div className="flex items-center gap-1.5 text-white">
+                        <AlertCircle size={16} className="text-[#3B82F6]" />
+                        <span className="text-lg font-bold">{Math.round(distance * 3)} min</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-white/10"></div>
+
+                  {/* Payment & Price Row */}
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase mb-2">Método de Pagamento</p>
+                      <div className="flex gap-2">
+                        {['cash', 'mpesa', 'emola'].map(m => (
+                          <button
+                            key={m}
+                            onClick={() => setPaymentMethod(m as any)}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${paymentMethod === m
+                              ? 'bg-[#FBBF24] text-black shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+                              : 'bg-white/5 text-gray-400 border border-white/5 hover:bg-white/10'}`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-400 font-black uppercase mb-1">Total a Pagar</p>
+                      <p className="text-4xl font-black text-[#FBBF24] tracking-tight">
+                        {estimatedPrice} <span className="text-lg text-[#FBBF24]/80">MT</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full h-16 text-xl rounded-2xl shadow-2xl shadow-[#FBBF24]/30"
+                  isLoading={isLoading}
+                  onClick={handleConfirmRide}
+                >
+                  Confirmar Pedido
+                </Button>
+              </motion.div>
+            ) : (
+              <div className="py-6 text-center">
+                {matchStatus === 'searching' && (
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 border-4 border-[#FBBF24]/20 border-t-[#FBBF24] rounded-full animate-spin mx-auto"></div>
+                    <p className="text-white font-bold uppercase tracking-widest text-sm">Buscando Motorista...</p>
+                  </div>
+                )}
+                {matchStatus === 'found' && (
+                  <div className="flex items-center gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 text-left">
+                    <div className="w-16 h-16 rounded-2xl bg-[#FBBF24] overflow-hidden">
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${driverInfo?.id}`} alt="Driver" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 font-bold uppercase">{driverInfo?.vehicle_plate}</p>
+                      <p className="text-lg font-black text-white">{driverInfo?.full_name?.split(' ')[0]}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-black text-[#FBBF24]">{eta}</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase">MIN</p>
+                    </div>
+                  </div>
+                )}
+                {matchStatus === 'busy' && (
+                  <div className="space-y-4">
+                    <AlertCircle className="text-red-500 mx-auto" size={48} />
+                    <p className="text-white font-bold">Motoristas Ocupados</p>
+                    <Button onClick={() => setStep(1)} className="bg-white/10 text-white">Tentar Novamente</Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}

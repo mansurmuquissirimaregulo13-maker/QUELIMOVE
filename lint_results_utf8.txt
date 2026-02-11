@@ -1,0 +1,52 @@
+﻿
+> magic-patterns-vite-template@0.0.1 lint
+> eslint . --ext .js,.jsx,.ts,.tsx
+
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\components\ErrorBoundary.tsx
+  17:44  warning  '_' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\components\MapComponent.tsx
+   2:43  warning  'Popup' is defined but never used         @typescript-eslint/no-unused-vars
+  86:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\context\ThemeContext.tsx
+  39:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\pages\AdminDashboardPage.tsx
+   36:56   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   37:62   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   38:58   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  145:96   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  147:109  error    Unexpected empty arrow function           @typescript-eslint/no-empty-function
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\pages\DriverDashboardPage.tsx
+   2:10  warning  'Header' is defined but never used                   @typescript-eslint/no-unused-vars
+  14:10  warning  'motion' is defined but never used                   @typescript-eslint/no-unused-vars
+  14:18  warning  'AnimatePresence' is defined but never used          @typescript-eslint/no-unused-vars
+  24:10  warning  'potentialRides' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  24:62  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  25:56  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  88:15  warning  'message' is assigned a value but never used         @typescript-eslint/no-unused-vars
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\pages\DriverRegistrationPage.tsx
+   20:10  warning  'BAIRROS' is defined but never used       @typescript-eslint/no-unused-vars
+   20:19  warning  'Location' is defined but never used      @typescript-eslint/no-unused-vars
+  136:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  238:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  297:73  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\pages\OnboardingPage.tsx
+  3:53  warning  'MapPin' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\pages\RideRequestPage.tsx
+   63:54   warning  Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+   81:6    warning  React Hook React.useEffect has a missing dependency: 'pickup'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  105:40   warning  Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  122:49   warning  Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  126:65   warning  Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  134:35   warning  Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  336:102  warning  Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+
+Ô£û 29 problems (1 error, 28 warnings)
+

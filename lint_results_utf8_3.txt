@@ -1,0 +1,35 @@
+﻿
+> magic-patterns-vite-template@0.0.1 lint
+> eslint . --ext .js,.jsx,.ts,.tsx
+
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\components\MapComponent.tsx
+  87:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\context\ThemeContext.tsx
+  39:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\pages\AdminDashboardPage.tsx
+   36:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   37:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   38:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:96  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\pages\DriverDashboardPage.tsx
+  22:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\pages\DriverRegistrationPage.tsx
+  135:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  237:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  296:73  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Mansur Regulo\Downloads\8058d538-8789-4442-931e-2b0eaf41921c\src\pages\RideRequestPage.tsx
+   63:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:40   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  123:49   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:35   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  337:102  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Ô£û 16 problems (0 errors, 16 warnings)
+
