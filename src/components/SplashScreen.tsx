@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
+import { Bike } from 'lucide-react'; // Using Bike as a proxy for Moto if Moto isn't available, or we can use a custom SVG
 
 interface SplashScreenProps {
     onComplete?: () => void;
@@ -21,32 +22,53 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
     return (
         <motion.div
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.8, ease: "easeInOut" }}
-            className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center overflow-hidden"
+            className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center overflow-hidden"
         >
-            {/* Background Pulse */}
-            <motion.div
-                animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
-                transition={{ repeat: Infinity, duration: 4 }}
-                className="absolute w-[500px] h-[500px] bg-yellow-400/10 rounded-full blur-[100px]"
-            />
+            <div className="flex flex-col items-center relative z-10">
 
-            <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 1, type: "spring" }}
-                className="flex flex-col items-center relative z-10"
-            >
-                <div className="w-24 h-24 bg-yellow-400 rounded-3xl flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(250,204,21,0.4)]">
-                    <motion.span
-                        initial={{ rotate: -180, opacity: 0 }}
-                        animate={{ rotate: 0, opacity: 1 }}
-                        transition={{ duration: 0.8, delay: 0.2 }}
-                        className="text-5xl font-black text-black"
+                {/* Moto Animation Container */}
+                <div className="w-64 h-24 relative mb-4 overflow-hidden">
+                    <motion.div
+                        initial={{ x: -100, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ duration: 1.5, type: "spring", bounce: 0.2 }}
+                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
                     >
-                        Q
-                    </motion.span>
+                        {/* Simple Moto Representation using Lucide Bike (or custom SVG path for a more distinct moto look if desired) */}
+                        <div className="relative">
+                            <Bike className="w-16 h-16 text-yellow-500" strokeWidth={1.5} />
+                            <motion.div
+                                className="absolute -bottom-1 left-0 w-full h-1 bg-gray-200 rounded-full opacity-50 blur-[2px]"
+                                animate={{ scaleX: [0.8, 1.2, 0.8] }}
+                                transition={{ repeat: Infinity, duration: 0.5 }}
+                            />
+                        </div>
+                    </motion.div>
+
+                    {/* Speed lines effect */}
+                    <motion.div
+                        className="absolute top-1/2 left-0 w-full h-full pointer-events-none"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                    >
+                        {[...Array(3)].map((_, i) => (
+                            <motion.div
+                                key={i}
+                                className="absolute h-[2px] bg-gray-100 rounded-full"
+                                style={{ top: `${40 + i * 20}%`, left: -50 }}
+                                animate={{ x: [0, 300], opacity: [0, 1, 0] }}
+                                transition={{
+                                    repeat: Infinity,
+                                    duration: 0.8,
+                                    delay: i * 0.2,
+                                    ease: "linear"
+                                }}
+                            />
+                        ))}
+                    </motion.div>
                 </div>
 
                 <motion.h1
@@ -59,7 +81,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                         <motion.span
                             key={index}
                             variants={letterVariants}
-                            className="text-3xl font-bold text-white tracking-widest"
+                            className="text-4xl font-extrabold text-black tracking-widest"
                         >
                             {letter}
                         </motion.span>
@@ -69,20 +91,12 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                 <motion.p
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.2, duration: 0.5 }}
-                    className="text-yellow-400/80 mt-3 text-sm tracking-[0.2em] font-medium"
+                    transition={{ delay: 1, duration: 0.5 }}
+                    className="text-gray-500 mt-2 text-sm tracking-[0.3em] font-semibold uppercase"
                 >
-                    TAXI & MOTO
+                    Taxi & Moto
                 </motion.p>
-            </motion.div>
-
-            {/* Loading Line */}
-            <motion.div
-                className="absolute bottom-16 h-1 bg-gradient-to-r from-yellow-600 to-yellow-300 rounded-full"
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 200, opacity: 1 }}
-                transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
-            />
+            </div>
         </motion.div>
     );
 }
