@@ -401,7 +401,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         onBack={step === 1 ? () => onNavigate('home') : () => setStep(1)}
       />
 
-      {/* Map Background */}
+      {/* Map Background with Drag-to-Select Logic */}
       <div className="absolute inset-0 z-0">
         <MapComponent
           center={mapCenter}
@@ -410,7 +410,46 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           userLocation={userLocation || undefined}
           drivers={nearbyDrivers}
           height="100%"
+          onMoveEnd={async (center) => {
+            // Only auto-update if we are in Step 1 (searching/selecting)
+            if (step === 1) {
+              const [lat, lng] = center;
+              // Don't update mapCenter state here to avoid loop/jitter, just use the coord
+
+              // Reverse geocode
+              const addressName = await reverseGeocode(lat, lng);
+              if (addressName) {
+                const newLoc = { name: addressName, lat, lng };
+
+                // If user is focused on pickup, update pickup. 
+                // Otherwise default to updating DESTINATION (drag to go here behavior)
+                if (activeSearchField === 'pickup') {
+                  setPickup(newLoc);
+                } else {
+                  // Default behavior: user points to where they want to go
+                  setDestination(newLoc);
+                }
+              }
+            }
+          }}
         />
+
+        {/* Center Pin Overlay - Allows "Drag to Select" */}
+        {step === 1 && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[100%] z-20 pointer-events-none transform -mt-4">
+            <div className="relative">
+              <MapPin
+                size={40}
+                className={`drop-shadow-xl ${activeSearchField === 'pickup' ? 'text-blue-500' : 'text-[#FBBF24]'} fill-current`}
+              />
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-1.5 bg-black/30 rounded-full blur-[2px]"></div>
+            </div>
+            {/* Tooltip to guide user */}
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap backdrop-blur-md border border-white/10">
+              {activeSearchField === 'pickup' ? 'Definir Partida' : 'Definir Destino'}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Recenter Button */}
@@ -418,6 +457,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         <button
           onClick={() => {
             setMapCenter(userLocation);
+            // If dragging moved us away, this resets us to user location for pickup
             if (!pickup) setPickup({ name: 'Minha Localização', lat: userLocation[0], lng: userLocation[1] });
           }}
           className="absolute bottom-32 right-4 z-30 bg-white/10 backdrop-blur-md p-3 rounded-full border border-white/20 shadow-lg text-white hover:bg-white/20 transition-all"

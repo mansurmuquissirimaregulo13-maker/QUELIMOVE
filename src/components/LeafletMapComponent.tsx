@@ -55,6 +55,7 @@ interface LeafletMapComponentProps {
     userLocation?: [number, number] | null;
     height?: string;
     drivers?: Array<{ id: string; lat: number; lng: number; type: string }>;
+    onMoveEnd?: (center: [number, number]) => void;
 }
 
 export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
@@ -63,7 +64,8 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
     destination,
     userLocation,
     height = '100%',
-    drivers = []
+    drivers = [],
+    onMoveEnd
 }) => {
     const mapRef = React.useRef<L.Map | null>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -87,6 +89,13 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
             maxZoom: 19
         }).addTo(map);
 
+        map.on('moveend', () => {
+            if (onMoveEnd) {
+                const { lat, lng } = map.getCenter();
+                onMoveEnd([lat, lng]);
+            }
+        });
+
         mapRef.current = map;
 
         return () => {
@@ -98,7 +107,13 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
     // Atualizar centro do mapa
     React.useEffect(() => {
         if (mapRef.current && isFinite(center[0]) && isFinite(center[1])) {
-            mapRef.current.setView(center, mapRef.current.getZoom());
+            // Only set view if the distance is significant to avoid jitter during drag interactions that might update parent state
+            // or if needed to sync with search
+            const currentCenter = mapRef.current.getCenter();
+            const dist = Math.sqrt(Math.pow(currentCenter.lat - center[0], 2) + Math.pow(currentCenter.lng - center[1], 2));
+            if (dist > 0.0001) {
+                mapRef.current.setView(center, mapRef.current.getZoom());
+            }
         }
     }, [center]);
 
