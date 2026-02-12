@@ -7,6 +7,7 @@ import { DriverDashboardPage } from './pages/DriverDashboardPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { OnboardingPage } from './pages/OnboardingPage';
+import { AdminLoginPage } from './pages/AdminLoginPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -39,6 +40,28 @@ function AppContent() {
   };
 
   const renderPage = () => {
+    // Verificação de Admin
+    const isAdminAuthenticated = localStorage.getItem('admin_session') === 'true';
+
+    // Se tentar aceder ao admin sem estar autenticado, mostra o Login de Admin
+    if ((currentPage === 'admin' || currentPage === 'admin-dash') && !isAdminAuthenticated) {
+      return (
+        <AdminLoginPage
+          onLogin={() => {
+            const adminEmail = localStorage.getItem('admin_email');
+            if (adminEmail === 'mansurmuquissirimaregulo13@gmail.com') {
+              // Promove o usuário atual para Admin se as credenciais baterem
+              const currentProfile = JSON.parse(localStorage.getItem('user_profile') || '{}');
+              localStorage.setItem('user_profile', JSON.stringify({ ...currentProfile, role: 'admin', email: adminEmail }));
+              setUser({ ...currentProfile, role: 'admin' } as any);
+            }
+            setCurrentPage('admin-dash');
+          }}
+          onNavigate={setCurrentPage}
+        />
+      );
+    }
+
     // Se não houver usuário e tentar acessar páginas restritas, mostra o Onboarding
     if (!user && (currentPage === 'ride' || currentPage === 'profile')) {
       return <OnboardingPage onComplete={handleRegister} />;

@@ -25,6 +25,19 @@ interface AdminDashboardPageProps {
 
 export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   const [loading, setLoading] = React.useState(true);
+
+  // Segurança Reforçada: Verifica se o email na sessão é o autorizado
+  React.useEffect(() => {
+    const adminEmail = localStorage.getItem('admin_email');
+    const isAdminAuthenticated = localStorage.getItem('admin_session') === 'true';
+    const AUTHORIZED_EMAIL = 'mansurmuquissirimaregulo13@gmail.com';
+
+    if (!isAdminAuthenticated || adminEmail !== AUTHORIZED_EMAIL) {
+      console.error('Acesso não autorizado ao Painel Admin');
+      onNavigate('home');
+    }
+  }, [onNavigate]);
+
   const [activeTab, setActiveTab] = React.useState<'metrics' | 'rides' | 'drivers'>('metrics');
   const [stats, setStats] = React.useState([
     { label: 'Total Viagens', value: '0', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-500/10' },
@@ -236,8 +249,8 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                     <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider opacity-60">Monitor de Viagem</h3>
                     <MapComponent
                       center={[selectedRide.pickup_lat, selectedRide.pickup_lng]}
-                      pickup={[selectedRide.pickup_lat, selectedRide.pickup_lng]}
-                      destination={[selectedRide.dest_lat, selectedRide.dest_lng]}
+                      pickup={{ lat: selectedRide.pickup_lat, lng: selectedRide.pickup_lng, name: selectedRide.pickup_location }}
+                      destination={{ lat: selectedRide.dest_lat, lng: selectedRide.dest_lng, name: selectedRide.destination_location }}
                       height="250px"
                     />
                     <div className="bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-color)]">
