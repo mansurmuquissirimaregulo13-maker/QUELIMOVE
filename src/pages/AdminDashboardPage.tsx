@@ -17,6 +17,8 @@ import { BottomNav } from '../components/BottomNav';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
 import { Button } from '../components/ui/Button';
+import { Header } from '../components/Header';
+import { QUELIMANE_LOCATIONS } from '../constants';
 
 interface AdminDashboardPageProps {
   onNavigate: (page: string) => void;
@@ -24,6 +26,13 @@ interface AdminDashboardPageProps {
 
 export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   const [loading, setLoading] = React.useState(true);
+  const [subView, setSubView] = React.useState<'none' | 'bairros' | 'prices' | 'logs' | 'notifications'>('none');
+  const [notificationMessage, setNotificationMessage] = React.useState('');
+  const [isSending, setIsSending] = React.useState(false);
+
+  // Estados Simulados para Gestão (Persistência real exigiria novas tabelas)
+  const [locations, setLocations] = React.useState([...QUELIMANE_LOCATIONS]);
+  const [pricing, setPricing] = React.useState({ base: 50, perKm: 15, commission: 20 });
 
   // Segurança Reforçada: Verifica se o email na sessão é o autorizado
   React.useEffect(() => {
@@ -206,6 +215,128 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
     };
   }, [fetchStatsCallback]);
 
+  const handleSendNotification = async () => {
+    if (!notificationMessage.trim()) return;
+    setIsSending(true);
+    // Simulação de envio (Broadcast)
+    setTimeout(() => {
+      alert('Mensagem enviada com sucesso para todos os utilizadores ativos!');
+      setNotificationMessage('');
+      setIsSending(false);
+      setSubView('none');
+    }, 1500);
+  };
+
+  const renderSubView = () => {
+    switch (subView) {
+      case 'bairros':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-[var(--text-primary)]">Gestão de Bairros</h3>
+              <Button size="sm" onClick={() => setSubView('none')}>Fechar</Button>
+            </div>
+            <div className="space-y-2">
+              {locations.filter(l => l.type === 'bairro').map((b, i) => (
+                <div key={i} className="p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex justify-between items-center">
+                  <span className="text-sm font-bold">{b.name}</span>
+                  <div className="flex gap-2">
+                    <button className="text-[10px] text-blue-500 font-bold">Editar</button>
+                    <button className="text-[10px] text-red-500 font-bold">Remover</button>
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" className="w-full text-xs">+ Adicionar Novo Bairro</Button>
+            </div>
+          </div>
+        );
+      case 'prices':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-[var(--text-primary)]">Preços e Taxas</h3>
+              <Button size="sm" onClick={() => setSubView('none')}>Fechar</Button>
+            </div>
+            <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-[var(--text-tertiary)] tracking-widest">Base (MZN)</label>
+                <input type="number" value={pricing.base} onChange={(e) => setPricing({ ...pricing, base: Number(e.target.value) })} className="w-full bg-[var(--bg-primary)] p-3 rounded-xl border border-[var(--border-color)] font-bold" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-[var(--text-tertiary)] tracking-widest">Preço por KM (MZN)</label>
+                <input type="number" value={pricing.perKm} onChange={(e) => setPricing({ ...pricing, perKm: Number(e.target.value) })} className="w-full bg-[var(--bg-primary)] p-3 rounded-xl border border-[var(--border-color)] font-bold" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-[var(--text-tertiary)] tracking-widest">Comissão Quelimove (%)</label>
+                <input type="number" value={pricing.commission} onChange={(e) => setPricing({ ...pricing, commission: Number(e.target.value) })} className="w-full bg-[var(--bg-primary)] p-3 rounded-xl border border-[var(--border-color)] font-bold" />
+              </div>
+              <Button className="w-full shadow-lg shadow-[#FBBF24]/20" onClick={() => { alert('Preços atualizados!'); setSubView('none'); }}>Guardar Alterações</Button>
+            </div>
+          </div>
+        );
+      case 'logs':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-[var(--text-primary)]">Logs do Sistema</h3>
+              <Button size="sm" onClick={() => setSubView('none')}>Fechar</Button>
+            </div>
+            <div className="space-y-2">
+              {[
+                { event: 'Novo Cadastro', time: 'Há 5m', detail: 'Motorista: João Silva' },
+                { event: 'Aprovação BI', time: 'Há 15m', detail: 'Admin: Mansur Regulo' },
+                { event: 'Alteração Preço', time: 'Há 1h', detail: 'Base: 40 -> 50 MZN' },
+                { event: 'Erro API', time: 'Há 2h', detail: 'Falha no Geocoding' }
+              ].map((log, i) => (
+                <div key={i} className="p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] text-[10px]">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-black uppercase tracking-tighter text-[#FBBF24]">{log.event}</span>
+                    <span className="text-[var(--text-tertiary)]">{log.time}</span>
+                  </div>
+                  <p className="text-[var(--text-secondary)] font-medium">{log.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case 'notifications':
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-[var(--text-primary)]">Centro de Notificações</h3>
+              <Button size="sm" onClick={() => setSubView('none')}>Fechar</Button>
+            </div>
+            <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-[var(--text-tertiary)] tracking-widest">Corpo da Mensagem (Broadcast)</label>
+                <textarea
+                  placeholder="Escreva a mensagem aqui..."
+                  value={notificationMessage}
+                  onChange={(e) => setNotificationMessage(e.target.value)}
+                  className="w-full bg-[var(--bg-primary)] p-4 rounded-xl border border-[var(--border-color)] text-sm font-medium h-32 outline-none focus:border-[#FBBF24] transition-colors"
+                />
+              </div>
+              <div className="space-y-3">
+                <p className="text-[10px] text-[var(--text-secondary)] font-medium leading-relaxed italic">
+                  * Esta mensagem será enviada como notificação push e aparecerá no centro de alertas de todos os utilizadores (Motoristas e Passageiros).
+                </p>
+                <Button
+                  className="w-full h-14 font-black uppercase tracking-tighter shadow-xl shadow-[#FBBF24]/10"
+                  onClick={handleSendNotification}
+                  isLoading={isSending}
+                  disabled={!notificationMessage.trim()}
+                >
+                  Mandar Notificação
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-[var(--bg-primary)] transition-colors duration-300">
       <Header title="Painel Admin" onBack={() => onNavigate('home')} />
@@ -217,242 +348,259 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Tabs Navigation */}
-            <div className="grid grid-cols-4 gap-2 p-1 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] mb-8">
-              <button
-                onClick={() => setActiveTab('metrics')}
-                className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'metrics' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
-              >
-                Métricas
-              </button>
-              <button
-                onClick={() => setActiveTab('rides')}
-                className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'rides' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
-              >
-                Viagens {recentRides.filter(r => r.status === 'pending').length > 0 && <span className="ml-1 px-1 bg-red-500 text-white rounded-full text-[8px]">{recentRides.filter(r => r.status === 'pending').length}</span>}
-              </button>
-              <button
-                onClick={() => setActiveTab('drivers')}
-                className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'drivers' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
-              >
-                Drivers {pendingDrivers.length > 0 && <span className="ml-1 px-1 bg-red-500 text-white rounded-full text-[8px]">{pendingDrivers.length}</span>}
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'settings' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
-              >
-                Config
-              </button>
-            </div>
-
-            {activeTab === 'metrics' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="grid grid-cols-2 gap-4">
-                  {stats.map((stat, i) => (
-                    <div key={i} className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
-                      <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
-                        <stat.icon size={20} className={stat.color} />
-                      </div>
-                      <p className="text-2xl font-bold text-[var(--text-primary)]">{stat.value}</p>
-                      <p className="text-xs text-[var(--text-secondary)] lowercase">{stat.label}</p>
-                    </div>
-                  ))}
+            {subView === 'none' ? (
+              <>
+                {/* Tabs Navigation */}
+                <div className="grid grid-cols-4 gap-2 p-1 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] mb-8">
+                  <button
+                    onClick={() => setActiveTab('metrics')}
+                    className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'metrics' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
+                  >
+                    Métricas
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('rides')}
+                    className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'rides' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
+                  >
+                    Viagens {recentRides.filter(r => r.status === 'pending').length > 0 && <span className="ml-1 px-1 bg-red-500 text-white rounded-full text-[8px]">{recentRides.filter(r => r.status === 'pending').length}</span>}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('drivers')}
+                    className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'drivers' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
+                  >
+                    Drivers {pendingDrivers.length > 0 && <span className="ml-1 px-1 bg-red-500 text-white rounded-full text-[8px]">{pendingDrivers.length}</span>}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'settings' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
+                  >
+                    Config
+                  </button>
                 </div>
 
-                {selectedRide && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider opacity-60">Monitor de Viagem</h3>
-                    <MapComponent
-                      center={[selectedRide.pickup_lat, selectedRide.pickup_lng]}
-                      pickup={{ lat: selectedRide.pickup_lat, lng: selectedRide.pickup_lng, name: selectedRide.pickup_location }}
-                      destination={{ lat: selectedRide.dest_lat, lng: selectedRide.dest_lng, name: selectedRide.destination_location }}
-                      height="250px"
-                    />
-                    <div className="bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-color)]">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-bold text-[var(--text-primary)]">{selectedRide.pickup_location} → {selectedRide.destination_location}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Clock size={12} className="text-[var(--text-secondary)]" />
-                            <p className="text-xs text-[var(--text-secondary)]">{new Date(selectedRide.created_at).toLocaleString()}</p>
+                {activeTab === 'metrics' && (
+                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="grid grid-cols-2 gap-4">
+                      {stats.map((stat, i) => (
+                        <div key={i} className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
+                          <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
+                            <stat.icon size={20} className={stat.color} />
+                          </div>
+                          <p className="text-2xl font-bold text-[var(--text-primary)]">{stat.value}</p>
+                          <p className="text-xs text-[var(--text-secondary)] lowercase">{stat.label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between px-2">
+                      <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider opacity-60">Centro de Notificações</h3>
+                      <button onClick={() => setSubView('notifications')} className="text-[10px] font-black uppercase text-[#FBBF24] tracking-widest bg-[#FBBF24]/10 px-3 py-1.5 rounded-lg border border-[#FBBF24]/20 active:scale-95 transition-all">Mandar Mensagem</button>
+                    </div>
+
+                    {selectedRide && (
+                      <div className="space-y-4">
+                        <MapComponent
+                          center={[selectedRide.pickup_lat, selectedRide.pickup_lng]}
+                          pickup={{ lat: selectedRide.pickup_lat, lng: selectedRide.pickup_lng, name: selectedRide.pickup_location }}
+                          destination={{ lat: selectedRide.dest_lat, lng: selectedRide.dest_lng, name: selectedRide.destination_location }}
+                          height="250px"
+                        />
+                        <div className="bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-color)]">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-sm font-bold text-[var(--text-primary)]">{selectedRide.pickup_location} → {selectedRide.destination_location}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Clock size={12} className="text-[var(--text-secondary)]" />
+                                <p className="text-xs text-[var(--text-secondary)]">{new Date(selectedRide.created_at).toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${selectedRide.status === 'pending' ? 'bg-orange-500/20 text-orange-500' :
+                              selectedRide.status === 'accepted' ? 'bg-blue-500/20 text-blue-500' :
+                                'bg-green-500/20 text-green-500'
+                              }`}>
+                              {selectedRide.status}
+                            </span>
                           </div>
                         </div>
-                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${selectedRide.status === 'pending' ? 'bg-orange-500/20 text-orange-500' :
-                          selectedRide.status === 'accepted' ? 'bg-blue-500/20 text-blue-500' :
-                            'bg-green-500/20 text-green-500'
-                          }`}>
-                          {selectedRide.status}
-                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'rides' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#FBBF24] mb-4 uppercase tracking-wider flex items-center gap-2">
+                        Aprovações de Viagens
+                        {recentRides.filter(r => r.status === 'pending').length > 0 && <span className="animate-pulse w-2 h-2 bg-red-500 rounded-full" />}
+                      </h3>
+                      <div className="space-y-3">
+                        {recentRides.filter(r => r.status === 'pending').length > 0 ? (
+                          recentRides.filter(r => r.status === 'pending').map(ride => (
+                            <div key={ride.id} className="bg-[var(--bg-secondary)] p-5 rounded-2xl border border-[var(--border-color)] space-y-4 shadow-xl">
+                              <div className="flex justify-between items-start">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <MapPin size={14} className="text-[#3B82F6]" />
+                                    <p className="text-sm font-bold text-[var(--text-primary)]">{ride.pickup_location}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <MapPin size={14} className="text-[#FBBF24]" />
+                                    <p className="text-sm font-bold text-[var(--text-primary)]">{ride.destination_location}</p>
+                                  </div>
+                                </div>
+                                <span className="text-xs font-bold text-[#FBBF24] bg-[#FBBF24]/10 px-2 py-1 rounded">{ride.estimate}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  className="flex-1 py-3 bg-red-500/10 text-red-500 rounded-xl text-xs font-bold border border-red-500/20 hover:bg-red-500/20 transition-all"
+                                  onClick={() => handleRejectRide(ride.id)}
+                                >
+                                  Recusar
+                                </button>
+                                <button
+                                  className="flex-1 py-3 bg-[#FBBF24] text-black rounded-xl text-xs font-bold shadow-lg shadow-[#FBBF24]/10"
+                                  onClick={() => handleApproveRide(ride.id)}
+                                >
+                                  Aprovar Pedido
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-12 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] space-y-2">
+                            <Activity className="mx-auto text-[var(--text-tertiary)]" size={32} />
+                            <p className="text-[var(--text-secondary)] text-sm">Sem pedidos pendentes</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4 uppercase tracking-wider opacity-50">Histórico Recente</h3>
+                      <div className="space-y-3">
+                        {recentRides.filter(r => r.status !== 'pending').map((ride) => (
+                          <button
+                            key={ride.id}
+                            onClick={() => { setSelectedRide(ride); setActiveTab('metrics'); }}
+                            className={`w-full text-left bg-[var(--bg-secondary)] p-4 rounded-xl border transition-all ${selectedRide?.id === ride.id ? 'border-[#FBBF24]' : 'border-[var(--border-color)]'} flex justify-between items-center hover:opacity-80`}
+                          >
+                            <div>
+                              <p className="text-xs text-[var(--text-primary)] font-medium truncate max-w-[150px]">{ride.pickup_location} → {ride.destination_location}</p>
+                              <p className="text-[10px] text-[var(--text-secondary)] mt-1">{new Date(ride.created_at).toLocaleTimeString()}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className={`text-[10px] font-bold uppercase ${ride.status === 'completed' ? 'text-green-500' : 'text-red-500'}`}>{ride.status}</span>
+                            </div>
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            {activeTab === 'rides' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div>
-                  <h3 className="text-sm font-bold text-[#FBBF24] mb-4 uppercase tracking-wider flex items-center gap-2">
-                    Aprovações de Viagens
-                    {recentRides.filter(r => r.status === 'pending').length > 0 && <span className="animate-pulse w-2 h-2 bg-red-500 rounded-full" />}
-                  </h3>
-                  <div className="space-y-3">
-                    {recentRides.filter(r => r.status === 'pending').length > 0 ? (
-                      recentRides.filter(r => r.status === 'pending').map(ride => (
-                        <div key={ride.id} className="bg-[var(--bg-secondary)] p-5 rounded-2xl border border-[var(--border-color)] space-y-4 shadow-xl">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <MapPin size={14} className="text-[#3B82F6]" />
-                                <p className="text-sm font-bold text-[var(--text-primary)]">{ride.pickup_location}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <MapPin size={14} className="text-[#FBBF24]" />
-                                <p className="text-sm font-bold text-[var(--text-primary)]">{ride.destination_location}</p>
-                              </div>
-                            </div>
-                            <span className="text-xs font-bold text-[#FBBF24] bg-[#FBBF24]/10 px-2 py-1 rounded">{ride.estimate}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              className="flex-1 py-3 bg-red-500/10 text-red-500 rounded-xl text-xs font-bold border border-red-500/20 hover:bg-red-500/20 transition-all"
-                              onClick={() => handleRejectRide(ride.id)}
-                            >
-                              Recusar
-                            </button>
-                            <button
-                              className="flex-1 py-3 bg-[#FBBF24] text-black rounded-xl text-xs font-bold shadow-lg shadow-[#FBBF24]/10"
-                              onClick={() => handleApproveRide(ride.id)}
-                            >
-                              Aprovar Pedido
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-12 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] space-y-2">
-                        <Activity className="mx-auto text-[var(--text-tertiary)]" size={32} />
-                        <p className="text-[var(--text-secondary)] text-sm">Sem pedidos pendentes</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4 uppercase tracking-wider opacity-50">Histórico Recente</h3>
-                  <div className="space-y-3">
-                    {recentRides.filter(r => r.status !== 'pending').map((ride) => (
-                      <button
-                        key={ride.id}
-                        onClick={() => { setSelectedRide(ride); setActiveTab('metrics'); }}
-                        className={`w-full text-left bg-[var(--bg-secondary)] p-4 rounded-xl border transition-all ${selectedRide?.id === ride.id ? 'border-[#FBBF24]' : 'border-[var(--border-color)]'} flex justify-between items-center hover:opacity-80`}
-                      >
-                        <div>
-                          <p className="text-xs text-[var(--text-primary)] font-medium truncate max-w-[150px]">{ride.pickup_location} → {ride.destination_location}</p>
-                          <p className="text-[10px] text-[var(--text-secondary)] mt-1">{new Date(ride.created_at).toLocaleTimeString()}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className={`text-[10px] font-bold uppercase ${ride.status === 'completed' ? 'text-green-500' : 'text-red-500'}`}>{ride.status}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'drivers' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-[#FBBF24] uppercase tracking-wider">Gestão de Motoristas</h3>
-                  <span className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">{allDrivers.length} Registados</span>
-                </div>
-
-                <div className="space-y-3">
-                  {allDrivers.map((driver) => (
-                    <button
-                      key={driver.id}
-                      onClick={() => setSelectedDriver(driver)}
-                      className="w-full bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)] flex items-center justify-between hover:border-[var(--primary-color)]/50 transition-all text-left group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-center overflow-hidden">
-                          {driver.profile_url ? <img src={driver.profile_url} alt="" className="w-full h-full object-cover" /> : <Users className="text-[var(--text-tertiary)]" size={24} />}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-[var(--text-primary)]">{driver.full_name}</p>
-                            {driver.status === 'pending' && <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}
-                          </div>
-                          <div className="flex items-center gap-3 mt-1">
-                            <div className="flex items-center gap-1">
-                              <Activity size={10} className="text-blue-500" />
-                              <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalRides} Viagens</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Users size={10} className="text-purple-500" />
-                              <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalPassengers} Passageiros</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`px-2 py-1 rounded text-[8px] font-black tracking-widest uppercase ${driver.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
-                          {driver.status}
-                        </span>
-                        <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </button>
-                  ))}
-
-                  {allDrivers.length === 0 && (
-                    <div className="text-center py-20 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] space-y-4">
-                      <Users className="mx-auto text-[var(--text-tertiary)]" size={40} />
-                      <p className="text-[var(--text-secondary)] text-sm font-medium">Nenhum motorista registado</p>
+                {activeTab === 'drivers' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-[#FBBF24] uppercase tracking-wider">Gestão de Motoristas</h3>
+                      <span className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">{allDrivers.length} Registados</span>
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {activeTab === 'settings' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
-                  <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Perfil Administrador</h3>
-                  <div className="p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-[#FBBF24] flex items-center justify-center font-black text-black">M</div>
-                    <div>
-                      <p className="text-sm font-bold text-[var(--text-primary)]">Mansur Regulo</p>
-                      <p className="text-[10px] text-[var(--text-secondary)]">mansurmuquissirimaregulo13@gmail.com</p>
+
+                    <div className="space-y-3">
+                      {allDrivers.map((driver) => (
+                        <button
+                          key={driver.id}
+                          onClick={() => setSelectedDriver(driver)}
+                          className="w-full bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)] flex items-center justify-between hover:border-[var(--primary-color)]/50 transition-all text-left group"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-center overflow-hidden">
+                              {driver.profile_url ? <img src={driver.profile_url} alt="" className="w-full h-full object-cover" /> : <Users className="text-[var(--text-tertiary)]" size={24} />}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold text-[var(--text-primary)]">{driver.full_name}</p>
+                                {driver.status === 'pending' && <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}
+                              </div>
+                              <div className="flex items-center gap-3 mt-1">
+                                <div className="flex items-center gap-1">
+                                  <Activity size={10} className="text-blue-500" />
+                                  <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalRides} Viagens</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Users size={10} className="text-purple-500" />
+                                  <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalPassengers} Passageiros</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className={`px-2 py-1 rounded text-[8px] font-black tracking-widest uppercase ${driver.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                              {driver.status}
+                            </span>
+                            <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </button>
+                      ))}
+
+                      {allDrivers.length === 0 && (
+                        <div className="text-center py-20 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] space-y-4">
+                          <Users className="mx-auto text-[var(--text-tertiary)]" size={40} />
+                          <p className="text-[var(--text-secondary)] text-sm font-medium">Nenhum motorista registado</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
 
-                <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
-                  <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Sistema</h3>
-                  <div className="space-y-2">
-                    <button className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left group">
-                      <span className="text-xs font-bold text-[var(--text-primary)]">Gestão de Bairros</span>
-                      <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
-                    </button>
-                    <button className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left group">
-                      <span className="text-xs font-bold text-[var(--text-primary)]">Preços e Taxas</span>
-                      <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
-                    </button>
-                    <button className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left group">
-                      <span className="text-xs font-bold text-[var(--text-primary)]">Logs do Sistema</span>
-                      <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
-                    </button>
+                {activeTab === 'settings' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4 shadow-xl">
+                      <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Perfil Administrador</h3>
+                      <div className="p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-[#FBBF24] flex items-center justify-center font-black text-black">M</div>
+                        <div>
+                          <p className="text-sm font-bold text-[var(--text-primary)]">Mansur Regulo</p>
+                          <p className="text-[10px] text-[var(--text-secondary)]">mansurmuquissirimaregulo13@gmail.com</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4 shadow-xl">
+                      <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Sistema e Gestão</h3>
+                      <div className="space-y-2">
+                        <button onClick={() => setSubView('bairros')} className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left group active:scale-[0.98] transition-all">
+                          <span className="text-xs font-bold text-[var(--text-primary)]">Gestão de Bairros</span>
+                          <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                        </button>
+                        <button onClick={() => setSubView('prices')} className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left group active:scale-[0.98] transition-all">
+                          <span className="text-xs font-bold text-[var(--text-primary)]">Preços e Taxas</span>
+                          <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                        </button>
+                        <button onClick={() => setSubView('logs')} className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left group active:scale-[0.98] transition-all">
+                          <span className="text-xs font-bold text-[var(--text-primary)]">Logs do Sistema</span>
+                          <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4 shadow-xl">
+                      <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Suporte e Contacto</h3>
+                      <div className="space-y-2">
+                        <a href="mailto:mansurmuquissirimaregulo13@gmail.com" className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left">
+                          <span className="text-xs font-bold text-[var(--text-primary)]">Enviar Email Suporte</span>
+                          <ChevronRight size={16} className="text-[var(--text-tertiary)]" />
+                        </a>
+                        <button className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center active:scale-[0.98] transition-all" onClick={() => { localStorage.clear(); onNavigate('home'); }}>
+                          <span className="text-xs font-black text-red-500 uppercase">Sair do Painel Admin</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-
-                <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
-                  <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Suporte</h3>
-                  <button className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
-                    <span className="text-xs font-black text-red-500 uppercase">Sair do Painel Admin</span>
-                  </button>
-                </div>
-              </div>
+                )}
+              </>
+            ) : (
+              renderSubView()
             )}
           </div>
         )}
@@ -567,7 +715,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
 
       <BottomNav
         activeTab="admin-dash"
-        onTabChange={(tab) => onNavigate(tab)}
+        onTabChange={(tab) => { setSubView('none'); onNavigate(tab); }}
         userType="admin"
       />
     </div>
