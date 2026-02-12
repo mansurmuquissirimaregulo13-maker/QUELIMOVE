@@ -103,18 +103,29 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
         };
     }, []);
 
+    // Ref to track the last center prop value processed to avoid re-centering on same values
+    const lastCenterPropRef = React.useRef<string>('');
+
     // Atualizar centro do mapa
     React.useEffect(() => {
         // Only update center if we DON'T have a route actively showing, 
         // to avoid fighting the fitBounds in the route effect
+        // AND ensure map reference exists
+        // AND ensure center is valid
         if (mapRef.current && !routeLayerRef.current && isFinite(center[0]) && isFinite(center[1])) {
-            const currentCenter = mapRef.current.getCenter();
-            const dist = Math.sqrt(Math.pow(currentCenter.lat - center[0], 2) + Math.pow(currentCenter.lng - center[1], 2));
-            if (dist > 0.0001) {
-                mapRef.current.setView(center, mapRef.current.getZoom());
+            const centerKey = `${center[0].toFixed(5)},${center[1].toFixed(5)}`;
+
+            // If the PROP hasn't changed from what we last processed, DON'T TOUCH THE MAP
+            // This stops the map from snapping back when user drags it
+            if (centerKey === lastCenterPropRef.current) {
+                return;
             }
+
+            // Prop changed! Update map.
+            lastCenterPropRef.current = centerKey;
+            mapRef.current.setView(center, mapRef.current.getZoom());
         }
-    }, [center]);
+    }, [center[0], center[1]]);
 
     // Gerenciar Marcador do Usuário
     React.useEffect(() => {
