@@ -76,6 +76,9 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
     const routeLayerRef = React.useRef<L.Polyline | null>(null);
     const [isLoadingRoute, setIsLoadingRoute] = React.useState(false);
 
+    // Track user interaction state
+    const isInteracting = React.useRef(false);
+
     // Use a ref for onClick to avoid closure staleness in the map event listener
     const onClickRef = React.useRef(onClick);
     React.useEffect(() => {
