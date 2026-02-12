@@ -117,21 +117,7 @@ export function DriverRegistrationPage({
         if (profileError) throw profileError;
       }
 
-      // 3. Send WhatsApp notification
-      const message = `*Novo Cadastro de Motorista - Quelimove*\n\n` +
-        `👤 *Nome:* ${formData.name}\n` +
-        `📧 *Email:* ${formData.email}\n` +
-        `📞 *WhatsApp:* ${formData.phone}\n` +
-        `🪪 *BI:* ${formData.bi}\n` +
-        `🏘️ *Bairro:* ${formData.bairro}\n` +
-        `🏍️ *Veículo:* ${formData.vehicleModel} (${vehicleType})\n` +
-        `🔢 *Matrícula:* ${formData.plate}\n\n` +
-        `Por favor, valide meus documentos para começar a trabalhar.`;
-
-      const whatsappUrl = `https://wa.me/258840000000?text=${encodeURIComponent(message)}`;
-
-      window.open(whatsappUrl, '_blank');
-      alert('Cadastro realizado com sucesso! Aguarde a aprovação do administrador.');
+      alert('Cadastro realizado com sucesso! Seus dados foram enviados para análise do administrador. Você será notificado assim que sua conta for aprovada.');
       onNavigate('home');
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -206,7 +192,7 @@ export function DriverRegistrationPage({
                     value={formData.phone}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <Input
                       icon={FileText}
                       label="Número do BI"
