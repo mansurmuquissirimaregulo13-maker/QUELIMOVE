@@ -312,6 +312,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
   };
 
   const handleMapClick = async (latlng: [number, number]) => {
+    console.log('handleMapClick triggered with:', latlng, 'isSelectingOnMap:', isSelectingOnMap);
     if (!isSelectingOnMap || !activeSearchField) return;
 
     const [lat, lng] = latlng;
@@ -475,34 +476,46 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       <AnimatePresence>
         {isSelectingOnMap && (
           <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="absolute top-[100px] left-4 right-4 z-[100] bg-[#FBBF24] p-5 rounded-[24px] shadow-[0_20px_40px_rgba(251,191,36,0.4)] flex items-center justify-between border-2 border-white/20"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="absolute top-24 left-4 right-4 z-[100] bg-[#FBBF24] p-5 rounded-[28px] shadow-[0_25px_60px_rgba(251,191,36,0.5)] flex items-center justify-between border-2 border-white/30 backdrop-blur-md"
           >
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center animate-bounce shadow-lg">
-                <MapPin size={20} className="text-[#FBBF24]" />
+              <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center animate-pulse shadow-xl ring-4 ring-black/5">
+                <MapPin size={24} className="text-[#FBBF24]" />
               </div>
-              <div className="pointer-events-none">
-                <p className="text-black font-black text-sm uppercase tracking-tight leading-none mb-1">Escolher no Mapa</p>
-                <p className="text-black/70 text-[10px] font-bold uppercase tracking-wider">Toca onde queres marcar</p>
+              <div>
+                <p className="text-black font-black text-base uppercase tracking-tight leading-none mb-1">Clica no Mapa</p>
+                <p className="text-black/80 text-[11px] font-bold uppercase tracking-wider">
+                  Marca o local de {activeSearchField === 'pickup' ? 'partida' : (activeSearchField === 'stop' ? 'paragem' : 'destino')}
+                </p>
               </div>
             </div>
             <button
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 setIsSelectingOnMap(false);
-                setActiveSearchField(null);
-                setActiveStopIndex(null);
               }}
-              className="bg-black/10 hover:bg-black/20 px-4 py-2.5 rounded-xl text-black text-[10px] font-black uppercase transition-all active:scale-95 border border-black/5"
+              className="bg-black text-[#FBBF24] px-5 py-3 rounded-2xl text-[11px] font-black uppercase transition-all active:scale-95 shadow-lg border border-black/10"
             >
               Cancelar
             </button>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Crosshair indicator when selecting */}
+      {isSelectingOnMap && (
+        <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+          <div className="w-8 h-8 relative">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-full bg-[#FBBF24] shadow-lg"></div>
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-[#FBBF24] shadow-lg"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-[#FBBF24] animate-ping opacity-50"></div>
+          </div>
+        </div>
+      )}
 
       {/* Recenter Button */}
       {userLocation && (

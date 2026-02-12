@@ -106,6 +106,7 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
         map.on('dragend', () => { isInteracting.current = false; });
 
         map.on('click', (e) => {
+            console.log('Map clicked at:', e.latlng.lat, e.latlng.lng);
             if (onClick) {
                 onClick([e.latlng.lat, e.latlng.lng]);
             }
