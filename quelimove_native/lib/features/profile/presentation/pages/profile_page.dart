@@ -24,7 +24,23 @@ class ProfilePage extends StatelessWidget {
             _ProfileItem(label: 'Nome', value: 'Mansur Regulo', icon: Icons.person_outline),
             _ProfileItem(label: 'Telefone', value: '+258 84 123 4567', icon: Icons.phone_outlined),
             _ProfileItem(label: 'Email', value: 'mansur@example.com', icon: Icons.email_outlined),
-            const SizedBox(height: 48),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFFBBF24)),
+              ).child ?? ElevatedButton(
+                onPressed: () => context.go('/select-role'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  side: const BorderSide(color: Color(0xFFFBBF24)),
+                ),
+                child: const Text('Trocar de Perfil', style: TextStyle(color: Color(0xFFFBBF24))),
+              ),
+            ),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               height: 56,

@@ -10,9 +10,15 @@ import '../../features/driver/presentation/pages/driver_registration_page.dart';
 // Placeholder Pages (will be implemented next)
 import '../../features/admin/presentation/pages/admin_dashboard_page.dart';
 
+import '../../features/auth/presentation/pages/role_selection_page.dart';
+
 final AppRouter = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/select-role',
   routes: [
+    GoRoute(
+      path: '/select-role',
+      builder: (context, state) => const RoleSelectionPage(),
+    ),
     GoRoute(
       path: '/',
       builder: (context, state) => const HomePage(),

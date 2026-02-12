@@ -29,26 +29,17 @@ class HomePage extends StatelessWidget {
               children: [
                 // Header com troca de modo
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text(
                         'QUELIMOVE',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 24,
                           fontWeight: FontWeight.black,
-                          letterSpacing: 1,
+                          letterSpacing: 2,
                           color: Color(0xFFFBBF24),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => context.push('/driver-dash'),
-                        icon: const Icon(Icons.motorcycle, size: 18, color: Colors.white70),
-                        label: const Text('Modo Motorista', style: TextStyle(color: Colors.white70)),
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.05),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
                       ),
                     ],

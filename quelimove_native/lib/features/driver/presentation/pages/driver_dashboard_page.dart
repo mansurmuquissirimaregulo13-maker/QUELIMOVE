@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class DriverDashboardPage extends StatefulWidget {
   const DriverDashboardPage({super.key});
@@ -21,10 +21,10 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: Colors.white, // Fundo Branco solicitado
       body: Stack(
         children: [
-          // Mapa com estilo Midnight
+          // Mapa com estilo Midnight (mantivemos o estilo premium mas o dashboard agora é Light)
           GoogleMap(
             initialCameraPosition: _initialPosition,
             onMapCreated: (controller) {
@@ -37,7 +37,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
             compassEnabled: false,
           ),
           
-          // Header Flutuante
+          // Header Flutuante (Adaptado para Light Theme)
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -47,9 +47,9 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(30),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10)],
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
                     ),
                     child: Row(
                       children: [
@@ -64,21 +64,21 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                         const SizedBox(width: 8),
                         Text(
                           _isOnline ? 'ONLINE' : 'OFFLINE',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
                         ),
                       ],
                     ),
                   ),
                   _CircularActionButton(
-                    icon: Icons.menu,
-                    onTap: () => Scaffold.of(context).openDrawer(),
+                    icon: Icons.person_outline,
+                    onTap: () => context.push('/profile'),
                   ),
                 ],
               ),
             ),
           ),
           
-          // Painel Inferior de Estatísticas
+          // Painel Inferior (Branco, Dourado e Preto)
           Align(
             alignment: Alignment.bottomCenter,
             child: Column(
@@ -91,12 +91,12 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: _isOnline ? Colors.red.withOpacity(0.9) : const Color(0xFFFBBF24),
+                      color: _isOnline ? Colors.black : const Color(0xFFFBBF24),
                       borderRadius: BorderRadius.circular(40),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 15)],
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15)],
                     ),
                     child: Text(
-                      _isOnline ? 'FICAR OFFLINE' : 'FICAR ONLINE',
+                      _isOnline ? 'SAIR DE SERVIÇO' : 'FICAR ONLINE',
                       style: TextStyle(
                         color: _isOnline ? Colors.white : Colors.black,
                         fontWeight: FontWeight.black,
@@ -106,12 +106,13 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                   ),
                 ),
                 
-                // Cards de Estatísticas
+                // Cards de Estatísticas (White & Premium Shadow)
                 Container(
                   padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
                   decoration: const BoxDecoration(
-                    color: Color(0xFF1E293B),
+                    color: Colors.white,
                     borderRadius: BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
+                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20, spreadRadius: 0)],
                   ),
                   child: Column(
                     children: [
@@ -125,7 +126,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                       ),
                       if (_isOnline) ...[
                         const SizedBox(height: 24),
-                        const Divider(color: Colors.white10),
+                        const Divider(color: Colors.black12),
                         const SizedBox(height: 16),
                         const Row(
                           children: [
@@ -133,10 +134,10 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                             SizedBox(width: 12),
                             Text(
                               'Procurando viagens próximas...',
-                              style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
+                              style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
                             ),
                             Spacer(),
-                            SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 2)),
+                            SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
                           ],
                         ),
                       ],
@@ -155,40 +156,35 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
 [
   {
     "elementType": "geometry",
-    "stylers": [{"color": "#1d2c4d"}]
+    "stylers": [{"color": "#f5f5f5"}]
   },
   {
     "elementType": "labels.text.fill",
-    "stylers": [{"color": "#8ec3b9"}]
+    "stylers": [{"color": "#616161"}]
   },
   {
     "elementType": "labels.text.stroke",
-    "stylers": [{"color": "#1a3646"}]
+    "stylers": [{"color": "#f5f5f5"}]
   },
   {
-    "featureType": "administrative.country",
-    "elementType": "geometry.stroke",
-    "stylers": [{"color": "#4b6878"}]
-  },
-  {
-    "featureType": "landscape.natural",
-    "elementType": "geometry",
-    "stylers": [{"color": "#023e58"}]
+    "featureType": "administrative.land_parcel",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#bdbdbd"}]
   },
   {
     "featureType": "poi",
     "elementType": "geometry",
-    "stylers": [{"color": "#283d6a"}]
+    "stylers": [{"color": "#eeeeee"}]
   },
   {
     "featureType": "road",
     "elementType": "geometry",
-    "stylers": [{"color": "#304a7d"}]
+    "stylers": [{"color": "#ffffff"}]
   },
   {
     "featureType": "water",
     "elementType": "geometry",
-    "stylers": [{"color": "#0e1626"}]
+    "stylers": [{"color": "#c9c9c9"}]
   }
 ]
 ''';
@@ -206,11 +202,11 @@ class _CircularActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
+          color: Colors.white,
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10)],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
+        child: Icon(icon, color: Colors.black87, size: 20),
       ),
     );
   }
@@ -236,10 +232,10 @@ class _StatCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isPrimary ? const Color(0xFFFBBF24).withOpacity(0.1) : Colors.white.withOpacity(0.03),
+            color: isPrimary ? const Color(0xFFFBBF24).withOpacity(0.1) : Colors.grey.withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Icon(icon, color: isPrimary ? const Color(0xFFFBBF24) : Colors.white60, size: 24),
+          child: Icon(icon, color: isPrimary ? const Color(0xFFFBBF24) : Colors.black45, size: 24),
         ),
         const SizedBox(height: 12),
         Text(
@@ -247,13 +243,13 @@ class _StatCard extends StatelessWidget {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.black,
-            color: isPrimary ? const Color(0xFFFBBF24) : Colors.white,
+            color: isPrimary ? const Color(0xFFFBBF24) : Colors.black87,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+          style: TextStyle(color: Colors.black38, fontSize: 11),
         ),
       ],
     );
