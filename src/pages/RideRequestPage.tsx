@@ -65,6 +65,8 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
   const [nearbyDrivers, setNearbyDrivers] = React.useState<any[]>([]);
 
+  const mapMoveTimeout = React.useRef<NodeJS.Timeout | null>(null);
+
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
       const response = await fetch(
@@ -72,14 +74,23 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       );
       const data = await response.json();
       if (data && data.address) {
-        // Construct a short readable name
-        const road = data.address.road || data.address.pedestrian || data.address.suburb || data.address.neighbourhood;
-        return road || 'Local Desconhecido';
+        const addr = data.address;
+        // Prioritize specific street names, then areas, then cities
+        const road = addr.road || addr.pedestrian || addr.street || addr.residential || addr.path;
+        const area = addr.suburb || addr.neighbourhood || addr.district || addr.quarter || addr.hamlet;
+        const city = addr.village || addr.town || addr.city || addr.municipality || addr.county;
+
+        if (road) return road;
+        if (area) return area;
+        if (city) return city;
+
+        return 'Local Sem Nome';
       }
     } catch (error) {
       console.error("Reverse geocoding error:", error);
     }
-    return null;
+    // Fallback to coordinates if everything fails, better than "Unknown"
+    return `Local: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
   const fetchDrivers = async () => {
@@ -417,23 +428,26 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           onMoveEnd={async (center) => {
             // Only auto-update if we are in Step 1 (searching/selecting)
             if (step === 1) {
-              const [lat, lng] = center;
-              // Don't update mapCenter state here to avoid loop/jitter, just use the coord
-
-              // Reverse geocode
-              const addressName = await reverseGeocode(lat, lng);
-              if (addressName) {
-                const newLoc = { name: addressName, lat, lng };
-
-                // If user is focused on pickup, update pickup. 
-                // Otherwise default to updating DESTINATION (drag to go here behavior)
-                if (activeSearchField === 'pickup') {
-                  setPickup(newLoc);
-                } else {
-                  // Default behavior: user points to where they want to go
-                  setDestination(newLoc);
-                }
+              // Clear previous timeout to debounce the update
+              if (mapMoveTimeout.current) {
+                clearTimeout(mapMoveTimeout.current);
               }
+
+              // Set new timeout - only update address if user stops moving for 600ms
+              mapMoveTimeout.current = setTimeout(async () => {
+                const [lat, lng] = center;
+
+                const addressName = await reverseGeocode(lat, lng);
+                if (addressName) {
+                  const newLoc = { name: addressName, lat, lng };
+
+                  if (activeSearchField === 'pickup') {
+                    setPickup(newLoc);
+                  } else {
+                    setDestination(newLoc);
+                  }
+                }
+              }, 600);
             }
           }}
         />
