@@ -56,7 +56,6 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
   // Search state
   const [searchTerm, setSearchTerm] = React.useState('');
   const [searchResults, setSearchResults] = React.useState<SearchResult[]>([]);
-  const [isSearching, setIsSearching] = React.useState(false);
   const [activeSearchField, setActiveSearchField] = React.useState<'pickup' | 'destination' | 'stop' | null>(null);
   const [activeStopIndex, setActiveStopIndex] = React.useState<number | null>(null);
   const [isSelectingOnMap, setIsSelectingOnMap] = React.useState(false);
@@ -375,18 +374,18 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     setStep(3);
 
     try {
-      // 1. Create ride entry in Supabase
+      // 1. Criar entrada da viagem no Supabase
       const { data: ride, error: rideError } = await supabase
         .from('rides')
         .insert([{
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: (await supabase.auth.getUser()).data.user?.id || 'anonymous',
           pickup_location: pickup.name,
           destination_location: destination.name,
           pickup_lat: pickup.lat,
           pickup_lng: pickup.lng,
           dest_lat: destination.lat,
           dest_lng: destination.lng,
-          stops: stops.filter(s => s.lat !== 0), // Salvar apenas paragens válidas
+          stops: stops.filter(s => s.lat !== 0),
           payment_method: paymentMethod,
           estimate: estimatedPrice.toString(),
           distance: distance,
@@ -397,57 +396,94 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
       if (rideError) throw rideError;
 
-      // 2. Matching logic - Busca e ordena pelo mais próximo
-      const { data: drivers, error: driverError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'driver')
-        .eq('is_available', true)
-        .eq('status', 'active');
+      // 2. Escutar mudanças nesta viagem específica
+      const rideChannel = supabase
+        .channel(`ride-tracking-${ride.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'rides',
+            filter: `id=eq.${ride.id}`
+          },
+          async (payload) => {
+            console.log('Ride update received:', payload.new);
 
-      if (driverError) throw driverError;
+            if (payload.new.status === 'accepted' && payload.new.driver_id) {
+              // Motorista aceitou! Pegar info do motorista
+              const { data: driver } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', payload.new.driver_id)
+                .single();
 
-      setTimeout(async () => {
-        if (!drivers || drivers.length === 0) {
-          setMatchStatus('busy');
-        } else {
-          // Ordenar por distância do pickup usando a fórmula de Haversine já definida no arquivo
-          const sortedDrivers = [...drivers].sort((a, b) => {
-            const distA = calculateDistance(
-              { lat: a.current_lat, lng: a.current_lng, name: 'A' },
-              pickup
-            );
-            const distB = calculateDistance(
-              { lat: b.current_lat, lng: b.current_lng, name: 'B' },
-              pickup
-            );
-            return distA - distB;
-          });
+              if (driver) {
+                setDriverInfo(driver);
+                setMatchStatus('found');
 
-          const driver = sortedDrivers[0];
-          const distToDriver = calculateDistance(
-            { lat: driver.current_lat, lng: driver.current_lng, name: 'Driver' },
-            pickup
-          );
+                // Iniciar rastreamento da localização do motorista
+                subscribeToDriverLocation(driver.id);
+              }
+            }
+          }
+        )
+        .subscribe();
 
-          setDriverInfo(driver);
-          setMatchStatus('found');
-          // ETA: Média de 5 min por KM em Quelimane
-          setEta(Math.max(1, Math.round(distToDriver * 5)));
-
-          await supabase
-            .from('rides')
-            .update({ status: 'accepted', driver_id: driver.id })
-            .eq('id', ride.id);
-        }
-        setIsLoading(false);
-      }, 2000);
+      // Armazenar canal para limpeza
+      (window as any)[`ride_channel_${ride.id}`] = rideChannel;
 
     } catch (error) {
       console.error('Ride error:', error);
       setIsLoading(false);
       setMatchStatus('busy');
     }
+  };
+
+  const subscribeToDriverLocation = (driverId: string) => {
+    const driverChannel = supabase
+      .channel(`driver-location-${driverId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${driverId}`
+        },
+        (payload) => {
+          console.log('Driver location update:', payload.new);
+          const newLat = payload.new.current_lat;
+          const newLng = payload.new.current_lng;
+
+          if (typeof newLat === 'number' && typeof newLng === 'number') {
+            // Atualizar o marcador do motorista no mapa
+            setNearbyDrivers([{
+              id: driverId,
+              lat: newLat,
+              lng: newLng,
+              type: payload.new.vehicle_type || 'moto'
+            }]);
+
+            // Calcular ETA/Distância em tempo real
+            if (pickup) {
+              const distToDriver = calculateDistance(
+                { lat: newLat, lng: newLng, name: 'Driver' },
+                pickup
+              );
+              setEta(Math.max(1, Math.round(distToDriver * 5)));
+
+              if (distToDriver < 0.3) {
+                // Notificar proximidade (pode ser um alerta ou som)
+                console.log('Motorista está muito perto!');
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    (window as any)[`driver_tracking_${driverId}`] = driverChannel;
   };
 
   return (

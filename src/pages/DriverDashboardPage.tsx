@@ -113,35 +113,32 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
   const handleAcceptRide = async (rideId: string) => {
     try {
-      // In a real app, we'd assign the driver_id here
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        alert('Erro: Deves estar logado para aceitar viagens.');
+        return;
+      }
+
+      // Atribui o motorista real à viagem
       const { error } = await supabase
         .from('rides')
-        .update({ status: 'accepted' })
+        .update({
+          status: 'accepted',
+          driver_id: userData.user.id
+        })
         .eq('id', rideId);
 
       if (!error) {
-
-        // Open WhatsApp to notify client (if we had client phone)
-        // For now, we simulate the "Scene" where the driver confirms
         if (currentRide) {
-          alert('Viagem aceite! Inicie o percurso para ' + currentRide.pickup_location);
+          alert('Viagem aceite! Motorista a caminho para ' + currentRide.pickup_location);
         }
-
-        // Maybe open WhatsApp with a "I'm coming" message
-        /*
-        const message = `*Olá! Quelimove a caminho.*\n\n` +
-          `Motorista: ${driverName}\n` +
-          `Veículo: ${vehicleInfo}\n` +
-          `Estou a caminho de: ${currentRide.pickup_location}`;
-
-        // In a real flow, we'd have the client's number in the 'rides' table
-        // window.open(`https://wa.me/${currentRide.client_phone}?text=${encodeURIComponent(message)}`, '_blank');
-        */
-
         setCurrentRide(null);
+      } else {
+        throw error;
       }
     } catch (err) {
       console.error('Error accepting ride:', err);
+      alert('Erro ao aceitar viagem. Tente novamente.');
     }
   };
 
