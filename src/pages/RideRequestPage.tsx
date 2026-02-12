@@ -298,6 +298,11 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     } else if (activeSearchField === 'destination') {
       setDestination(loc);
       setMapCenter([loc.lat, loc.lng]);
+    } else if (activeSearchField === 'stop' && activeStopIndex !== null) {
+      const newStops = [...stops];
+      newStops[activeStopIndex] = loc;
+      setStops(newStops);
+      setMapCenter([loc.lat, loc.lng]);
     }
 
     setActiveSearchField(null);
@@ -321,12 +326,17 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
     if (activeSearchField === 'pickup') {
       setPickup(loc);
+    } else if (activeSearchField === 'stop' && activeStopIndex !== null) {
+      const newStops = [...stops];
+      newStops[activeStopIndex] = loc;
+      setStops(newStops);
     } else {
       setDestination(loc);
     }
 
     setIsSelectingOnMap(false);
     setActiveSearchField(null);
+    setActiveStopIndex(null);
     setIsLoading(false);
   };
 
@@ -375,6 +385,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           pickup_lng: pickup.lng,
           dest_lat: destination.lat,
           dest_lng: destination.lng,
+          stops: stops.filter(s => s.lat !== 0), // Salvar apenas paragens válidas
           payment_method: paymentMethod,
           estimate: estimatedPrice.toString(),
           distance: distance,
