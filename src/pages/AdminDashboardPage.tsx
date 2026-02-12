@@ -6,14 +6,15 @@ import {
   DollarSign,
   Activity,
   Loader2,
-  ShieldCheck,
-  Check,
   X,
   FileText,
-  Phone as PhoneIcon,
   MapPin,
-  Clock
+  Clock,
+  ChevronRight,
+  Camera,
+  CheckCircle
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BottomNav } from '../components/BottomNav';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
@@ -47,35 +48,26 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   ]);
 
   const [recentRides, setRecentRides] = React.useState<any[]>([]);
+  const [allDrivers, setAllDrivers] = React.useState<any[]>([]);
   const [pendingDrivers, setPendingDrivers] = React.useState<any[]>([]);
   const [selectedRide, setSelectedRide] = React.useState<any | null>(null);
+  const [selectedDriver, setSelectedDriver] = React.useState<any | null>(null);
 
   const fetchStats = async () => {
     try {
-      const { count: ridesCount } = await supabase
+      const { data: ridesData, count: ridesCount } = await supabase
         .from('rides')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false });
 
-      const { count: driversCount } = await supabase
+      const { data: driversData, count: driversCount } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true })
+        .select('*')
         .eq('role', 'driver');
 
       const { count: pendingCount } = await supabase
         .from('rides')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
-
-      const { data: ridesData } = await supabase
-        .from('rides')
-        .select(`*`)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      const { data: driversData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'driver')
         .eq('status', 'pending');
 
       setStats([
@@ -93,7 +85,17 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
       }
 
       if (driversData) {
-        setPendingDrivers(driversData);
+        // Calcular métricas por motorista
+        const driversWithMetrics = driversData.map(driver => {
+          const driverRides = ridesData?.filter(r => r.driver_id === driver.id && r.status === 'completed') || [];
+          return {
+            ...driver,
+            totalRides: driverRides.length,
+            totalPassengers: driverRides.length // Assumindo 1 por viagem por agora
+          };
+        });
+        setAllDrivers(driversWithMetrics);
+        setPendingDrivers(driversWithMetrics.filter(d => d.status === 'pending'));
       }
     } catch (err) {
       console.error('Error fetching admin stats:', err);
@@ -110,7 +112,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         .eq('id', driverId);
 
       if (!error) {
-        setPendingDrivers(prev => prev.filter(d => d.id !== driverId));
+        setSelectedDriver(null);
         fetchStats();
       }
     } catch (err) {
@@ -126,7 +128,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         .eq('id', driverId);
 
       if (!error) {
-        setPendingDrivers(prev => prev.filter(d => d.id !== driverId));
+        setSelectedDriver(null);
         fetchStats();
       }
     } catch (err) {
@@ -285,7 +287,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                   <div className="space-y-3">
                     {recentRides.filter(r => r.status === 'pending').length > 0 ? (
                       recentRides.filter(r => r.status === 'pending').map(ride => (
-                        <div key={ride.id} className="bg-[var(--bg-secondary)] p-5 rounded-2xl border border-[#FBBF24]/30 space-y-4 shadow-xl">
+                        <div key={ride.id} className="bg-[var(--bg-secondary)] p-5 rounded-2xl border border-[var(--border-color)] space-y-4 shadow-xl">
                           <div className="flex justify-between items-start">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
@@ -316,9 +318,9 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-12 bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] space-y-2">
-                        <Activity className="mx-auto text-[#4B5563]" size={32} />
-                        <p className="text-[#9CA3AF] text-sm">Sem pedidos pendentes</p>
+                      <div className="text-center py-12 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] space-y-2">
+                        <Activity className="mx-auto text-[var(--text-tertiary)]" size={32} />
+                        <p className="text-[var(--text-secondary)] text-sm">Sem pedidos pendentes</p>
                       </div>
                     )}
                   </div>
@@ -349,61 +351,52 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
 
             {activeTab === 'drivers' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <h3 className="text-sm font-bold text-[#FBBF24] mb-4 uppercase tracking-wider">Verificação de Motoristas</h3>
-                <div className="space-y-6">
-                  {pendingDrivers.length > 0 ? (
-                    pendingDrivers.map((driver) => (
-                      <div key={driver.id} className="bg-[var(--bg-secondary)] p-5 rounded-2xl border border-[var(--border-color)] space-y-6 shadow-2xl">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="text-lg text-[var(--text-primary)] font-bold">{driver.full_name}</p>
-                            <p className="text-sm text-[var(--text-secondary)] flex items-center gap-1 mt-1">
-                              <PhoneIcon size={14} className="text-[#FBBF24]" /> {driver.phone}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="bg-[#FBBF24]/20 text-[#FBBF24] text-[10px] font-bold px-3 py-1 rounded-full uppercase border border-[#FBBF24]/30">
-                              BI: {driver.bi_number}
-                            </span>
-                          </div>
-                        </div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-[#FBBF24] uppercase tracking-wider">Gestão de Motoristas</h3>
+                  <span className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">{allDrivers.length} Registados</span>
+                </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <p className="text-[9px] text-[var(--text-secondary)] uppercase font-bold tracking-widest pl-1">BI Frente</p>
-                            <div className="h-28 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-center overflow-hidden">
-                              {driver.bi_front_url ? <img src={driver.bi_front_url} alt="BI" className="w-full h-full object-cover" /> : <FileText size={24} className="text-[var(--text-tertiary)]" />}
+                <div className="space-y-3">
+                  {allDrivers.map((driver) => (
+                    <button
+                      key={driver.id}
+                      onClick={() => setSelectedDriver(driver)}
+                      className="w-full bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)] flex items-center justify-between hover:border-[var(--primary-color)]/50 transition-all text-left group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-center overflow-hidden">
+                          {driver.profile_url ? <img src={driver.profile_url} alt="" className="w-full h-full object-cover" /> : <Users className="text-[var(--text-tertiary)]" size={24} />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-[var(--text-primary)]">{driver.full_name}</p>
+                            {driver.status === 'pending' && <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1">
+                            <div className="flex items-center gap-1">
+                              <Activity size={10} className="text-blue-500" />
+                              <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalRides} Viagens</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Users size={10} className="text-purple-500" />
+                              <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalPassengers} Passageiros</span>
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            <p className="text-[9px] text-[var(--text-secondary)] uppercase font-bold tracking-widest pl-1">BI Verso</p>
-                            <div className="h-28 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-center overflow-hidden">
-                              {driver.bi_back_url ? <img src={driver.bi_back_url} alt="BI" className="w-full h-full object-cover" /> : <FileText size={24} className="text-[var(--text-tertiary)]" />}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3">
-                          <Button
-                            variant="outline"
-                            className="flex-1 h-12 border-[#2a2a2a] text-red-500 hover:bg-red-500/5"
-                            onClick={() => handleRejectDriver(driver.id)}
-                          >
-                            <X size={18} className="mr-2" /> Recusar
-                          </Button>
-                          <Button
-                            className="flex-1 h-12"
-                            onClick={() => handleApproveDriver(driver.id)}
-                          >
-                            <Check size={18} className="mr-2" /> Aprovar Cadastro
-                          </Button>
                         </div>
                       </div>
-                    ))
-                  ) : (
+                      <div className="flex items-center gap-3">
+                        <span className={`px-2 py-1 rounded text-[8px] font-black tracking-widest uppercase ${driver.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                          {driver.status}
+                        </span>
+                        <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </button>
+                  ))}
+
+                  {allDrivers.length === 0 && (
                     <div className="text-center py-20 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] space-y-4">
-                      <ShieldCheck className="mx-auto text-[var(--text-tertiary)]" size={40} />
-                      <p className="text-[var(--text-secondary)] text-sm font-medium">Todos os motoristas estão verificados</p>
+                      <Users className="mx-auto text-[var(--text-tertiary)]" size={40} />
+                      <p className="text-[var(--text-secondary)] text-sm font-medium">Nenhum motorista registado</p>
                     </div>
                   )}
                 </div>
@@ -412,6 +405,113 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
           </div>
         )}
       </div>
+
+      {/* Driver Details Modal */}
+      <AnimatePresence>
+        {selectedDriver && (
+          <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedDriver(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="relative w-full max-w-lg bg-[var(--bg-primary)] rounded-t-[32px] sm:rounded-[32px] border border-[var(--border-color)] overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between sticky top-0 bg-[var(--bg-primary)] z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-[var(--bg-secondary)] flex items-center justify-center border border-[var(--border-color)] overflow-hidden">
+                    {selectedDriver.profile_url ? <img src={selectedDriver.profile_url} alt="" className="w-full h-full object-cover" /> : <Users className="text-[var(--text-tertiary)]" size={24} />}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{selectedDriver.full_name}</h3>
+                    <p className="text-xs text-[var(--text-secondary)] font-medium">{selectedDriver.phone}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedDriver(null)} className="p-2 bg-[var(--bg-secondary)] rounded-full text-[var(--text-secondary)]">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
+                    <Activity size={18} className="text-blue-500 mb-2" />
+                    <p className="text-xl font-black text-[var(--text-primary)]">{selectedDriver.totalRides}</p>
+                    <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Viagens Concluídas</p>
+                  </div>
+                  <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
+                    <Users size={18} className="text-purple-500 mb-2" />
+                    <p className="text-xl font-black text-[var(--text-primary)]">{selectedDriver.totalPassengers}</p>
+                    <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Passageiros Levados</p>
+                  </div>
+                </div>
+
+                {/* Documents Verification */}
+                <div className="space-y-4">
+                  <h4 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)] ml-1">Verificação de Documentos</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    {[
+                      { label: 'BI Frente', url: selectedDriver.bi_front_url || 'https://via.placeholder.com/400x250?text=BI+Frente' },
+                      { label: 'BI Verso', url: selectedDriver.bi_back_url || 'https://via.placeholder.com/400x250?text=BI+Verso' },
+                      { label: 'Carta de Condução', url: selectedDriver.license_url || 'https://via.placeholder.com/400x250?text=Carta+de+Condução' },
+                      { label: 'Documento da Viatura', url: selectedDriver.vehicle_doc_url || 'https://via.placeholder.com/400x250?text=Livrete' }
+                    ].map((doc, i) => (
+                      <div key={i} className="space-y-2">
+                        <p className="text-[10px] font-bold text-[var(--text-secondary)] pl-1">{doc.label}</p>
+                        <div className="aspect-[16/9] bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] overflow-hidden group relative cursor-zoom-in">
+                          <img src={doc.url} alt={doc.label} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <FileText className="text-white" size={32} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vehicle Info */}
+                <div className="bg-[var(--bg-secondary)] p-6 rounded-[32px] border border-[var(--border-color)] space-y-4">
+                  <h4 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Informação do Veículo</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-[var(--text-tertiary)]">Tipo</p>
+                      <p className="text-sm font-bold text-[var(--text-primary)] uppercase font-black tracking-tighter">{selectedDriver.vehicle_type}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[var(--text-tertiary)]">Matrícula</p>
+                      <p className="text-sm font-bold text-[var(--text-primary)] uppercase">{selectedDriver.vehicle_plate}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-[var(--border-color)] bg-[var(--bg-secondary)] flex gap-3 sticky bottom-0">
+                {selectedDriver.status === 'pending' || selectedDriver.status === 'rejected' ? (
+                  <>
+                    <Button variant="outline" className="flex-1 h-14 border-red-500/20 text-red-500 bg-red-500/5 hover:bg-red-500/10" onClick={() => handleRejectDriver(selectedDriver.id)}>
+                      Rejeitar
+                    </Button>
+                    <Button className="flex-1 h-14 shadow-xl shadow-[var(--primary-glow)]" onClick={() => handleApproveDriver(selectedDriver.id)}>
+                      Aprovar Motorista
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" className="w-full h-14 border-red-500/20 text-red-500 bg-red-500/5" onClick={() => handleRejectDriver(selectedDriver.id)}>
+                    Desativar / Bloquear
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <BottomNav
         activeTab="admin-dash"

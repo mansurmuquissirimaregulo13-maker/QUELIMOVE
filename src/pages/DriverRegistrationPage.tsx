@@ -146,88 +146,92 @@ export function DriverRegistrationPage({
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className={`h-2 rounded-full transition-all duration-300 ${step === i ? 'w-8 bg-[#FBBF24]' : step > i ? 'w-2 bg-[#FBBF24]' : 'w-2 bg-[#2a2a2a]'
+          className={`h-1.5 rounded-full transition-all duration-300 ${step === i ? 'w-8 bg-[var(--primary-color)]' : step > i ? 'w-2 bg-[var(--primary-color)] opacity-50' : 'w-2 bg-[var(--border-color)]'
             }`}
         />
       ))}
     </div>
   );
-
   return (
-    <div className="h-full flex flex-col bg-[#0a0a0a]">
+    <div className="h-full flex flex-col bg-[var(--bg-primary)]">
       <Header
         title="Cadastro Mototaxista"
         onBack={step === 1 ? () => onNavigate('home') : prevStep}
       />
-
       <div className="flex-1 overflow-y-auto px-4 py-6">
         {renderStepIndicator()}
-
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6 pb-24"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.02 }}
+            className="space-y-6 pb-32"
           >
             {step === 1 && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold text-white mb-4">Conta e Dados Pessoais</h2>
-                <Input
-                  icon={User}
-                  label="Nome Completo"
-                  placeholder="Seu nome"
-                  value={formData.name}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
-                />
-                <Input
-                  icon={Mail}
-                  label="Email"
-                  placeholder="email@exemplo.com"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, email: e.target.value })}
-                />
-                <Input
-                  icon={Lock}
-                  label="Palavra-passe"
-                  placeholder="******"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, password: e.target.value })}
-                />
-                <Input
-                  icon={Phone}
-                  label="WhatsApp / Telefone"
-                  placeholder="+258 84..."
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
-                />
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-6">
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Conta e Dados</h2>
+                  <p className="text-xs text-[var(--text-secondary)]">Insira seus dados pessoais para começar.</p>
+                </div>
+                <div className="space-y-4">
                   <Input
-                    icon={FileText}
-                    label="Número do BI"
-                    placeholder="BI..."
-                    value={formData.bi}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, bi: e.target.value })}
+                    icon={User}
+                    label="Nome Completo"
+                    placeholder="Seu nome"
+                    value={formData.name}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
                   />
                   <Input
-                    icon={Calendar}
-                    label="Nascimento"
-                    type="date"
-                    value={formData.birthdate}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, birthdate: e.target.value })}
+                    icon={Mail}
+                    label="Email"
+                    placeholder="email@exemplo.com"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, email: e.target.value })}
                   />
+                  <Input
+                    icon={Lock}
+                    label="Palavra-passe"
+                    placeholder="******"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, password: e.target.value })}
+                  />
+                  <Input
+                    icon={Phone}
+                    label="WhatsApp / Telefone"
+                    placeholder="+258 84..."
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      icon={FileText}
+                      label="Número do BI"
+                      placeholder="BI..."
+                      value={formData.bi}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, bi: e.target.value })}
+                    />
+                    <Input
+                      icon={Calendar}
+                      label="Nascimento"
+                      type="date"
+                      value={formData.birthdate}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, birthdate: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
             )}
-
             {step === 2 && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold text-white mb-4">Veículo</h2>
-                <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="space-y-6">
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Informação do Veículo</h2>
+                  <p className="text-xs text-[var(--text-secondary)]">Diga-nos o que você conduz.</p>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
                   {[
                     { id: 'moto', icon: Bike, label: 'Moto' },
                     { id: 'carro', icon: Car, label: 'Carro' },
@@ -236,72 +240,80 @@ export function DriverRegistrationPage({
                     <button
                       key={type.id}
                       onClick={() => setVehicleType(type.id as any)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${vehicleType === type.id
-                        ? 'bg-[#FBBF24] border-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20'
-                        : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#9CA3AF]'
+                      className={`flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all ${vehicleType === type.id
+                        ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black shadow-xl shadow-[var(--primary-glow)] scale-105'
+                        : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--primary-color)]/30'
                         }`}
                     >
-                      <type.icon size={24} className="mb-1" />
-                      <span className="text-xs font-bold">{type.label}</span>
+                      <type.icon size={28} className="mb-2" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">{type.label}</span>
                     </button>
                   ))}
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-black tracking-widest text-[#9CA3AF] ml-1">Bairro de Atuação (Quelimane)</label>
-                  <select
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 text-white text-sm focus:border-[#FBBF24] outline-none appearance-none"
-                    value={formData.bairro}
-                    onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
-                  >
-                    <option value="">Selecionar Bairro...</option>
-                    {QUELIMANE_LOCATIONS.filter(l => l.type === 'bairro').map(l => (
-                      <option key={l.name} value={l.name}>{l.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <Input
-                  label="Marca e Modelo"
-                  placeholder="Ex: Honda Ace 125"
-                  value={formData.vehicleModel}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleModel: e.target.value })}
-                />
-                <Input
-                  label="Matrícula"
-                  placeholder="ABC-123-MC"
-                  value={formData.plate}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, plate: e.target.value })}
-                />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Bairro de Atuação</label>
+                    <div className="relative">
+                      <select
+                        className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl p-4 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--primary-color)] outline-none appearance-none cursor-pointer"
+                        value={formData.bairro}
+                        onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                      >
+                        <option value="">Selecionar Bairro...</option>
+                        {QUELIMANE_LOCATIONS.filter(l => l.type === 'bairro').map(l => (
+                          <option key={l.name} value={l.name}>{l.name}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-tertiary)]">
+                        <ChevronRight className="rotate-90" size={16} />
+                      </div>
+                    </div>
+                  </div>
                   <Input
-                    label="Cor"
-                    placeholder="Vermelha"
-                    value={formData.vehicleColor}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleColor: e.target.value })}
+                    label="Marca e Modelo"
+                    placeholder="Ex: Honda Ace 125"
+                    value={formData.vehicleModel}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleModel: e.target.value })}
                   />
                   <Input
-                    label="Ano"
-                    placeholder="2020"
-                    type="number"
-                    value={formData.vehicleYear}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleYear: e.target.value })}
+                    label="Matrícula"
+                    placeholder="ABC-123-MC"
+                    value={formData.plate}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, plate: e.target.value })}
                   />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Cor"
+                      placeholder="Vermelha"
+                      value={formData.vehicleColor}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleColor: e.target.value })}
+                    />
+                    <Input
+                      label="Ano"
+                      placeholder="2020"
+                      type="number"
+                      value={formData.vehicleYear}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleYear: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
             )}
-
             {step === 3 && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold text-white mb-4">Documentos</h2>
-                <p className="text-xs text-[#9CA3AF] mb-4">Carregue fotos legíveis dos seus documentos para validação.</p>
-                <div className="space-y-4">
+              <div className="space-y-6">
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Documentação</h2>
+                  <p className="text-xs text-[var(--text-secondary)]">Carregue fotos legíveis para validação.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
                   {[
-                    { key: 'biFront', label: 'Foto do BI (Frente)' },
-                    { key: 'biBack', label: 'Foto do BI (Verso)' },
+                    { key: 'biFront', label: 'BI (Frente)' },
+                    { key: 'biBack', label: 'BI (Verso)' },
                     { key: 'license', label: 'Carta de Condução' },
-                    { key: 'profile', label: 'Foto de Perfil (Selfie)', icon: Camera },
-                    { key: 'vehicleDoc', label: 'Livrete do Veículo' }
+                    { key: 'profile', label: 'Sua Foto (Selfie)', icon: Camera },
+                    { key: 'vehicleDoc', label: 'Livrete/Viatura' }
                   ].map((doc) => (
-                    <div key={doc.key} className="relative group">
+                    <div key={doc.key} className="relative">
                       <input
                         type="file"
                         accept="image/*"
@@ -311,22 +323,31 @@ export function DriverRegistrationPage({
                       />
                       <label
                         htmlFor={`file-${doc.key}`}
-                        className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${uploads[doc.key as keyof typeof uploads]
-                          ? 'bg-[#FBBF24]/10 border-[#FBBF24] text-[#FBBF24]'
-                          : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#9CA3AF] hover:bg-[#222222]'
+                        className={`w-full p-5 rounded-3xl border-2 flex items-center justify-between transition-all cursor-pointer ${uploads[doc.key as keyof typeof uploads]
+                          ? 'bg-[var(--primary-color)]/5 border-[var(--primary-color)] text-[var(--primary-color)] shadow-lg'
+                          : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--primary-color)]/30'
                           }`}
                       >
-                        <div className="flex items-center gap-3">
-                          {doc.icon ? <doc.icon size={20} /> : <Upload size={20} />}
-                          <span className="text-sm font-medium">{doc.label}</span>
+                        <div className="flex items-center gap-4">
+                          <div className={`p-3 rounded-2xl ${uploads[doc.key as keyof typeof uploads] ? 'bg-[var(--primary-color)] text-black' : 'bg-[var(--bg-primary)]'}`}>
+                            {doc.icon ? <doc.icon size={22} /> : <Upload size={22} />}
+                          </div>
+                          <div>
+                            <span className="text-sm font-black uppercase tracking-tighter block">{doc.label}</span>
+                            <span className="text-[10px] opacity-60">{uploads[doc.key as keyof typeof uploads] ? 'Ficheiro selecionado' : 'Clique para carregar'}</span>
+                          </div>
                         </div>
                         {uploads[doc.key as keyof typeof uploads] ? (
-                          <div className="flex items-center gap-2">
-                            <img src={uploads[doc.key as keyof typeof uploads]} alt="Preview" className="w-8 h-8 rounded object-cover border border-[#FBBF24]" />
-                            <CheckCircle size={20} />
+                          <div className="relative group/preview">
+                            <img src={uploads[doc.key as keyof typeof uploads]} alt="Preview" className="w-12 h-12 rounded-xl object-cover border-2 border-[var(--primary-color)]" />
+                            <div className="absolute -top-2 -right-2 bg-green-500 rounded-full p-1 text-white shadow-lg">
+                              <CheckCircle size={12} />
+                            </div>
                           </div>
                         ) : (
-                          <div className="w-5 h-5 rounded-full border border-dashed border-[#4B5563]" />
+                          <div className="w-8 h-8 rounded-full border-2 border-dashed border-[var(--text-tertiary)] flex items-center justify-center opacity-40">
+                            <span className="text-xs">+</span>
+                          </div>
                         )}
                       </label>
                     </div>
@@ -334,27 +355,30 @@ export function DriverRegistrationPage({
                 </div>
               </div>
             )}
-
             {step === 4 && (
               <div className="space-y-6">
-                <h2 className="text-xl font-bold text-white mb-4">Finalizar e Revisar</h2>
-                <div className="bg-[#1a1a1a] p-5 rounded-2xl border border-[#2a2a2a] space-y-3">
-                  <div className="flex justify-between items-center pb-2 border-b border-[#2a2a2a]">
-                    <span className="text-xs text-[#9CA3AF] uppercase font-bold">Motorista</span>
-                    <span className="text-sm text-white font-bold">{formData.name}</span>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Revisar e Finalizar</h2>
+                  <p className="text-xs text-[var(--text-secondary)]">Confirme se tudo está correto.</p>
+                </div>
+                <div className="bg-[var(--bg-secondary)] p-6 rounded-[32px] border border-[var(--border-color)] space-y-4 shadow-xl">
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Nome Completo</p>
+                    <p className="text-lg text-[var(--text-primary)] font-bold">{formData.name}</p>
                   </div>
-                  <div className="flex justify-between items-center pb-2 border-b border-[#2a2a2a]">
-                    <span className="text-xs text-[#9CA3AF] uppercase font-bold">Veículo</span>
-                    <span className="text-sm text-white font-bold">{formData.vehicleModel}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-[#9CA3AF] uppercase font-bold">Matrícula</span>
-                    <span className="text-sm text-white font-bold">{formData.plate}</span>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Veículo</p>
+                      <p className="text-sm text-[var(--text-primary)] font-bold">{formData.vehicleModel}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Matrícula</p>
+                      <p className="text-sm text-[var(--text-primary)] font-bold uppercase">{formData.plate}</p>
+                    </div>
                   </div>
                 </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-[#9CA3AF] mb-3">Métodos de Pagamento Aceites</h3>
+                <div className="space-y-3">
+                  <h3 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Métodos de Pagamento</h3>
                   <div className="grid grid-cols-3 gap-3">
                     {['cash', 'mpesa', 'emola'].map((id) => (
                       <button
@@ -366,9 +390,9 @@ export function DriverRegistrationPage({
                             [id]: !formData.paymentMethods[id as keyof typeof formData.paymentMethods]
                           }
                         })}
-                        className={`p-3 rounded-xl border-2 transition-all text-xs font-bold uppercase text-center ${formData.paymentMethods[id as keyof typeof formData.paymentMethods]
-                          ? 'border-[#FBBF24] bg-[#FBBF24]/10 text-[#FBBF24]'
-                          : 'border-[#2a2a2a] bg-[#1a1a1a] text-[#9CA3AF]'
+                        className={`py-3 rounded-2xl border-2 transition-all text-[10px] font-black uppercase text-center ${formData.paymentMethods[id as keyof typeof formData.paymentMethods]
+                          ? 'border-[var(--primary-color)] bg-[var(--primary-color)]/10 text-[var(--primary-color)]'
+                          : 'border-[var(--border-color)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)]'
                           }`}
                       >
                         {id}
@@ -376,46 +400,49 @@ export function DriverRegistrationPage({
                     ))}
                   </div>
                 </div>
-
-                <label className="flex items-start gap-3 p-4 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={formData.termsAccepted}
-                    onChange={(e) => setFormData({ ...formData, termsAccepted: e.target.checked })}
-                    className="mt-1 w-5 h-5 rounded border-[#4B5563] text-[#FBBF24] focus:ring-[#FBBF24] bg-transparent"
-                  />
-                  <span className="text-[10px] text-[#9CA3AF] leading-tight group-hover:text-white transition-colors">
-                    Ao confirmar, você concorda que as informações fornecidas são verdadeiras e aceita os <span className="text-[#FBBF24] font-bold">Termos de Serviço da Quelimove</span>.
+                <label className="flex items-start gap-4 p-5 rounded-[28px] bg-[var(--bg-secondary)] border border-[var(--border-color)] cursor-pointer group active:scale-[0.98] transition-all">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.termsAccepted}
+                      onChange={(e) => setFormData({ ...formData, termsAccepted: e.target.checked })}
+                      className="peer h-6 w-6 rounded-lg border-2 border-[var(--border-color)] text-[var(--primary-color)] focus:ring-[var(--primary-color)] bg-transparent transition-all"
+                    />
+                    <CheckCircle className="absolute inset-0 m-auto text-[var(--primary-color)] opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" size={16} />
+                  </div>
+                  <span className="text-[10px] text-[var(--text-secondary)] leading-relaxed font-medium">
+                    Declaro que as informações acima são verdadeiras e aceito os <span className="text-[var(--primary-color)] font-bold">Termos e Condições</span> da Quelimove para parceiros.
                   </span>
                 </label>
               </div>
             )}
           </motion.div>
         </AnimatePresence>
-
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#0a0a0a] border-t border-[#1a1a1a]">
-          {step < 4 ? (
-            <Button
-              onClick={nextStep}
-              className="w-full h-14 text-lg"
-              disabled={
-                (step === 1 && (!formData.name || !formData.email || !formData.password || !formData.phone || !BI_REGEX.test(formData.bi))) ||
-                (step === 3 && (!uploads.biFront || !uploads.biBack || !uploads.license || !uploads.profile || !uploads.vehicleDoc))
-              }
-            >
-              {step === 1 && formData.bi && !BI_REGEX.test(formData.bi) ? 'BI Inválido (12 dígitos + letra)' : 'Próximo'}
-              <ChevronRight className="ml-2" size={20} />
-            </Button>
-          ) : (
-            <Button
-              className="w-full h-14 text-lg"
-              disabled={!formData.termsAccepted || isLoading}
-              isLoading={isLoading}
-              onClick={handleFinish}
-            >
-              Concluir e Enviar
-            </Button>
-          )}
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)] to-transparent pointer-events-none">
+          <div className="pointer-events-auto">
+            {step < 4 ? (
+              <Button
+                onClick={nextStep}
+                className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
+                disabled={
+                  (step === 1 && (!formData.name || !formData.email || !formData.password || !formData.phone || !BI_REGEX.test(formData.bi))) ||
+                  (step === 3 && (!uploads.biFront || !uploads.biBack || !uploads.license || !uploads.profile || !uploads.vehicleDoc))
+                }
+              >
+                {step === 1 && formData.bi && !BI_REGEX.test(formData.bi) ? 'BI Inválido (12 dígitos + Letra)' : 'Continuar'}
+                <ChevronRight className="ml-2" size={24} />
+              </Button>
+            ) : (
+              <Button
+                className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
+                disabled={!formData.termsAccepted || isLoading}
+                isLoading={isLoading}
+                onClick={handleFinish}
+              >
+                Submeter Cadastro
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
