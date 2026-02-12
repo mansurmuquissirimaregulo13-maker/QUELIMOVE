@@ -51,6 +51,7 @@ interface LeafletMapComponentProps {
     center: [number, number];
     pickup?: { lat: number; lng: number; name: string } | null;
     destination?: { lat: number; lng: number; name: string } | null;
+    stops?: Array<{ lat: number; lng: number; name: string }>;
     userLocation?: [number, number] | null;
     height?: string;
     drivers?: Array<{ id: string; lat: number; lng: number; type: string }>;
@@ -62,6 +63,7 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
     center,
     pickup,
     destination,
+    stops = [],
     userLocation,
     height = '100%',
     drivers = [],
@@ -206,11 +208,18 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
         const hasDest = destination && isFinite(destination.lat) && isFinite(destination.lng);
 
         if (hasPickup && hasDest) {
-            console.log('Fetching route from', pickup.name, 'to', destination.name);
+            console.log('Fetching route with stops');
             const fetchRoute = async () => {
                 setIsLoadingRoute(true);
                 try {
-                    const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lng},${pickup.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+                    // Construir lista de paragens para o OSRM
+                    const waypoints = [
+                        `${pickup.lng},${pickup.lat}`,
+                        ...stops.map(s => `${s.lng},${s.lat}`),
+                        `${destination.lng},${destination.lat}`
+                    ].join(';');
+
+                    const url = `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`;
                     const response = await fetch(url);
                     const data = await response.json();
 
@@ -222,19 +231,15 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
                         if (routeLayerRef.current) {
                             routeLayerRef.current.setLatLngs(coords);
                         } else {
-                            // Usando um azul mais vibrante e borda para melhor visibilidade
                             routeLayerRef.current = L.polyline(coords, {
-                                color: '#3b82f6', // Azul vibrante (Tailwind blue-500)
+                                color: '#3b82f6',
                                 weight: 6,
                                 opacity: 0.8,
                                 lineJoin: 'round'
                             }).addTo(mapRef.current);
                         }
 
-                        // Fit bounds gently
                         mapRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [40, 40] });
-                    } else {
-                        console.warn('No routes found in OSRM response');
                     }
                 } catch (error) {
                     console.error('OSRM Route error:', error);
@@ -244,13 +249,37 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
             };
             fetchRoute();
         } else {
-            console.log('Clearing route (missing pickup or destination)');
             if (routeLayerRef.current) {
                 routeLayerRef.current.remove();
                 routeLayerRef.current = null;
             }
         }
-    }, [pickup?.lat, pickup?.lng, destination?.lat, destination?.lng]);
+    }, [pickup?.lat, pickup?.lng, destination?.lat, destination?.lng, stops]);
+
+    // Gerenciar Marcadores de Paragens Intermédias
+    React.useEffect(() => {
+        if (!mapRef.current) return;
+
+        // Remover paragens antigas
+        Object.keys(markersRef.current).forEach(key => {
+            if (key.startsWith('stop_')) {
+                markersRef.current[key].remove();
+                delete markersRef.current[key];
+            }
+        });
+
+        // Adicionar novas paragens
+        stops.forEach((stop, index) => {
+            if (!isFinite(stop.lat) || !isFinite(stop.lng)) return;
+            const stopIcon = L.divIcon({
+                className: 'custom-stop-icon',
+                html: `<div style="background-color: #ffffff; width: 14px; height: 14px; border-radius: 50%; border: 3px solid #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.3); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; color: #3b82f6;">${index + 1}</div>`,
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+            markersRef.current[`stop_${index}`] = L.marker([stop.lat, stop.lng], { icon: stopIcon }).addTo(mapRef.current!);
+        });
+    }, [stops]);
 
     // Gerenciar Marcadores de Motoristas
     React.useEffect(() => {

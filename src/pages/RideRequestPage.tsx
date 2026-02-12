@@ -6,7 +6,8 @@ import {
   Navigation,
   ChevronRight,
   Route as RouteIcon,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QUELIMANE_LOCATIONS, Location as LocationType } from '../constants';
@@ -56,8 +57,10 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [searchResults, setSearchResults] = React.useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
-  const [activeSearchField, setActiveSearchField] = React.useState<'pickup' | 'destination' | null>(null);
+  const [activeSearchField, setActiveSearchField] = React.useState<'pickup' | 'destination' | 'stop' | null>(null);
+  const [activeStopIndex, setActiveStopIndex] = React.useState<number | null>(null);
   const [isSelectingOnMap, setIsSelectingOnMap] = React.useState(false);
+  const [stops, setStops] = React.useState<LocationType[]>([]);
 
   // Match state
   const [matchStatus, setMatchStatus] = React.useState<'idle' | 'searching' | 'found' | 'busy'>('idle');
@@ -447,7 +450,9 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         <MapComponent
           center={mapCenter}
           pickup={pickup}
+          pickup={pickup}
           destination={destination}
+          stops={stops}
           userLocation={userLocation || undefined}
           drivers={nearbyDrivers}
           height="100%"
@@ -456,20 +461,32 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         />
       </div>
 
-      {/* Map Selection Overlay */}
+      {/* Map Selection Overlay - Premium Style */}
       <AnimatePresence>
         {isSelectingOnMap && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="absolute top-24 left-1/2 -translate-x-1/2 z-[100] bg-black/80 backdrop-blur-md px-6 py-3 rounded-full border border-[#FBBF24]/50 shadow-[0_0_20px_rgba(251,191,36,0.3)] flex items-center gap-3"
+            exit={{ opacity: 0, y: -50 }}
+            className="absolute top-[100px] left-4 right-4 z-[100] bg-[#FBBF24] p-5 rounded-[24px] shadow-[0_20px_40px_rgba(251,191,36,0.4)] flex items-center justify-between border-2 border-white/20"
           >
-            <div className="w-2 h-2 rounded-full bg-[#FBBF24] animate-pulse"></div>
-            <p className="text-white text-xs font-bold uppercase tracking-wider">Toca no mapa para escolher o local</p>
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center animate-bounce shadow-lg">
+                <MapPin size={20} className="text-[#FBBF24]" />
+              </div>
+              <div className="pointer-events-none">
+                <p className="text-black font-black text-sm uppercase tracking-tight leading-none mb-1">Escolher no Mapa</p>
+                <p className="text-black/70 text-[10px] font-bold uppercase tracking-wider">Toca onde queres marcar</p>
+              </div>
+            </div>
             <button
-              onClick={() => { setIsSelectingOnMap(false); setActiveSearchField(null); }}
-              className="ml-2 text-gray-400 hover:text-white text-[10px] font-black uppercase"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsSelectingOnMap(false);
+                setActiveSearchField(null);
+                setActiveStopIndex(null);
+              }}
+              className="bg-black/10 hover:bg-black/20 px-4 py-2.5 rounded-xl text-black text-[10px] font-black uppercase transition-all active:scale-95 border border-black/5"
             >
               Cancelar
             </button>
@@ -493,21 +510,22 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
       {/* Floating Search Container - Uber Style */}
       {step === 1 && (
-        <div className="absolute top-[88px] left-4 right-4 z-40">
+        <div className="absolute top-[88px] left-4 right-4 z-40 pointer-events-none">
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="bg-[#1a1a1a]/95 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-3"
+            className="bg-[#1a1a1a]/95 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-3 pointer-events-auto"
           >
-            <div className="relative space-y-3">
-              <div className="absolute left-[13px] top-6 bottom-6 w-[1px] bg-white/20"></div>
+            <div className="relative space-y-2">
+              <div className="absolute left-[13px] top-6 bottom-6 w-[1px] bg-white/10 border-l border-dashed border-white/20"></div>
 
+              {/* Pickup */}
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)] z-10"></div>
-                <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2.5">
+                <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2">
                   <input
-                    placeholder="Local de Partida"
-                    className="bg-transparent border-none text-white text-sm w-full focus:ring-0 placeholder:text-gray-600 font-medium"
+                    placeholder="Onde estás?"
+                    className="bg-transparent border-none text-white text-xs w-full focus:ring-0 placeholder:text-gray-600 font-medium"
                     value={activeSearchField === 'pickup' ? searchTerm : (pickup?.name || '')}
                     onFocus={() => { setActiveSearchField('pickup'); setSearchTerm(''); }}
                     onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
@@ -515,16 +533,58 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                 </div>
               </div>
 
+              {/* Dynamic Stops */}
+              <AnimatePresence>
+                {stops.map((stop, index) => (
+                  <motion.div
+                    key={`stop-${index}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="flex items-center gap-3"
+                  >
+                    <div className="w-2.5 h-2.5 rounded-sm bg-white/40 z-10 flex items-center justify-center text-[6px] text-black font-bold">{index + 1}</div>
+                    <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2">
+                      <input
+                        placeholder="Adicionar paragem"
+                        className="bg-transparent border-none text-white text-xs w-full focus:ring-0 placeholder:text-gray-600 font-medium"
+                        value={(activeSearchField === 'stop' && activeStopIndex === index) ? searchTerm : (stop.name || '')}
+                        onFocus={() => { setActiveSearchField('stop'); setActiveStopIndex(index); setSearchTerm(''); }}
+                        onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
+                      />
+                      <button
+                        onClick={() => {
+                          const newStops = stops.filter((_, i) => i !== index);
+                          setStops(newStops);
+                        }}
+                        className="text-gray-500 hover:text-red-400 p-1"
+                      >
+                        <AlertCircle size={14} />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {/* Destination */}
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 bg-[#FBBF24] shadow-[0_0_10px_rgba(251,191,36,0.6)] z-10"></div>
-                <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2.5">
+                <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2 relative">
                   <input
                     placeholder="Para onde vais?"
-                    className="bg-transparent border-none text-white text-sm w-full focus:ring-0 placeholder:text-gray-600 font-medium"
+                    className="bg-transparent border-none text-white text-xs w-full focus:ring-0 placeholder:text-gray-600 font-medium"
                     value={activeSearchField === 'destination' ? searchTerm : (destination?.name || '')}
                     onFocus={() => { setActiveSearchField('destination'); setSearchTerm(''); }}
                     onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
                   />
+                  {stops.length < 3 && (
+                    <button
+                      onClick={() => setStops([...stops, { name: '', lat: 0, lng: 0 }])}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#FBBF24]/10 hover:bg-[#FBBF24]/20 text-[#FBBF24] p-1.5 rounded-lg transition-colors border border-[#FBBF24]/20"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
