@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useNotifications } from '../hooks/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ProfilePageProps {
@@ -29,12 +31,14 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
   const [activeView, setActiveView] = React.useState<'main' | 'edit' | 'history' | 'payments' | 'settings'>('main');
   const user = JSON.parse(localStorage.getItem('user_profile') || '{}');
   const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
+  const { enabled: notificationsEnabled, setEnabled: setNotificationsEnabled } = useNotifications();
 
   const menuItems = [
-    { id: 'edit', icon: User, label: 'Editar Perfil' },
-    { id: 'history', icon: Clock, label: 'Histórico de Viagens' },
-    { id: 'payments', icon: CreditCard, label: 'Métodos de Pagamento' },
-    { id: 'settings', icon: Settings, label: 'Configurações' }
+    { id: 'edit', icon: User, label: t('profile.edit') },
+    { id: 'history', icon: Clock, label: t('profile.history') },
+    { id: 'payments', icon: CreditCard, label: t('profile.payments') },
+    { id: 'settings', icon: Settings, label: t('profile.settings') }
   ];
 
   const renderContent = () => {
@@ -83,8 +87,8 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                     {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
                   </div>
                   <div>
-                    <p className="font-black text-[var(--text-primary)] text-sm uppercase tracking-tight">Modo Escuro</p>
-                    <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase opacity-50">Alternar tema do App</p>
+                    <p className="font-black text-[var(--text-primary)] text-sm uppercase tracking-tight">{t('settings.darkMode')}</p>
+                    <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase opacity-50">{t('settings.darkModeDesc')}</p>
                   </div>
                 </div>
                 <button
@@ -95,36 +99,44 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 </button>
               </div>
 
-              <div className="p-5 border-b border-[var(--border-color)] flex items-center justify-between hover:opacity-80 transition-all cursor-pointer">
+              <div
+                className="p-5 border-b border-[var(--border-color)] flex items-center justify-between hover:opacity-80 transition-all cursor-pointer"
+                onClick={() => setLanguage(language === 'pt' ? 'en' : 'pt')}
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-[var(--bg-primary)] rounded-xl text-blue-500">
                     <Globe size={20} />
                   </div>
                   <div>
-                    <p className="font-black text-[var(--text-primary)] text-sm uppercase tracking-tight">Idioma</p>
-                    <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase opacity-50">Português (MZ)</p>
+                    <p className="font-black text-[var(--text-primary)] text-sm uppercase tracking-tight">{t('settings.language')}</p>
+                    <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase opacity-50">{language === 'pt' ? 'Português (MZ)' : 'English (US)'}</p>
                   </div>
                 </div>
                 <ChevronRight size={20} className="text-[var(--text-secondary)]" />
               </div>
 
-              <div className="p-5 flex items-center justify-between hover:opacity-80 transition-all cursor-pointer">
+              <div className="p-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-[var(--bg-primary)] rounded-xl text-orange-500">
                     <Bell size={20} />
                   </div>
                   <div>
-                    <p className="font-black text-[var(--text-primary)] text-sm uppercase tracking-tight">Notificações</p>
-                    <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase opacity-50">Ativado</p>
+                    <p className="font-black text-[var(--text-primary)] text-sm uppercase tracking-tight">{t('settings.notifications')}</p>
+                    <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase opacity-50">{notificationsEnabled ? (language === 'pt' ? 'Ativado' : 'Enabled') : (language === 'pt' ? 'Desativado' : 'Disabled')}</p>
                   </div>
                 </div>
-                <ChevronRight size={20} className="text-[var(--text-secondary)]" />
+                <button
+                  onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+                  className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${notificationsEnabled ? 'bg-[#FBBF24]' : 'bg-[var(--border-color)]'}`}
+                >
+                  <div className={`w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 transform ${notificationsEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                </button>
               </div>
             </div>
 
             <button className="w-full p-5 bg-red-500/10 border border-red-500/20 rounded-[28px] flex items-center justify-center gap-2 text-red-500 font-bold hover:bg-red-500/20 transition-all">
               <Trash2 size={18} />
-              Apagar Conta
+              {t('settings.deleteAccount')}
             </button>
           </div>
         );
@@ -210,11 +222,11 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
 
   const getTitle = () => {
     switch (activeView) {
-      case 'edit': return 'Editar Perfil';
-      case 'settings': return 'Configurações';
-      case 'history': return 'Tuas Viagens';
-      case 'payments': return 'Pagamentos';
-      default: return 'Meu Perfil';
+      case 'edit': return t('profile.edit');
+      case 'settings': return t('profile.settings');
+      case 'history': return t('profile.history');
+      case 'payments': return t('profile.payments');
+      default: return t('profile.title');
     }
   };
 

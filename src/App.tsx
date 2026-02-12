@@ -9,6 +9,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { InstallPrompt } from './components/InstallPrompt';
 import { SplashScreen } from './components/SplashScreen';
 import { Sun, Moon } from 'lucide-react';
@@ -93,7 +94,9 @@ export function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <AppContent />
+        <LanguageProvider>
+          <AppContent />
+        </LanguageProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

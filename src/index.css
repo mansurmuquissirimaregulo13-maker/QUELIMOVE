@@ -33,7 +33,7 @@
   --border-color: #262626;
   --primary-glow: rgba(251, 191, 36, 0.15);
   --input-bg: #1a1a1a;
-  --map-filter: grayscale(1) invert(0.9) contrast(1.1);
+  --map-filter: none;
 }
 
 * {
