@@ -519,7 +519,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       )}
 
       {/* Floating Search Container - Uber Style */}
-      {step === 1 && (
+      {step === 1 && !isSelectingOnMap && (
         <div className="absolute top-[88px] left-4 right-4 z-40 pointer-events-none">
           <motion.div
             initial={{ y: -20, opacity: 0 }}
