@@ -80,14 +80,6 @@ function AppContent() {
           className="w-full h-full"
         >
           <InstallPrompt />
-          <div className="absolute top-6 right-6 z-[1000]">
-            <button
-              onClick={toggleTheme}
-              className="p-3 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] shadow-lg hover:scale-110 transition-all safe-area-top"
-            >
-              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-          </div>
           <div className="w-full h-full overflow-hidden">
             {renderPage()}
           </div>
