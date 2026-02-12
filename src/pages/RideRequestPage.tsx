@@ -409,7 +409,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
             console.log('Ride update received:', payload.new);
 
             if (payload.new.status === 'accepted' && payload.new.driver_id) {
-              // Motorista aceitou! Pegar info do motorista
+              // Motorista aceitou! Parar despacho e atualizar UI
               const { data: driver } = await supabase
                 .from('profiles')
                 .select('*')
@@ -419,8 +419,6 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
               if (driver) {
                 setDriverInfo(driver);
                 setMatchStatus('found');
-
-                // Iniciar rastreamento da localização do motorista
                 subscribeToDriverLocation(driver.id);
               }
             }
@@ -431,10 +429,96 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       // Armazenar canal para limpeza
       (window as any)[`ride_channel_${ride.id}`] = rideChannel;
 
+      // 3. Iniciar Motor de Despacho Sequencial (Requisito 2 e 3)
+      startDispatchSystem(ride.id);
+
     } catch (error) {
       console.error('Ride error:', error);
       setIsLoading(false);
       setMatchStatus('busy');
+    }
+  };
+
+  const startDispatchSystem = async (rideId: string) => {
+    try {
+      // a. Buscar motoristas ONLINE num raio de 5km
+      const { data: drivers } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'driver')
+        .eq('is_available', true)
+        .eq('status', 'active');
+
+      if (!drivers || !pickup) {
+        setMatchStatus('busy');
+        return;
+      }
+
+      // b. Filtrar por raio de 5km e ordenar (Requisito 2)
+      const nearbyDrivers = drivers
+        .map(d => ({
+          ...d,
+          dist: calculateDistance(pickup, { lat: d.current_lat, lng: d.current_lng, name: '' })
+        }))
+        .filter(d => d.dist <= 5) // Raio de 5km
+        .sort((a, b) => (a.dist || 0) - (b.dist || 0));
+
+      if (nearbyDrivers.length === 0) {
+        setMatchStatus('busy');
+        return;
+      }
+
+      console.log(`Encontrados ${nearbyDrivers.length} motoristas no raio de 5km.`);
+
+      // c. Tentar despacho sequencial (Requisito 3)
+      for (const driver of nearbyDrivers) {
+        // Verificar se a viagem ainda está pendente antes de tentar o próximo
+        const { data: currentRideStatus } = await supabase
+          .from('rides')
+          .select('status')
+          .eq('id', rideId)
+          .single();
+
+        if (currentRideStatus?.status !== 'pending') break;
+
+        console.log(`Enviando solicitação para motorista: ${driver.full_name}`);
+
+        await supabase
+          .from('rides')
+          .update({ target_driver_id: driver.id })
+          .eq('id', rideId);
+
+        // Aguardar 1 minuto (60000ms) por resposta
+        await new Promise(resolve => setTimeout(resolve, 60000));
+
+        // Após 1 minuto, checar se alguém aceitou
+        const { data: finalCheck } = await supabase
+          .from('rides')
+          .select('status')
+          .eq('id', rideId)
+          .single();
+
+        if (finalCheck?.status !== 'pending') {
+          console.log("Viagem foi aceita!");
+          break;
+        }
+
+        console.log(`Motorista ${driver.full_name} não respondeu em 1 min. Tentando próximo...`);
+      }
+
+      // Se sair do loop e continuar pendente, ninguém aceitou
+      const { data: lastCheck } = await supabase
+        .from('rides')
+        .select('status')
+        .eq('id', rideId)
+        .single();
+
+      if (lastCheck?.status === 'pending') {
+        setMatchStatus('busy');
+      }
+
+    } catch (err) {
+      console.error('Dispatch error:', err);
     }
   };
 

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
+import { requestForToken } from '../lib/firebase';
 
 interface DriverDashboardPageProps {
   onNavigate: (page: string) => void;
@@ -19,16 +20,21 @@ interface DriverDashboardPageProps {
 
 export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   const [isOnline, setIsOnline] = React.useState(false);
+  const [lastCoords, setLastCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [currentRide, setCurrentRide] = React.useState<any | null>(null);
   const [driverName] = React.useState('João');
   const [vehicleInfo] = React.useState('Honda Ace • ABC-123');
 
   const fetchPotentialRides = async () => {
     if (!isOnline) return;
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+
     const { data } = await supabase
       .from('rides')
       .select('*')
       .eq('status', 'pending')
+      .eq('target_driver_id', userData.user.id)
       .order('created_at', { ascending: false });
 
     if (data) {
@@ -42,8 +48,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
   React.useEffect(() => {
     let watchId: number | undefined;
-
-    const updateLocation = async (lat: number, lng: number) => {
+    const updateLocationInDB = async (lat: number, lng: number) => {
       const { data: userData } = await supabase.auth.getUser();
       if (userData.user && isOnline) {
         await supabase
@@ -51,21 +56,38 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
           .update({
             current_lat: lat,
             current_lng: lng,
-            is_available: true
+            is_available: true,
+            last_online: new Date().toISOString()
           })
           .eq('id', userData.user.id);
       }
     };
 
-    if (isOnline && navigator.geolocation) {
-      watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          updateLocation(position.coords.latitude, position.coords.longitude);
-        },
-        (error) => console.error('Error watching location:', error),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else if (!isOnline) {
+    let syncInterval: number | undefined;
+
+    if (isOnline) {
+      // 1. Iniciar monitoramento GPS
+      if (navigator.geolocation) {
+        watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            setLastCoords({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            });
+          },
+          (error) => console.error('Error watching location:', error),
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      }
+
+      // 2. Sincronizar com banco a cada 5 segundos (Requisito)
+      syncInterval = window.setInterval(() => {
+        if (lastCoords) {
+          updateLocationInDB(lastCoords.lat, lastCoords.lng);
+        }
+      }, 5000);
+
+    } else {
       // Set unavailable when offline
       const setOffline = async () => {
         const { data: userData } = await supabase.auth.getUser();
@@ -83,14 +105,36 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       fetchPotentialRidesCallback();
 
       const channelName = 'driver-rides-presence';
-      const timeoutId = setTimeout(() => {
+      const timeoutId = setTimeout(async () => {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user) return;
+
         const subscription = supabase
           .channel(channelName)
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rides' }, (payload) => {
-            if (payload.new.status === 'pending') {
-              setCurrentRide(payload.new);
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'rides',
+              filter: `target_driver_id=eq.${userData.user.id}`
+            },
+            (payload) => {
+              if (payload.new.status === 'pending') {
+                setCurrentRide(payload.new);
+                // Notificação Visual/Sonora (Requisito 4)
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('Nova Corrida Disponível!', {
+                    body: `Passageiro em ${payload.new.pickup_location}. Valor: ${payload.new.estimate} MZN`,
+                    icon: '/favicon.ico'
+                  });
+                }
+                // Alerta sonoro básico
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2505/2505-preview.mp3');
+                audio.play().catch(e => console.log('Audio play failed', e));
+              }
             }
-          })
+          )
           .subscribe();
 
         (window as any)[`supabase_${channelName}`] = subscription;
@@ -99,6 +143,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       return () => {
         clearTimeout(timeoutId);
         if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+        if (syncInterval) clearInterval(syncInterval);
         const ch = (window as any)[`supabase_${channelName}`];
         if (ch) {
           supabase.removeChannel(ch);
@@ -142,8 +187,27 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     }
   };
 
-  const toggleOnline = () => {
-    setIsOnline(!isOnline);
+  const toggleOnline = async () => {
+    const nextState = !isOnline;
+    setIsOnline(nextState);
+
+    if (nextState) {
+      // Capturar token FCM para notificações push
+      try {
+        const token = await requestForToken();
+        if (token) {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData.user) {
+            await supabase
+              .from('profiles')
+              .update({ fcm_token: token })
+              .eq('id', userData.user.id);
+          }
+        }
+      } catch (err) {
+        console.error('FCM Token error:', err);
+      }
+    }
   };
 
   return (
@@ -213,7 +277,15 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                   <Button
                     variant="ghost"
                     className="border border-[#2a2a2a]"
-                    onClick={() => setCurrentRide(null)}
+                    onClick={async () => {
+                      if (currentRide) {
+                        await supabase
+                          .from('rides')
+                          .update({ target_driver_id: null })
+                          .eq('id', currentRide.id);
+                      }
+                      setCurrentRide(null);
+                    }}
                   >
                     <XCircle className="mr-2" size={18} />
                     Pular
