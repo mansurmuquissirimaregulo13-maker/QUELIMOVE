@@ -72,6 +72,9 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
     const routeLayerRef = React.useRef<L.Polyline | null>(null);
     const [isLoadingRoute, setIsLoadingRoute] = React.useState(false);
 
+    // Track user interaction state
+    const isInteracting = React.useRef(false);
+
     // Inicialização do Mapa (Apenas uma vez)
     React.useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
@@ -83,17 +86,25 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
             attributionControl: false
         });
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19
-        }).addTo(map);
+        // Event listeners to track interaction
+        map.on('movestart', () => { isInteracting.current = true; });
+        map.on('zoomstart', () => { isInteracting.current = true; });
+        map.on('dragstart', () => { isInteracting.current = true; });
 
         map.on('moveend', () => {
+            isInteracting.current = false;
             if (onMoveEnd) {
                 const { lat, lng } = map.getCenter();
                 onMoveEnd([lat, lng]);
             }
         });
+        map.on('zoomend', () => { isInteracting.current = false; });
+        map.on('dragend', () => { isInteracting.current = false; });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
 
         mapRef.current = map;
 
@@ -112,7 +123,11 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
         // to avoid fighting the fitBounds in the route effect
         // AND ensure map reference exists
         // AND ensure center is valid
+        // AND ensure user is NOT currently interacting with the map
         if (mapRef.current && !routeLayerRef.current && isFinite(center[0]) && isFinite(center[1])) {
+            // If user is dragging, DO NOT FORCE CENTER
+            if (isInteracting.current) return;
+
             const centerKey = `${center[0].toFixed(5)},${center[1].toFixed(5)}`;
 
             // If the PROP hasn't changed from what we last processed, DON'T TOUCH THE MAP
@@ -123,6 +138,9 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
 
             // Prop changed! Update map.
             lastCenterPropRef.current = centerKey;
+
+            // Use flyTo for smoother transition if distance is significant, else setView
+            // But basic setView is safer for now to avoid animation conflicts
             mapRef.current.setView(center, mapRef.current.getZoom());
         }
     }, [center[0], center[1]]);

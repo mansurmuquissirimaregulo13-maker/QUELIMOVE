@@ -65,7 +65,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
   const [nearbyDrivers, setNearbyDrivers] = React.useState<any[]>([]);
 
-  const [nearbyDrivers, setNearbyDrivers] = React.useState<any[]>([]);
+
 
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
@@ -425,6 +425,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           userLocation={userLocation || undefined}
           drivers={nearbyDrivers}
           height="100%"
+          onMoveEnd={(newCenter) => setMapCenter(newCenter)}
         />
       </div>
 
