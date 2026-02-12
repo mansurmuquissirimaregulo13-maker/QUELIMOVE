@@ -226,7 +226,6 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       return;
     }
 
-    setIsSearching(true);
 
     // 1. Busca local (Constants de Quelimane) - PRIORIDADE MÁXIMA
     const normalizedQuery = query.toLowerCase().trim();
@@ -246,7 +245,6 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
     if (hasStrongLocalMatch || query.length < 3) {
       setSearchResults(localResults as any);
-      setIsSearching(false);
       return;
     }
 
@@ -280,7 +278,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       console.error('Nominatim search error:', error);
       setSearchResults(localResults as any);
     } finally {
-      setIsSearching(false);
+      // Finalizado
     }
   };
 
