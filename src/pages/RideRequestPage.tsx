@@ -57,6 +57,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
   const [searchResults, setSearchResults] = React.useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [activeSearchField, setActiveSearchField] = React.useState<'pickup' | 'destination' | null>(null);
+  const [isSelectingOnMap, setIsSelectingOnMap] = React.useState(false);
 
   // Match state
   const [matchStatus, setMatchStatus] = React.useState<'idle' | 'searching' | 'found' | 'busy'>('idle');
@@ -297,8 +298,33 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     }
 
     setActiveSearchField(null);
+    setIsSelectingOnMap(false);
     setSearchResults([]);
     setSearchTerm('');
+  };
+
+  const handleMapClick = async (latlng: [number, number]) => {
+    if (!isSelectingOnMap || !activeSearchField) return;
+
+    const [lat, lng] = latlng;
+    setIsLoading(true);
+
+    const addressName = await reverseGeocode(lat, lng);
+    const loc: LocationType = {
+      name: addressName,
+      lat,
+      lng
+    };
+
+    if (activeSearchField === 'pickup') {
+      setPickup(loc);
+    } else {
+      setDestination(loc);
+    }
+
+    setIsSelectingOnMap(false);
+    setActiveSearchField(null);
+    setIsLoading(false);
   };
 
   // Rebuild the driver list when map center changes significantly to keep "mock" drivers around
@@ -426,8 +452,30 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           drivers={nearbyDrivers}
           height="100%"
           onMoveEnd={(newCenter) => setMapCenter(newCenter)}
+          onClick={handleMapClick}
         />
       </div>
+
+      {/* Map Selection Overlay */}
+      <AnimatePresence>
+        {isSelectingOnMap && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute top-24 left-1/2 -translate-x-1/2 z-[100] bg-black/80 backdrop-blur-md px-6 py-3 rounded-full border border-[#FBBF24]/50 shadow-[0_0_20px_rgba(251,191,36,0.3)] flex items-center gap-3"
+          >
+            <div className="w-2 h-2 rounded-full bg-[#FBBF24] animate-pulse"></div>
+            <p className="text-white text-xs font-bold uppercase tracking-wider">Toca no mapa para escolher o local</p>
+            <button
+              onClick={() => { setIsSelectingOnMap(false); setActiveSearchField(null); }}
+              className="ml-2 text-gray-400 hover:text-white text-[10px] font-black uppercase"
+            >
+              Cancelar
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Recenter Button */}
       {userLocation && (
@@ -489,6 +537,21 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                   exit={{ opacity: 0, height: 0 }}
                   className="mt-2 bg-black/40 rounded-2xl overflow-hidden border border-white/5 max-h-[250px] overflow-y-auto"
                 >
+                  {/* Option to Select on Map */}
+                  <button
+                    onClick={() => setIsSelectingOnMap(true)}
+                    className="w-full p-4 text-left hover:bg-[#FBBF24]/10 border-b border-white/5 flex items-center gap-4 transition-colors group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#FBBF24]/10 flex items-center justify-center text-[#FBBF24]">
+                      <MapPin size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-[#FBBF24]">Escolher no mapa</p>
+                      <p className="text-[10px] text-gray-500">Marca o ponto exato manualmente</p>
+                    </div>
+                    <ChevronRight size={16} className="ml-auto text-gray-600" />
+                  </button>
+
                   {(searchTerm ? searchResults : QUELIMANE_LOCATIONS.slice(0, 8).map(l => ({ description: `${l.name}, Quelimane`, is_local: true, type: l.type, lat: l.lat.toString(), lon: l.lng.toString() }))).map((result: any, index) => {
                     const name = result.description.split(',')[0];
                     const type = result.type || 'landmark';

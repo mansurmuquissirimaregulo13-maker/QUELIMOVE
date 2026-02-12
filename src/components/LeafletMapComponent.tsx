@@ -55,6 +55,7 @@ interface LeafletMapComponentProps {
     height?: string;
     drivers?: Array<{ id: string; lat: number; lng: number; type: string }>;
     onMoveEnd?: (center: [number, number]) => void;
+    onClick?: (latlng: [number, number]) => void;
 }
 
 export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
@@ -64,7 +65,8 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
     userLocation,
     height = '100%',
     drivers = [],
-    onMoveEnd
+    onMoveEnd,
+    onClick
 }) => {
     const mapRef = React.useRef<L.Map | null>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -100,6 +102,12 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
         });
         map.on('zoomend', () => { isInteracting.current = false; });
         map.on('dragend', () => { isInteracting.current = false; });
+
+        map.on('click', (e) => {
+            if (onClick) {
+                onClick([e.latlng.lat, e.latlng.lng]);
+            }
+        });
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
