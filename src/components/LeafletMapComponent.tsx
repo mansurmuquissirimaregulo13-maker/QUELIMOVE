@@ -76,8 +76,11 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
     const routeLayerRef = React.useRef<L.Polyline | null>(null);
     const [isLoadingRoute, setIsLoadingRoute] = React.useState(false);
 
-    // Track user interaction state
-    const isInteracting = React.useRef(false);
+    // Use a ref for onClick to avoid closure staleness in the map event listener
+    const onClickRef = React.useRef(onClick);
+    React.useEffect(() => {
+        onClickRef.current = onClick;
+    }, [onClick]);
 
     // Inicialização do Mapa (Apenas uma vez)
     React.useEffect(() => {
@@ -107,8 +110,8 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
 
         map.on('click', (e) => {
             console.log('Map clicked at:', e.latlng.lat, e.latlng.lng);
-            if (onClick) {
-                onClick([e.latlng.lat, e.latlng.lng]);
+            if (onClickRef.current) {
+                onClickRef.current([e.latlng.lat, e.latlng.lng]);
             }
         });
 
