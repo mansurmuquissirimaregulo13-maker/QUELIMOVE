@@ -185,7 +185,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   }, [fetchStatsCallback]);
 
   return (
-    <div className="h-full flex flex-col bg-[#0a0a0a]">
+    <div className="h-full flex flex-col bg-[var(--bg-primary)] transition-colors duration-300">
       <Header title="Painel Admin" onBack={() => onNavigate('home')} />
 
       <div className="flex-1 overflow-y-auto px-4 py-6 pb-24">
@@ -196,22 +196,22 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         ) : (
           <div className="space-y-6">
             {/* Tabs Navigation */}
-            <div className="flex gap-2 p-1 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-8">
+            <div className="flex gap-2 p-1 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] mb-8">
               <button
                 onClick={() => setActiveTab('metrics')}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === 'metrics' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[#9CA3AF]'}`}
+                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === 'metrics' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
               >
                 Métricas
               </button>
               <button
                 onClick={() => setActiveTab('rides')}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === 'rides' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[#9CA3AF]'}`}
+                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === 'rides' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
               >
                 Viagens {recentRides.filter(r => r.status === 'pending').length > 0 && <span className="ml-1 px-1.5 bg-red-500 text-white rounded-full text-[8px]">{recentRides.filter(r => r.status === 'pending').length}</span>}
               </button>
               <button
                 onClick={() => setActiveTab('drivers')}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === 'drivers' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[#9CA3AF]'}`}
+                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === 'drivers' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
               >
                 Motoristas {pendingDrivers.length > 0 && <span className="ml-1 px-1.5 bg-red-500 text-white rounded-full text-[8px]">{pendingDrivers.length}</span>}
               </button>
@@ -221,32 +221,32 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <div className="grid grid-cols-2 gap-4">
                   {stats.map((stat, i) => (
-                    <div key={i} className="bg-[#1a1a1a] p-4 rounded-2xl border border-[#2a2a2a]">
+                    <div key={i} className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
                       <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
                         <stat.icon size={20} className={stat.color} />
                       </div>
-                      <p className="text-2xl font-bold text-white">{stat.value}</p>
-                      <p className="text-xs text-[#9CA3AF] lowercase">{stat.label}</p>
+                      <p className="text-2xl font-bold text-[var(--text-primary)]">{stat.value}</p>
+                      <p className="text-xs text-[var(--text-secondary)] lowercase">{stat.label}</p>
                     </div>
                   ))}
                 </div>
 
                 {selectedRide && (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider opacity-60">Monitor de Viagem</h3>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider opacity-60">Monitor de Viagem</h3>
                     <MapComponent
                       center={[selectedRide.pickup_lat, selectedRide.pickup_lng]}
                       pickup={[selectedRide.pickup_lat, selectedRide.pickup_lng]}
                       destination={[selectedRide.dest_lat, selectedRide.dest_lng]}
                       height="250px"
                     />
-                    <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[#2a2a2a]">
+                    <div className="bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-color)]">
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="text-sm font-bold text-white">{selectedRide.pickup_location} → {selectedRide.destination_location}</p>
+                          <p className="text-sm font-bold text-[var(--text-primary)]">{selectedRide.pickup_location} → {selectedRide.destination_location}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <Clock size={12} className="text-[#9CA3AF]" />
-                            <p className="text-xs text-[#9CA3AF]">{new Date(selectedRide.created_at).toLocaleString()}</p>
+                            <Clock size={12} className="text-[var(--text-secondary)]" />
+                            <p className="text-xs text-[var(--text-secondary)]">{new Date(selectedRide.created_at).toLocaleString()}</p>
                           </div>
                         </div>
                         <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${selectedRide.status === 'pending' ? 'bg-orange-500/20 text-orange-500' :
@@ -272,16 +272,16 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                   <div className="space-y-3">
                     {recentRides.filter(r => r.status === 'pending').length > 0 ? (
                       recentRides.filter(r => r.status === 'pending').map(ride => (
-                        <div key={ride.id} className="bg-[#1a1a1a] p-5 rounded-2xl border border-[#FBBF24]/30 space-y-4 shadow-xl">
+                        <div key={ride.id} className="bg-[var(--bg-secondary)] p-5 rounded-2xl border border-[#FBBF24]/30 space-y-4 shadow-xl">
                           <div className="flex justify-between items-start">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
                                 <MapPin size={14} className="text-[#3B82F6]" />
-                                <p className="text-sm font-bold text-white">{ride.pickup_location}</p>
+                                <p className="text-sm font-bold text-[var(--text-primary)]">{ride.pickup_location}</p>
                               </div>
                               <div className="flex items-center gap-2">
                                 <MapPin size={14} className="text-[#FBBF24]" />
-                                <p className="text-sm font-bold text-white">{ride.destination_location}</p>
+                                <p className="text-sm font-bold text-[var(--text-primary)]">{ride.destination_location}</p>
                               </div>
                             </div>
                             <span className="text-xs font-bold text-[#FBBF24] bg-[#FBBF24]/10 px-2 py-1 rounded">{ride.estimate}</span>
@@ -312,17 +312,17 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider opacity-50">Histórico Recente</h3>
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4 uppercase tracking-wider opacity-50">Histórico Recente</h3>
                   <div className="space-y-3">
                     {recentRides.filter(r => r.status !== 'pending').map((ride) => (
                       <button
                         key={ride.id}
                         onClick={() => { setSelectedRide(ride); setActiveTab('metrics'); }}
-                        className={`w-full text-left bg-[#1a1a1a] p-4 rounded-xl border transition-all ${selectedRide?.id === ride.id ? 'border-[#FBBF24]' : 'border-[#2a2a2a]'} flex justify-between items-center hover:bg-[#222222]`}
+                        className={`w-full text-left bg-[var(--bg-secondary)] p-4 rounded-xl border transition-all ${selectedRide?.id === ride.id ? 'border-[#FBBF24]' : 'border-[var(--border-color)]'} flex justify-between items-center hover:opacity-80`}
                       >
                         <div>
-                          <p className="text-xs text-white font-medium truncate max-w-[150px]">{ride.pickup_location} → {ride.destination_location}</p>
-                          <p className="text-[10px] text-[#4B5563] mt-1">{new Date(ride.created_at).toLocaleTimeString()}</p>
+                          <p className="text-xs text-[var(--text-primary)] font-medium truncate max-w-[150px]">{ride.pickup_location} → {ride.destination_location}</p>
+                          <p className="text-[10px] text-[var(--text-secondary)] mt-1">{new Date(ride.created_at).toLocaleTimeString()}</p>
                         </div>
                         <div className="text-right">
                           <span className={`text-[10px] font-bold uppercase ${ride.status === 'completed' ? 'text-green-500' : 'text-red-500'}`}>{ride.status}</span>
@@ -340,11 +340,11 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                 <div className="space-y-6">
                   {pendingDrivers.length > 0 ? (
                     pendingDrivers.map((driver) => (
-                      <div key={driver.id} className="bg-[#1a1a1a] p-5 rounded-2xl border border-[#2a2a2a] space-y-6 shadow-2xl">
+                      <div key={driver.id} className="bg-[var(--bg-secondary)] p-5 rounded-2xl border border-[var(--border-color)] space-y-6 shadow-2xl">
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="text-lg text-white font-bold">{driver.full_name}</p>
-                            <p className="text-sm text-[#9CA3AF] flex items-center gap-1 mt-1">
+                            <p className="text-lg text-[var(--text-primary)] font-bold">{driver.full_name}</p>
+                            <p className="text-sm text-[var(--text-secondary)] flex items-center gap-1 mt-1">
                               <PhoneIcon size={14} className="text-[#FBBF24]" /> {driver.phone}
                             </p>
                           </div>
@@ -357,15 +357,15 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
 
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-2">
-                            <p className="text-[9px] text-[#9CA3AF] uppercase font-bold tracking-widest pl-1">BI Frente</p>
-                            <div className="h-28 bg-[#0a0a0a] rounded-xl border border-[#2a2a2a] flex items-center justify-center overflow-hidden">
-                              {driver.bi_front_url ? <img src={driver.bi_front_url} alt="BI" className="w-full h-full object-cover" /> : <FileText size={24} className="text-[#4B5563]" />}
+                            <p className="text-[9px] text-[var(--text-secondary)] uppercase font-bold tracking-widest pl-1">BI Frente</p>
+                            <div className="h-28 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-center overflow-hidden">
+                              {driver.bi_front_url ? <img src={driver.bi_front_url} alt="BI" className="w-full h-full object-cover" /> : <FileText size={24} className="text-[var(--text-tertiary)]" />}
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <p className="text-[9px] text-[#9CA3AF] uppercase font-bold tracking-widest pl-1">BI Verso</p>
-                            <div className="h-28 bg-[#0a0a0a] rounded-xl border border-[#2a2a2a] flex items-center justify-center overflow-hidden">
-                              {driver.bi_back_url ? <img src={driver.bi_back_url} alt="BI" className="w-full h-full object-cover" /> : <FileText size={24} className="text-[#4B5563]" />}
+                            <p className="text-[9px] text-[var(--text-secondary)] uppercase font-bold tracking-widest pl-1">BI Verso</p>
+                            <div className="h-28 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-center overflow-hidden">
+                              {driver.bi_back_url ? <img src={driver.bi_back_url} alt="BI" className="w-full h-full object-cover" /> : <FileText size={24} className="text-[var(--text-tertiary)]" />}
                             </div>
                           </div>
                         </div>
@@ -388,9 +388,9 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-20 bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] space-y-4">
-                      <ShieldCheck className="mx-auto text-[#4B5563]" size={40} />
-                      <p className="text-[#9CA3AF] text-sm font-medium">Todos os motoristas estão verificados</p>
+                    <div className="text-center py-20 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] space-y-4">
+                      <ShieldCheck className="mx-auto text-[var(--text-tertiary)]" size={40} />
+                      <p className="text-[var(--text-secondary)] text-sm font-medium">Todos os motoristas estão verificados</p>
                     </div>
                   )}
                 </div>
