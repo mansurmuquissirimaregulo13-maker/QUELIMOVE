@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QUELIMANE_LOCATIONS, Location as LocationType } from '../constants';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface SearchResult {
   description: string;
@@ -45,6 +46,9 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [pickup, setPickup] = React.useState<LocationType | null>(null);
   const [destination, setDestination] = React.useState<LocationType | null>(null);
+  const [eta, setEta] = React.useState<number | null>(null);
+  const [driverInfo, setDriverInfo] = React.useState<any | null>(null);
+  const { notify } = useNotifications();
   const [paymentMethod, setPaymentMethod] = React.useState<'cash' | 'mpesa' | 'emola'>('cash');
   const [serviceType, setServiceType] = React.useState<'moto' | 'txopela'>('moto');
 
@@ -419,6 +423,13 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
               if (driver) {
                 setDriverInfo(driver);
                 setMatchStatus('found');
+
+                // Notificação Nativa: Motorista Aceitou (Requisito: App Real)
+                notify({
+                  title: 'Motorista Encontrado!',
+                  body: `${driver.full_name} aceitou o seu pedido e está a caminho.`
+                });
+
                 subscribeToDriverLocation(driver.id);
               }
             }

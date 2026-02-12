@@ -13,6 +13,9 @@ import {
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
 import { requestForToken } from '../lib/firebase';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface DriverDashboardPageProps {
   onNavigate: (page: string) => void;
@@ -24,6 +27,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   const [currentRide, setCurrentRide] = React.useState<any | null>(null);
   const [driverName] = React.useState('João');
   const [vehicleInfo] = React.useState('Honda Ace • ABC-123');
+  const { notify } = useNotifications();
 
   const fetchPotentialRides = async () => {
     if (!isOnline) return;
@@ -122,13 +126,13 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             (payload) => {
               if (payload.new.status === 'pending') {
                 setCurrentRide(payload.new);
-                // Notificação Visual/Sonora (Requisito 4)
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  new Notification('Nova Corrida Disponível!', {
-                    body: `Passageiro em ${payload.new.pickup_location}. Valor: ${payload.new.estimate} MZN`,
-                    icon: '/favicon.ico'
-                  });
-                }
+
+                // Notificação Robusta (Requisito: Barra do Sistema)
+                notify({
+                  title: 'Nova Corrida Disponível!',
+                  body: `Passageiro em ${payload.new.pickup_location}. Valor: ${payload.new.estimate} MZN`
+                });
+
                 // Alerta sonoro básico
                 const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2505/2505-preview.mp3');
                 audio.play().catch(e => console.log('Audio play failed', e));
@@ -192,16 +196,36 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     setIsOnline(nextState);
 
     if (nextState) {
-      // Capturar token FCM para notificações push
+      // 1. Capturar token (Web ou Nativo)
       try {
-        const token = await requestForToken();
-        if (token) {
-          const { data: userData } = await supabase.auth.getUser();
-          if (userData.user) {
-            await supabase
-              .from('profiles')
-              .update({ fcm_token: token })
-              .eq('id', userData.user.id);
+        if (Capacitor.isNativePlatform()) {
+          // Registro Nativo (Requisito: Barra de Notificação Real)
+          const permission = await PushNotifications.requestPermissions();
+          if (permission.receive === 'granted') {
+            await PushNotifications.register();
+
+            PushNotifications.addListener('registration', async (token) => {
+              console.log('Native Token:', token.value);
+              const { data: userData } = await supabase.auth.getUser();
+              if (userData.user) {
+                await supabase
+                  .from('profiles')
+                  .update({ fcm_token: token.value })
+                  .eq('id', userData.user.id);
+              }
+            });
+          }
+        } else {
+          // Registro Web (Firebase)
+          const token = await requestForToken();
+          if (token) {
+            const { data: userData } = await supabase.auth.getUser();
+            if (userData.user) {
+              await supabase
+                .from('profiles')
+                .update({ fcm_token: token })
+                .eq('id', userData.user.id);
+            }
           }
         }
       } catch (err) {
