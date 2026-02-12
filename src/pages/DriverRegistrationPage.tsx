@@ -226,12 +226,18 @@ export function DriverRegistrationPage({
                     <button
                       key={type.id}
                       onClick={() => setVehicleType(type.id as any)}
-                      className={`flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all ${vehicleType === type.id
+                      className={`relative flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all min-h-[100px] ${vehicleType === type.id
                         ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black shadow-xl shadow-[var(--primary-glow)] scale-105'
                         : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--primary-color)]/30'
                         }`}
                     >
-                      <type.icon size={28} className="mb-2" />
+                      {type.id === 'txopela' ? (
+                        <img src="/txopela.png" alt="Txopela" className="w-16 h-12 object-contain mb-1 drop-shadow-sm" />
+                      ) : type.id === 'moto' ? (
+                        <img src="/mota.png" alt="Moto" className="w-16 h-12 object-contain mb-1 drop-shadow-sm" />
+                      ) : (
+                        <type.icon size={28} className="mb-2" />
+                      )}
                       <span className="text-[10px] font-black uppercase tracking-widest">{type.label}</span>
                     </button>
                   ))}
