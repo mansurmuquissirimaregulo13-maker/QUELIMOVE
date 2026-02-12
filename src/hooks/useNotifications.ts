@@ -20,7 +20,7 @@ export const useNotifications = () => {
         }
     }, []);
 
-    const notify = useCallback(({ title, body, type = 'info' }: NotificationOptions) => {
+    const notify = useCallback(({ title, body }: NotificationOptions) => {
         if (!enabled) return;
 
         // Simulação de Notificação de Sistema se tiver permissão

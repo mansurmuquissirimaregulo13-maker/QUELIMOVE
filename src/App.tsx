@@ -8,11 +8,10 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { InstallPrompt } from './components/InstallPrompt';
 import { SplashScreen } from './components/SplashScreen';
-import { Sun, Moon } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 function AppContent() {
@@ -25,7 +24,6 @@ function AppContent() {
     const saved = localStorage.getItem('user_profile');
     return saved ? JSON.parse(saved) : null;
   });
-  const { theme, toggleTheme } = useTheme();
 
   React.useEffect(() => {
     const timer = setTimeout(() => {

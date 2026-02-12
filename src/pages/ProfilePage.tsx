@@ -13,7 +13,6 @@ import {
   Globe,
   Bell,
   Trash2,
-  ChevronLeft,
   Moon,
   Sun
 } from 'lucide-react';
