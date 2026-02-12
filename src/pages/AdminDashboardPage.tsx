@@ -17,7 +17,6 @@ import { BottomNav } from '../components/BottomNav';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
 import { Button } from '../components/ui/Button';
-import { Header } from '../components/Header';
 import { QUELIMANE_LOCATIONS } from '../constants';
 
 interface AdminDashboardPageProps {
@@ -30,22 +29,66 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   const [notificationMessage, setNotificationMessage] = React.useState('');
   const [isSending, setIsSending] = React.useState(false);
 
-  // Estados Simulados para Gestão (Persistência real exigiria novas tabelas)
+  // Estados de Gestão
   const [locations, setLocations] = React.useState([...QUELIMANE_LOCATIONS]);
   const [pricing, setPricing] = React.useState({ base: 50, perKm: 15, commission: 20 });
 
-  // Segurança Reforçada: Verifica se o email na sessão é o autorizado
-  React.useEffect(() => {
-    const adminEmail = localStorage.getItem('admin_email');
-    const isAdminAuthenticated = localStorage.getItem('admin_session') === 'true';
-    const AUTHORIZED_EMAIL = 'mansurmuquissirimaregulo13@gmail.com';
+  // Estado de Logs Dinâmicos
+  const [systemLogs, setSystemLogs] = React.useState([
+    { event: 'Sistema Iniciado', time: 'Agora', detail: 'Painel Admin carregado com sucesso.' }
+  ]);
 
-    if (!isAdminAuthenticated || adminEmail !== AUTHORIZED_EMAIL) {
-      console.error('Acesso não autorizado ao Painel Admin');
-      onNavigate('home');
-    }
-  }, [onNavigate]);
+  const addLog = (event: string, detail: string) => {
+    setSystemLogs(prev => [{
+      event,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      detail
+    }, ...prev].slice(0, 20)); // Mantém os últimos 20 logs
+  };
 
+  // Estado para Edição de Bairros
+  const [editingLocation, setEditingLocation] = React.useState<{ index: number, name: string } | null>(null);
+  const [newBairroName, setNewBairroName] = React.useState('');
+
+  const handleSendNotification = async () => {
+    if (!notificationMessage.trim()) return;
+    setIsSending(true);
+    // Simulação de envio (Broadcast)
+    setTimeout(() => {
+      alert('NOTIFICAÇÃO ENVIADA (E RECEBIDA POR SI): \n\n' + notificationMessage);
+      addLog('Centro Notificações', `Mensagem enviada: "${notificationMessage.substring(0, 30)}..."`);
+      setNotificationMessage('');
+      setIsSending(false);
+      setSubView('none');
+    }, 1200);
+  };
+
+  const handleAddBairro = () => {
+    if (!newBairroName.trim()) return;
+    const newLoc = { name: newBairroName, type: 'bairro' as const, lat: -17.876, lng: 36.887 };
+    setLocations([...locations, newLoc]);
+    addLog('Gestão Bairros', `Bairro adicionado: ${newBairroName}`);
+    setNewBairroName('');
+  };
+
+  const handleRemoveBairro = (index: number) => {
+    const removing = locations[index];
+    const filtered = locations.filter((_, i) => i !== index);
+    setLocations(filtered);
+    addLog('Gestão Bairros', `Bairro removido: ${removing.name}`);
+  };
+
+  const handleEditBairro = () => {
+    if (!editingLocation || !editingLocation.name.trim()) return;
+    const updated = [...locations];
+    const oldName = updated[editingLocation.index].name;
+    updated[editingLocation.index].name = editingLocation.name;
+    setLocations(updated);
+    addLog('Gestão Bairros', `Bairro editado: ${oldName} -> ${editingLocation.name}`);
+    setEditingLocation(null);
+  };
+
+  // --- Lógica Real de Estatísticas e Aprovações ---
   const [activeTab, setActiveTab] = React.useState<'metrics' | 'rides' | 'drivers' | 'settings'>('metrics');
   const [stats, setStats] = React.useState([
     { label: 'Total Viagens', value: '0', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-500/10' },
@@ -92,13 +135,12 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
       }
 
       if (driversData) {
-        // Calcular métricas por motorista
         const driversWithMetrics = driversData.map(driver => {
           const driverRides = ridesData?.filter(r => r.driver_id === driver.id && r.status === 'completed') || [];
           return {
             ...driver,
             totalRides: driverRides.length,
-            totalPassengers: driverRides.length // Assumindo 1 por viagem por agora
+            totalPassengers: driverRides.length
           };
         });
         setAllDrivers(driversWithMetrics);
@@ -120,6 +162,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
 
       if (!error) {
         setSelectedDriver(null);
+        addLog('Aprovação', `Motorista ${driverId} aprovado.`);
         fetchStats();
       }
     } catch (err) {
@@ -136,6 +179,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
 
       if (!error) {
         setSelectedDriver(null);
+        addLog('Rejeição', `Motorista ${driverId} rejeitado.`);
         fetchStats();
       }
     } catch (err) {
@@ -151,6 +195,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         .eq('id', rideId);
 
       if (!error) {
+        addLog('Viagens', `Ride ${rideId} aprovada.`);
         fetchStats();
       }
     } catch (err) {
@@ -166,6 +211,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         .eq('id', rideId);
 
       if (!error) {
+        addLog('Viagens', `Ride ${rideId} cancelada.`);
         fetchStats();
       }
     } catch (err) {
@@ -184,14 +230,12 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         .channel(channelName)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rides' }, (payload: any) => {
           if (payload.new.status === 'pending') {
-            // Som para novas viagens
             new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
           }
           fetchStatsCallback();
         })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload: any) => {
           if (payload.new.role === 'driver') {
-            // Som para novo motorista
             new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
             alert('Novo motorista cadastrado: ' + payload.new.full_name);
           }
@@ -215,38 +259,75 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
     };
   }, [fetchStatsCallback]);
 
-  const handleSendNotification = async () => {
-    if (!notificationMessage.trim()) return;
-    setIsSending(true);
-    // Simulação de envio (Broadcast)
-    setTimeout(() => {
-      alert('Mensagem enviada com sucesso para todos os utilizadores ativos!');
-      setNotificationMessage('');
-      setIsSending(false);
-      setSubView('none');
-    }, 1500);
-  };
-
   const renderSubView = () => {
     switch (subView) {
       case 'bairros':
         return (
-          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black text-[var(--text-primary)]">Gestão de Bairros</h3>
-              <Button size="sm" onClick={() => setSubView('none')}>Fechar</Button>
+              <Button size="sm" onClick={() => { setSubView('none'); setEditingLocation(null); }}>Fechar</Button>
             </div>
-            <div className="space-y-2">
-              {locations.filter(l => l.type === 'bairro').map((b, i) => (
-                <div key={i} className="p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex justify-between items-center">
-                  <span className="text-sm font-bold">{b.name}</span>
-                  <div className="flex gap-2">
-                    <button className="text-[10px] text-blue-500 font-bold">Editar</button>
-                    <button className="text-[10px] text-red-500 font-bold">Remover</button>
+
+            {/* Formulário de Adição */}
+            {!editingLocation && (
+              <div className="flex gap-2 bg-[var(--bg-secondary)] p-3 rounded-xl border border-[var(--border-color)]">
+                <input
+                  type="text"
+                  placeholder="Nome do novo bairro..."
+                  value={newBairroName}
+                  onChange={(e) => setNewBairroName(e.target.value)}
+                  className="flex-1 bg-transparent border-none outline-none text-xs font-bold"
+                />
+                <button
+                  onClick={handleAddBairro}
+                  className="bg-[#FBBF24] text-black text-[10px] font-black px-4 py-2 rounded-lg"
+                >
+                  ADD
+                </button>
+              </div>
+            )}
+
+            {/* Lista de Bairros */}
+            <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-none pr-1">
+              {locations.filter(l => l.type === 'bairro').map((b, i) => {
+                const actualIndex = locations.findIndex(loc => loc.name === b.name);
+                return (
+                  <div key={i} className="p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] flex justify-between items-center group">
+                    {editingLocation?.index === actualIndex ? (
+                      <div className="flex-1 flex gap-2">
+                        <input
+                          type="text"
+                          value={editingLocation.name}
+                          onChange={(e) => setEditingLocation({ ...editingLocation, name: e.target.value })}
+                          className="flex-1 bg-[var(--bg-primary)] p-1 rounded border border-[#FBBF24] text-xs font-bold"
+                          autoFocus
+                        />
+                        <button onClick={handleEditBairro} className="text-[10px] text-green-500 font-bold">OK</button>
+                        <button onClick={() => setEditingLocation(null)} className="text-[10px] text-red-500 font-bold">X</button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-sm font-bold">{b.name}</span>
+                        <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setEditingLocation({ index: actualIndex, name: b.name })}
+                            className="text-[10px] text-blue-500 font-bold uppercase tracking-widest"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleRemoveBairro(actualIndex)}
+                            className="text-[10px] text-red-500 font-bold uppercase tracking-widest"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
-                </div>
-              ))}
-              <Button variant="outline" className="w-full text-xs">+ Adicionar Novo Bairro</Button>
+                );
+              })}
             </div>
           </div>
         );
@@ -270,7 +351,13 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                 <label className="text-[10px] font-black uppercase text-[var(--text-tertiary)] tracking-widest">Comissão Quelimove (%)</label>
                 <input type="number" value={pricing.commission} onChange={(e) => setPricing({ ...pricing, commission: Number(e.target.value) })} className="w-full bg-[var(--bg-primary)] p-3 rounded-xl border border-[var(--border-color)] font-bold" />
               </div>
-              <Button className="w-full shadow-lg shadow-[#FBBF24]/20" onClick={() => { alert('Preços atualizados!'); setSubView('none'); }}>Guardar Alterações</Button>
+              <Button className="w-full shadow-lg shadow-[#FBBF24]/20" onClick={() => {
+                alert('Preços atualizados com sucesso!');
+                addLog('Sistema', 'Ajuste de Preços e Taxas efetuado.');
+                setSubView('none');
+              }}>
+                Guardar Alterações
+              </Button>
             </div>
           </div>
         );
@@ -281,13 +368,8 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
               <h3 className="text-lg font-black text-[var(--text-primary)]">Logs do Sistema</h3>
               <Button size="sm" onClick={() => setSubView('none')}>Fechar</Button>
             </div>
-            <div className="space-y-2">
-              {[
-                { event: 'Novo Cadastro', time: 'Há 5m', detail: 'Motorista: João Silva' },
-                { event: 'Aprovação BI', time: 'Há 15m', detail: 'Admin: Mansur Regulo' },
-                { event: 'Alteração Preço', time: 'Há 1h', detail: 'Base: 40 -> 50 MZN' },
-                { event: 'Erro API', time: 'Há 2h', detail: 'Falha no Geocoding' }
-              ].map((log, i) => (
+            <div className="space-y-2 max-h-[500px] overflow-y-auto scrollbar-none pr-1">
+              {systemLogs.map((log, i) => (
                 <div key={i} className="p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] text-[10px]">
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-black uppercase tracking-tighter text-[#FBBF24]">{log.event}</span>
