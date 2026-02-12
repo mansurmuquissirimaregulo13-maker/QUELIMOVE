@@ -65,7 +65,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
   const [nearbyDrivers, setNearbyDrivers] = React.useState<any[]>([]);
 
-  const mapMoveTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  const [nearbyDrivers, setNearbyDrivers] = React.useState<any[]>([]);
 
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
@@ -425,49 +425,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           userLocation={userLocation || undefined}
           drivers={nearbyDrivers}
           height="100%"
-          onMoveEnd={async (center) => {
-            // Only auto-update if we are in Step 1 (searching/selecting)
-            if (step === 1) {
-              // Clear previous timeout to debounce the update
-              if (mapMoveTimeout.current) {
-                clearTimeout(mapMoveTimeout.current);
-              }
-
-              // Set new timeout - only update address if user stops moving for 600ms
-              mapMoveTimeout.current = setTimeout(async () => {
-                const [lat, lng] = center;
-
-                const addressName = await reverseGeocode(lat, lng);
-                if (addressName) {
-                  const newLoc = { name: addressName, lat, lng };
-
-                  if (activeSearchField === 'pickup') {
-                    setPickup(newLoc);
-                  } else {
-                    setDestination(newLoc);
-                  }
-                }
-              }, 600);
-            }
-          }}
         />
-
-        {/* Center Pin Overlay - Allows "Drag to Select" */}
-        {step === 1 && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[100%] z-20 pointer-events-none transform -mt-4">
-            <div className="relative">
-              <MapPin
-                size={40}
-                className={`drop-shadow-xl ${activeSearchField === 'pickup' ? 'text-blue-500' : 'text-[#FBBF24]'} fill-current`}
-              />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-1.5 bg-black/30 rounded-full blur-[2px]"></div>
-            </div>
-            {/* Tooltip to guide user */}
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap backdrop-blur-md border border-white/10">
-              {activeSearchField === 'pickup' ? 'Definir Partida' : 'Definir Destino'}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Recenter Button */}
