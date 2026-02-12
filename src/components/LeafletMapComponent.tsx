@@ -194,8 +194,11 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
     React.useEffect(() => {
         if (!mapRef.current) return;
 
-        if (pickup && destination && isFinite(pickup.lat) && isFinite(destination.lat)) {
-            console.log('Fetching route from', pickup, 'to', destination);
+        const hasPickup = pickup && isFinite(pickup.lat) && isFinite(pickup.lng);
+        const hasDest = destination && isFinite(destination.lat) && isFinite(destination.lng);
+
+        if (hasPickup && hasDest) {
+            console.log('Fetching route from', pickup.name, 'to', destination.name);
             const fetchRoute = async () => {
                 setIsLoadingRoute(true);
                 try {
@@ -204,17 +207,26 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
                     const data = await response.json();
 
                     if (data.routes && data.routes.length > 0 && mapRef.current) {
-                        console.log('Route found:', data.routes[0].distance, 'meters');
-                        const coords = data.routes[0].geometry.coordinates.map((c: any) => [c[1], c[0]]) as [number, number][];
+                        const route = data.routes[0];
+                        console.log('Route found:', route.distance, 'meters');
+                        const coords = route.geometry.coordinates.map((c: any) => [c[1], c[0]]) as [number, number][];
 
                         if (routeLayerRef.current) {
                             routeLayerRef.current.setLatLngs(coords);
                         } else {
-                            routeLayerRef.current = L.polyline(coords, { color: '#0000FF', weight: 8, opacity: 1.0 }).addTo(mapRef.current);
+                            // Usando um azul mais vibrante e borda para melhor visibilidade
+                            routeLayerRef.current = L.polyline(coords, {
+                                color: '#3b82f6', // Azul vibrante (Tailwind blue-500)
+                                weight: 6,
+                                opacity: 0.8,
+                                lineJoin: 'round'
+                            }).addTo(mapRef.current);
                         }
 
-                        // Fit bounds to route
-                        mapRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [50, 50] });
+                        // Fit bounds gently
+                        mapRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [40, 40] });
+                    } else {
+                        console.warn('No routes found in OSRM response');
                     }
                 } catch (error) {
                     console.error('OSRM Route error:', error);
@@ -224,6 +236,7 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
             };
             fetchRoute();
         } else {
+            console.log('Clearing route (missing pickup or destination)');
             if (routeLayerRef.current) {
                 routeLayerRef.current.remove();
                 routeLayerRef.current = null;
