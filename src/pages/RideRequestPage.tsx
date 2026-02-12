@@ -183,7 +183,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           setUserLocation([latitude, longitude]);
         },
         (error) => console.error("Watch location error:", error),
-        { enableHighAccuracy: true, distanceFilter: 10 }
+        { enableHighAccuracy: true }
       );
     }
 
@@ -663,7 +663,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
       {/* Bottom Sheet UI - Draggable */}
       <motion.div
-        className="absolute bottom-0 left-0 right-0 z-50 touching-action-none"
+        className="absolute bottom-0 left-0 right-0 z-50 touch-none"
         initial={{ y: "80%" }}
         animate={{ y: 0 }}
         drag="y"

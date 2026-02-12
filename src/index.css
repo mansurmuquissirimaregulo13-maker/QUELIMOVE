@@ -44,7 +44,21 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
+  touch-action: manipulation;
 }
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 
 .leaflet-container {
   /* Dynamic map filter based on theme */

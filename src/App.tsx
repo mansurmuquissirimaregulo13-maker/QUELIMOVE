@@ -29,7 +29,7 @@ function AppContent() {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 2500); // 2.5s total display time
+    }, 1000); // 1.0s total display time
     return () => clearTimeout(timer);
   }, []);
 
