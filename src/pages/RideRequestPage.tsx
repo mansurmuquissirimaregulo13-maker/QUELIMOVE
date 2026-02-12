@@ -277,8 +277,13 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       lng: parseFloat(result.lon)
     };
 
-    if (activeSearchField === 'pickup') setPickup(loc);
-    else if (activeSearchField === 'destination') setDestination(loc);
+    if (activeSearchField === 'pickup') {
+      setPickup(loc);
+      setMapCenter([loc.lat, loc.lng]);
+    } else if (activeSearchField === 'destination') {
+      setDestination(loc);
+      setMapCenter([loc.lat, loc.lng]);
+    }
 
     setActiveSearchField(null);
     setSearchResults([]);
@@ -304,14 +309,13 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       const price = Math.max(baseFare, Math.round(baseFare + (dist * ratePerKm)));
       setEstimatedPrice(price);
 
-      // Center map between points
-      setMapCenter([(pickup.lat + destination.lat) / 2, (pickup.lng + destination.lng) / 2]);
-    } else if (pickup) {
-      setMapCenter([pickup.lat, pickup.lng]);
-    } else if (userLocation) {
-      setMapCenter(userLocation);
+      // We DON'T auto-center here anymore because it breaks dragging
+      // Centering is now handled by: 
+      // 1. Initial user location fetch
+      // 2. Explicit search result selection
+      // 3. Step transition (fit bounds)
     }
-  }, [pickup, destination, serviceType, userLocation]);
+  }, [pickup, destination, serviceType]);
 
   const handleConfirmRide = async () => {
     if (!pickup || !destination) return;
@@ -605,7 +609,12 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                 <Button
                   className="w-full h-16 text-xl rounded-2xl shadow-xl shadow-[#FBBF24]/20 text-black font-black bg-[#FBBF24] hover:bg-[#F59E0B]"
                   disabled={!pickup || !destination}
-                  onClick={() => setStep(2)}
+                  onClick={() => {
+                    if (pickup && destination) {
+                      setMapCenter([(pickup.lat + destination.lat) / 2, (pickup.lng + destination.lng) / 2]);
+                    }
+                    setStep(2);
+                  }}
                 >
                   Confirmar <ChevronRight className="ml-2" />
                 </Button>
