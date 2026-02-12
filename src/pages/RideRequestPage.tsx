@@ -451,7 +451,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
   };
 
   return (
-    <div className="h-full relative bg-black overflow-hidden">
+    <div className="h-full relative bg-[var(--bg-primary)] overflow-hidden transition-colors duration-300">
       <Header
         title="Pedir Viagem"
         onBack={step === 1 ? () => onNavigate('home') : () => setStep(1)}
@@ -525,7 +525,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
             // If dragging moved us away, this resets us to user location for pickup
             if (!pickup) setPickup({ name: 'Minha Localização', lat: userLocation[0], lng: userLocation[1] });
           }}
-          className="absolute bottom-32 right-4 z-30 bg-white/10 backdrop-blur-md p-3 rounded-full border border-white/20 shadow-lg text-white hover:bg-white/20 transition-all"
+          className="absolute bottom-32 right-4 z-30 bg-[var(--bg-elevated)] backdrop-blur-md p-3 rounded-full border border-[var(--border-color)] shadow-lg text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-all"
         >
           <Navigation size={24} className="text-[#FBBF24]" />
         </button>
@@ -537,18 +537,18 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="bg-[#1a1a1a]/95 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-3 pointer-events-auto"
+            className="bg-[var(--bg-glass)] backdrop-blur-xl p-4 rounded-3xl border border-[var(--border-color)] shadow-[0_20px_50px_rgba(0,0,0,0.1)] space-y-3 pointer-events-auto"
           >
             <div className="relative space-y-2">
-              <div className="absolute left-[13px] top-6 bottom-6 w-[1px] bg-white/10 border-l border-dashed border-white/20"></div>
+              <div className="absolute left-[13px] top-6 bottom-6 w-[1px] bg-[var(--border-color)] border-l border-dashed"></div>
 
               {/* Pickup */}
               <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)] z-10"></div>
-                <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] z-10"></div>
+                <div className="flex-1 bg-[var(--input-bg)] rounded-xl border border-[var(--border-color)] flex items-center px-3 py-2">
                   <input
                     placeholder="Onde estás?"
-                    className="bg-transparent border-none text-white text-xs w-full focus:ring-0 placeholder:text-gray-600 font-medium"
+                    className="bg-transparent border-none text-[var(--text-primary)] text-xs w-full focus:ring-0 placeholder:text-[var(--text-tertiary)] font-medium"
                     value={activeSearchField === 'pickup' ? searchTerm : (pickup?.name || '')}
                     onFocus={() => { setActiveSearchField('pickup'); setSearchTerm(''); }}
                     onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
@@ -566,11 +566,11 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                     exit={{ opacity: 0, x: -10 }}
                     className="flex items-center gap-3"
                   >
-                    <div className="w-2.5 h-2.5 rounded-sm bg-white/40 z-10 flex items-center justify-center text-[6px] text-black font-bold">{index + 1}</div>
-                    <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2">
+                    <div className="w-2.5 h-2.5 rounded-sm bg-[var(--text-secondary)] z-10 flex items-center justify-center text-[6px] text-[var(--bg-primary)] font-bold">{index + 1}</div>
+                    <div className="flex-1 bg-[var(--input-bg)] rounded-xl border border-[var(--border-color)] flex items-center px-3 py-2">
                       <input
                         placeholder="Adicionar paragem"
-                        className="bg-transparent border-none text-white text-xs w-full focus:ring-0 placeholder:text-gray-600 font-medium"
+                        className="bg-transparent border-none text-[var(--text-primary)] text-xs w-full focus:ring-0 placeholder:text-[var(--text-tertiary)] font-medium"
                         value={(activeSearchField === 'stop' && activeStopIndex === index) ? searchTerm : (stop.name || '')}
                         onFocus={() => { setActiveSearchField('stop'); setActiveStopIndex(index); setSearchTerm(''); }}
                         onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
@@ -580,7 +580,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                           const newStops = stops.filter((_, i) => i !== index);
                           setStops(newStops);
                         }}
-                        className="text-gray-500 hover:text-red-400 p-1"
+                        className="text-[var(--text-secondary)] hover:text-red-400 p-1"
                       >
                         <AlertCircle size={14} />
                       </button>
@@ -591,11 +591,11 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
               {/* Destination */}
               <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 bg-[#FBBF24] shadow-[0_0_10px_rgba(251,191,36,0.6)] z-10"></div>
-                <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center px-3 py-2 relative">
+                <div className="w-2.5 h-2.5 bg-[#FBBF24] shadow-[0_0_10px_rgba(251,191,36,0.3)] z-10"></div>
+                <div className="flex-1 bg-[var(--input-bg)] rounded-xl border border-[var(--border-color)] flex items-center px-3 py-2 relative">
                   <input
                     placeholder="Para onde vais?"
-                    className="bg-transparent border-none text-white text-xs w-full focus:ring-0 placeholder:text-gray-600 font-medium"
+                    className="bg-transparent border-none text-[var(--text-primary)] text-xs w-full focus:ring-0 placeholder:text-[var(--text-tertiary)] font-medium"
                     value={activeSearchField === 'destination' ? searchTerm : (destination?.name || '')}
                     onFocus={() => { setActiveSearchField('destination'); setSearchTerm(''); }}
                     onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
@@ -618,21 +618,21 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mt-2 bg-black/40 rounded-2xl overflow-hidden border border-white/5 max-h-[250px] overflow-y-auto"
+                  className="mt-2 bg-[var(--bg-elevated)] rounded-2xl overflow-hidden border border-[var(--border-color)] max-h-[250px] overflow-y-auto"
                 >
                   {/* Option to Select on Map */}
                   <button
                     onClick={() => setIsSelectingOnMap(true)}
-                    className="w-full p-4 text-left hover:bg-[#FBBF24]/10 border-b border-white/5 flex items-center gap-4 transition-colors group"
+                    className="w-full p-4 text-left hover:bg-[#FBBF24]/10 border-b border-[var(--border-color)] flex items-center gap-4 transition-colors group"
                   >
                     <div className="w-10 h-10 rounded-full bg-[#FBBF24]/10 flex items-center justify-center text-[#FBBF24]">
                       <MapPin size={18} />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-[#FBBF24]">Escolher no mapa</p>
-                      <p className="text-[10px] text-gray-500">Marca o ponto exato manualmente</p>
+                      <p className="text-[10px] text-[var(--text-secondary)]">Marca o ponto exato manualmente</p>
                     </div>
-                    <ChevronRight size={16} className="ml-auto text-gray-600" />
+                    <ChevronRight size={16} className="ml-auto text-[var(--text-tertiary)]" />
                   </button>
 
                   {(searchTerm ? searchResults : QUELIMANE_LOCATIONS.slice(0, 8).map(l => ({ description: `${l.name}, Quelimane`, is_local: true, type: l.type, lat: l.lat.toString(), lon: l.lng.toString() }))).map((result: any, index) => {
@@ -642,14 +642,14 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                       <button
                         key={index}
                         onClick={() => selectLocation(result)}
-                        className="w-full p-4 text-left hover:bg-white/10 border-b border-white/5 last:border-none flex items-center gap-4 transition-colors group"
+                        className="w-full p-4 text-left hover:bg-[var(--bg-secondary)] border-b border-[var(--border-color)] last:border-none flex items-center gap-4 transition-colors group"
                       >
-                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-500 group-hover:text-[#FBBF24] transition-colors">
+                        <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center text-[var(--text-secondary)] group-hover:text-[#FBBF24] transition-colors">
                           {type === 'street' ? <Navigation size={18} /> : <MapPin size={18} />}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-white truncate">{name}</p>
-                          <p className="text-[10px] text-gray-500 truncate">Quelimane, Moçambique</p>
+                          <p className="text-sm font-bold text-[var(--text-primary)] truncate">{name}</p>
+                          <p className="text-[10px] text-[var(--text-secondary)] truncate">Quelimane, Moçambique</p>
                         </div>
                       </button>
                     );
@@ -669,7 +669,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         drag="y"
         dragConstraints={{ top: 0, bottom: 300 }}
         dragElastic={0.2}
-        onDragEnd={(e, { offset, velocity }) => {
+        onDragEnd={(_, { offset, velocity }) => {
           // Snap logic: if dragged down significantly, stay down (but peek), else snap up
           // This is a simplified "drawer" behavior
         }}
@@ -715,12 +715,12 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
                 {distance > 0 && (
                   <div className="flex justify-between items-center px-2">
-                    <div className="flex items-center gap-2 text-gray-400 dark:text-white/50 text-xs font-bold uppercase tracking-widest">
+                    <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-bold uppercase tracking-widest opacity-70">
                       <RouteIcon size={14} />
                       {distance.toFixed(1)} km
                     </div>
                     <div className="text-2xl font-black text-[#FBBF24]">
-                      {estimatedPrice} <span className="text-xs text-gray-400 dark:text-white/50">MZN</span>
+                      {estimatedPrice} <span className="text-xs text-[var(--text-secondary)] opacity-50">MZN</span>
                     </div>
                   </div>
                 )}
@@ -787,9 +787,9 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-gray-400 font-black uppercase mb-1">Total a Pagar</p>
+                      <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase mb-1">Total a Pagar</p>
                       <p className="text-4xl font-black text-[#FBBF24] tracking-tight">
-                        {estimatedPrice} <span className="text-lg text-[#FBBF24]/80">MT</span>
+                        {estimatedPrice} <span className="text-lg text-[#FBBF24]/60">MT</span>
                       </p>
                     </div>
                   </div>
@@ -813,25 +813,25 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                 )}
                 {/* ... existing match status UI with updated text colors ... */}
                 {matchStatus === 'found' && (
-                  <div className="flex items-center gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 text-left">
-                    <div className="w-16 h-16 rounded-2xl bg-[#FBBF24] overflow-hidden">
+                  <div className="flex items-center gap-4 bg-[var(--bg-secondary)] p-4 rounded-3xl border border-[var(--border-color)] text-left shadow-sm">
+                    <div className="w-16 h-16 rounded-2xl bg-[#FBBF24] overflow-hidden shadow-inner">
                       <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${driverInfo?.id}`} alt="Driver" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs text-gray-500 font-bold uppercase">{driverInfo?.vehicle_plate}</p>
-                      <p className="text-lg font-black text-gray-800 dark:text-white">{driverInfo?.full_name?.split(' ')[0]}</p>
+                      <p className="text-xs text-[var(--text-secondary)] font-bold uppercase opacity-60">{driverInfo?.vehicle_plate}</p>
+                      <p className="text-lg font-black text-[var(--text-primary)]">{driverInfo?.full_name?.split(' ')[0]}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-3xl font-black text-[#FBBF24]">{eta}</p>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase">MIN</p>
+                      <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase">MIN</p>
                     </div>
                   </div>
                 )}
                 {matchStatus === 'busy' && (
                   <div className="space-y-4">
                     <AlertCircle className="text-red-500 mx-auto" size={48} />
-                    <p className="text-gray-800 dark:text-white font-bold">Motoristas Ocupados</p>
-                    <Button onClick={() => setStep(1)} className="bg-gray-200 dark:bg-white/10 text-gray-800 dark:text-white">Tentar Novamente</Button>
+                    <p className="text-[var(--text-primary)] font-bold">Motoristas Ocupados</p>
+                    <Button onClick={() => setStep(1)} variant="outline">Tentar Novamente</Button>
                   </div>
                 )}
               </div>
