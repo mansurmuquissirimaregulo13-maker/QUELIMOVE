@@ -10,9 +10,7 @@ import {
   FileText,
   MapPin,
   Clock,
-  ChevronRight,
-  Camera,
-  CheckCircle
+  ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BottomNav } from '../components/BottomNav';
@@ -39,7 +37,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
     }
   }, [onNavigate]);
 
-  const [activeTab, setActiveTab] = React.useState<'metrics' | 'rides' | 'drivers'>('metrics');
+  const [activeTab, setActiveTab] = React.useState<'metrics' | 'rides' | 'drivers' | 'settings'>('metrics');
   const [stats, setStats] = React.useState([
     { label: 'Total Viagens', value: '0', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-500/10' },
     { label: 'Receita (MZN)', value: '0', icon: DollarSign, color: 'text-[#FBBF24]', bg: 'bg-[#FBBF24]/10' },
@@ -177,7 +175,16 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         .channel(channelName)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rides' }, (payload: any) => {
           if (payload.new.status === 'pending') {
+            // Som para novas viagens
+            new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
+          }
+          fetchStatsCallback();
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload: any) => {
+          if (payload.new.role === 'driver') {
+            // Som para novo motorista
             new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
+            alert('Novo motorista cadastrado: ' + payload.new.full_name);
           }
           fetchStatsCallback();
         })
@@ -211,24 +218,30 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         ) : (
           <div className="space-y-6">
             {/* Tabs Navigation */}
-            <div className="flex gap-2 p-1 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] mb-8">
+            <div className="grid grid-cols-4 gap-2 p-1 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] mb-8">
               <button
                 onClick={() => setActiveTab('metrics')}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === 'metrics' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
+                className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'metrics' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
               >
                 Métricas
               </button>
               <button
                 onClick={() => setActiveTab('rides')}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === 'rides' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
+                className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'rides' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
               >
-                Viagens {recentRides.filter(r => r.status === 'pending').length > 0 && <span className="ml-1 px-1.5 bg-red-500 text-white rounded-full text-[8px]">{recentRides.filter(r => r.status === 'pending').length}</span>}
+                Viagens {recentRides.filter(r => r.status === 'pending').length > 0 && <span className="ml-1 px-1 bg-red-500 text-white rounded-full text-[8px]">{recentRides.filter(r => r.status === 'pending').length}</span>}
               </button>
               <button
                 onClick={() => setActiveTab('drivers')}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === 'drivers' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
+                className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'drivers' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
               >
-                Motoristas {pendingDrivers.length > 0 && <span className="ml-1 px-1.5 bg-red-500 text-white rounded-full text-[8px]">{pendingDrivers.length}</span>}
+                Drivers {pendingDrivers.length > 0 && <span className="ml-1 px-1 bg-red-500 text-white rounded-full text-[8px]">{pendingDrivers.length}</span>}
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'settings' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
+              >
+                Config
               </button>
             </div>
 
@@ -399,6 +412,45 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                       <p className="text-[var(--text-secondary)] text-sm font-medium">Nenhum motorista registado</p>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+            {activeTab === 'settings' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Perfil Administrador</h3>
+                  <div className="p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-[#FBBF24] flex items-center justify-center font-black text-black">M</div>
+                    <div>
+                      <p className="text-sm font-bold text-[var(--text-primary)]">Mansur Regulo</p>
+                      <p className="text-[10px] text-[var(--text-secondary)]">mansurmuquissirimaregulo13@gmail.com</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Sistema</h3>
+                  <div className="space-y-2">
+                    <button className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left group">
+                      <span className="text-xs font-bold text-[var(--text-primary)]">Gestão de Bairros</span>
+                      <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                    </button>
+                    <button className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left group">
+                      <span className="text-xs font-bold text-[var(--text-primary)]">Preços e Taxas</span>
+                      <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                    </button>
+                    <button className="w-full p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-left group">
+                      <span className="text-xs font-bold text-[var(--text-primary)]">Logs do Sistema</span>
+                      <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">Suporte</h3>
+                  <button className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                    <span className="text-xs font-black text-red-500 uppercase">Sair do Painel Admin</span>
+                  </button>
                 </div>
               </div>
             )}

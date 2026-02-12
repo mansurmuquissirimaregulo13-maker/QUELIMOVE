@@ -217,10 +217,9 @@ export function DriverRegistrationPage({
                   <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Informação do Veículo</h2>
                   <p className="text-xs text-[var(--text-secondary)]">Diga-nos o que você conduz.</p>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {[
                     { id: 'moto', icon: Bike, label: 'Moto' },
-                    { id: 'carro', icon: Car, label: 'Carro' },
                     { id: 'txopela', icon: Bike, label: 'Txopela' }
                   ].map((type) => (
                     <button
