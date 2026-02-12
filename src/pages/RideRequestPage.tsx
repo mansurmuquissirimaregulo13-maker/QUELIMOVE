@@ -450,7 +450,6 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         <MapComponent
           center={mapCenter}
           pickup={pickup}
-          pickup={pickup}
           destination={destination}
           stops={stops}
           userLocation={userLocation || undefined}
