@@ -4,12 +4,11 @@ import 'leaflet/dist/leaflet.css';
 import { Loader2 } from 'lucide-react';
 
 // Fix para ícones padrão do Leaflet no Vite
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
+// Fix para ícones padrão do Leaflet no Vite
+// Usando abordagens que evitam erros de resolução de módulo em TS se os assets não estiverem tipados
 const DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     iconSize: [25, 41],
     iconAnchor: [12, 41]
 });
@@ -106,9 +105,9 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
 
     // Atualizar centro do mapa
     React.useEffect(() => {
-        if (mapRef.current && isFinite(center[0]) && isFinite(center[1])) {
-            // Only set view if the distance is significant to avoid jitter during drag interactions that might update parent state
-            // or if needed to sync with search
+        // Only update center if we DON'T have a route actively showing, 
+        // to avoid fighting the fitBounds in the route effect
+        if (mapRef.current && !routeLayerRef.current && isFinite(center[0]) && isFinite(center[1])) {
             const currentCenter = mapRef.current.getCenter();
             const dist = Math.sqrt(Math.pow(currentCenter.lat - center[0], 2) + Math.pow(currentCenter.lng - center[1], 2));
             if (dist > 0.0001) {

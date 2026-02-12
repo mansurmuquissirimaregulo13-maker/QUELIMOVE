@@ -1,28 +1,54 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, X } from 'lucide-react';
 
 export function InstallPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isVisible, setIsVisible] = useState(false);
+    const [isIOS, setIsIOS] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(false);
 
     useEffect(() => {
+        // Detect iOS
+        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        setIsIOS(isIOSDevice);
+
+        // Detect if already installed (standalone mode)
+        const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+        setIsStandalone(isStandaloneMode);
+
         const handler = (e: any) => {
             e.preventDefault();
             setDeferredPrompt(e);
-            // Check if already installed or dismissed recently
             const hasDismissed = localStorage.getItem('install_dismissed');
-            if (!hasDismissed) {
+            if (!hasDismissed && !isStandaloneMode) {
                 setIsVisible(true);
             }
         };
 
         window.addEventListener('beforeinstallprompt', handler);
 
+        // For iOS: show prompt if not dismissed and not already installed
+        if (isIOSDevice && !isStandaloneMode) {
+            const hasDismissed = localStorage.getItem('install_dismissed');
+            if (!hasDismissed) {
+                // Show after a small delay to not annoy user immediately
+                const timer = setTimeout(() => setIsVisible(true), 3000);
+                return () => clearTimeout(timer);
+            }
+        }
+
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
     const handleInstall = async () => {
+        if (isIOS) {
+            // iOS manual instruction alert or custom UI
+            alert('Para instalar o QUELIMOVE no iOS:\n\n1. Clique no botão de compartilhamento (quadrado com seta)\n2. Role para baixo e selecione "Adicionar à Tela de Início"');
+            setIsVisible(false);
+            return;
+        }
+
         if (!deferredPrompt) return;
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
@@ -37,6 +63,8 @@ export function InstallPrompt() {
         localStorage.setItem('install_dismissed', 'true');
     };
 
+    if (isStandalone) return null;
+
     return (
         <AnimatePresence>
             {isVisible && (
@@ -44,30 +72,30 @@ export function InstallPrompt() {
                     initial={{ y: 100, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 100, opacity: 0 }}
-                    className="fixed bottom-0 left-0 right-0 z-[1000] p-4 safe-area-bottom"
+                    className="fixed bottom-0 left-0 right-0 z-[1001] p-4 safe-area-bottom pb-8"
                 >
-                    <div className="bg-white rounded-2xl shadow-2xl p-4 border border-gray-100 flex items-center justify-between">
+                    <div className="bg-[#1a1a1a] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-5 border border-white/10 flex items-center justify-between backdrop-blur-xl">
                         <div className="flex items-center gap-4">
-                            <div className="bg-black text-white p-3 rounded-xl">
-                                <Download size={24} />
+                            <div className="bg-[#FBBF24] text-black p-3 rounded-2xl shadow-lg shadow-[#FBBF24]/20 flex items-center justify-center">
+                                <Download size={24} strokeWidth={2.5} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-900">Instalar QUELIMOVE</h3>
-                                <p className="text-xs text-gray-500">Acesso rápido e sem internet</p>
+                                <h3 className="font-black text-white text-sm uppercase tracking-tight">Instalar App</h3>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Acesso rápido em Quelimane</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                             <button
                                 onClick={handleDismiss}
-                                className="p-2 text-gray-400 hover:text-gray-600"
+                                className="p-2 text-gray-500 hover:text-white transition-colors"
                             >
                                 <X size={20} />
                             </button>
                             <button
                                 onClick={handleInstall}
-                                className="bg-black text-white px-4 py-2 rounded-lg text-sm font-bold"
+                                className="bg-[#FBBF24] text-black px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-[#FBBF24]/20 hover:bg-[#F59E0B] transition-all active:scale-95"
                             >
-                                Instalar
+                                {isIOS ? 'Como Instalar' : 'Instalar'}
                             </button>
                         </div>
                     </div>
