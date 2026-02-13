@@ -71,9 +71,9 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
       addLog('Centro Notificações', `Mensagem enviada: "${notificationMessage.substring(0, 30)}..."`);
       setNotificationMessage('');
       setSubView('none');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error sending broadcast:', err);
-      alert('Erro ao enviar notificação. Tente novamente.');
+      alert(`ERRO AO ENVIAR: ${err.message || 'Erro desconhecido'}\n\nDica: Se o erro for de 'Row Level Security' (RLS), clica em 'Sair' e volta a entrar para atualizar as tuas permissões de Admin.`);
     } finally {
       setIsSending(false);
     }
