@@ -7,7 +7,8 @@ import {
   ChevronRight,
   Route as RouteIcon,
   AlertCircle,
-  Plus
+  Plus,
+  Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QUELIMANE_LOCATIONS, Location as LocationType } from '../constants';
@@ -996,6 +997,15 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                     <div className="text-right">
                       <p className="text-3xl font-black text-[#FBBF24]">{eta}</p>
                       <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase">MIN</p>
+                      {driverInfo?.phone && (
+                        <button
+                          onClick={() => window.open(`tel:${driverInfo.phone}`)}
+                          className="mt-2 text-xs bg-[#FBBF24]/20 text-[#FBBF24] px-3 py-1 rounded-full border border-[#FBBF24]/30 flex items-center justify-end gap-1 ml-auto"
+                        >
+                          <Phone size={12} fill="currentColor" />
+                          Ligar
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

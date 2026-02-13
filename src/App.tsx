@@ -22,7 +22,7 @@ function AppContent() {
 
   /* App State */
   const [currentPage, setCurrentPage] = React.useState('home');
-  const [user, setUser] = React.useState<{ name: string; age: number } | null>(() => {
+  const [user, setUser] = React.useState<{ name: string; age?: number; role?: string } | null>(() => {
     const saved = localStorage.getItem('user_profile');
     return saved ? JSON.parse(saved) : null;
   });
@@ -97,10 +97,18 @@ function AppContent() {
     };
   }, []);
 
-  const handleRegister = (userData: { name: string; age: number }) => {
-    localStorage.setItem('user_profile', JSON.stringify(userData));
-    setUser(userData);
-    setCurrentPage('home');
+  const handleRegister = (userData: { name: string; age?: number; role?: string }) => {
+    // Persist user with role
+    const profile = { ...userData, role: userData.role || 'user' };
+    localStorage.setItem('user_profile', JSON.stringify(profile));
+    setUser(profile as any);
+
+    if (profile.role === 'driver') {
+      setCurrentPage('driver-dash');
+    } else {
+      // Force passenger to map
+      setCurrentPage('ride');
+    }
   };
 
   const renderPage = () => {

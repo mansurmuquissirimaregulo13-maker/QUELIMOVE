@@ -64,14 +64,16 @@ export function HomePage({ onNavigate }: HomePageProps) {
             <ArrowRight className="ml-2" size={20} />
           </Button>
 
-          <Button
-            variant="outline"
-            className="w-full h-14 text-lg border-[#3B82F6] text-[#3B82F6] hover:bg-[#3B82F6]/10 hover:border-[#3B82F6]"
-            onClick={() => onNavigate('driver-reg')}
-          >
-            <UserPlus className="ml-2" size={20} />
-            Sou Mototaxista
-          </Button>
+          {!user && (
+            <Button
+              variant="outline"
+              className="w-full h-14 text-lg border-[#3B82F6] text-[#3B82F6] hover:bg-[#3B82F6]/10 hover:border-[#3B82F6]"
+              onClick={() => onNavigate('driver-reg')}
+            >
+              <UserPlus className="ml-2" size={20} />
+              Sou Mototaxista
+            </Button>
+          )}
 
           <div className="pt-8 flex justify-center gap-4">
             <button

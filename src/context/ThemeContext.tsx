@@ -12,7 +12,7 @@ const ThemeContext = React.createContext<ThemeContextType | undefined>(undefined
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = React.useState<Theme>(() => {
         const saved = localStorage.getItem('theme');
-        return (saved as Theme) || 'dark'; // Default to dark as per current app style
+        return (saved as Theme) || 'light';
     });
 
     const toggleTheme = () => {

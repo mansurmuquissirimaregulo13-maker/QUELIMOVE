@@ -8,7 +8,8 @@ import {
   Navigation,
   CheckCircle,
   XCircle,
-  Route as RouteIcon
+  Route as RouteIcon,
+  Phone
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
@@ -160,6 +161,25 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     }
   }, [isOnline, fetchPotentialRidesCallback]);
 
+  // Hook to fetch passenger phone when currentRide is set
+  const [passengerPhone, setPassengerPhone] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchPassengerPhone = async () => {
+      if (currentRide && currentRide.user_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('phone')
+          .eq('id', currentRide.user_id)
+          .single();
+        if (data) setPassengerPhone(data.phone);
+      } else {
+        setPassengerPhone(null);
+      }
+    };
+    fetchPassengerPhone();
+  }, [currentRide]);
+
   const handleAcceptRide = async (rideId: string) => {
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -272,6 +292,15 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                   <div className="text-right">
                     <p className="text-2xl font-bold text-[#FBBF24]">{currentRide.estimate}</p>
                     <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">{currentRide.distance?.toFixed(1)} KM</p>
+                    {passengerPhone && (
+                      <button
+                        onClick={() => window.open(`tel:${passengerPhone}`)}
+                        className="mt-2 text-xs bg-green-500/20 text-green-500 px-3 py-1 rounded-full border border-green-500/30 flex items-center justify-end gap-1 ml-auto"
+                      >
+                        <Phone size={12} fill="currentColor" />
+                        Ligar
+                      </button>
+                    )}
                   </div>
                 </div>
 

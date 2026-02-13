@@ -1,10 +1,12 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Calendar, ArrowRight, Shield, Clock } from 'lucide-react';
+import { User, ArrowRight, Shield, Clock, Phone, Mail, Lock, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { supabase } from '../lib/supabase';
+import { Input } from '../components/ui/Input';
 
 interface OnboardingPageProps {
-    onComplete: (data: { name: string; age: number }) => void;
+    onComplete: (data: { name: string; role?: string }) => void;
 }
 
 const slides = [
@@ -31,15 +33,22 @@ const slides = [
     {
         id: 'register',
         type: 'form',
-        title: 'Vamos Começar?',
-        description: 'Conte-nos um pouco sobre você para personalizar sua experiência.'
+        title: 'Criar Conta',
+        description: 'Seus dados para iniciarmos.'
     }
 ];
 
 export function OnboardingPage({ onComplete }: OnboardingPageProps) {
     const [currentSlide, setCurrentSlide] = React.useState(0);
-    const [name, setName] = React.useState('');
-    const [age, setAge] = React.useState('');
+    const [isLoading, setIsLoading] = React.useState(false);
+
+    const [formData, setFormData] = React.useState({
+        name: '',
+        phone: '',
+        email: '',
+        password: '',
+        age: ''
+    });
 
     const nextSlide = () => {
         if (currentSlide < slides.length - 1) {
@@ -47,10 +56,52 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (name && age) {
-            onComplete({ name, age: parseInt(age) });
+        if (!formData.name || !formData.email || !formData.password || !formData.phone || !formData.age) return;
+
+        setIsLoading(true);
+        try {
+            // 1. Sign Up
+            const { data, error } = await supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.name,
+                        phone: formData.phone,
+                        age: formData.age
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            if (data.user) {
+                // 2. Update Profile with Role & Phone
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .update({
+                        role: 'user',
+                        phone: formData.phone,
+                        full_name: formData.name
+                    })
+                    .eq('id', data.user.id);
+
+                if (profileError) {
+                    // Try insert if update fails (though trigger should have created it)
+                    console.error('Profile update failed', profileError);
+                }
+
+                // 3. Complete
+                onComplete({ name: formData.name, role: 'user' });
+            }
+
+        } catch (err: any) {
+            console.error('Onboarding Error:', err);
+            alert('Erro ao criar conta: ' + (err.message || 'Tente novamente.'));
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -113,41 +164,56 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="space-y-4 text-left">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Nome Completo</label>
-                                        <div className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl p-4 flex items-center focus-within:border-[#FBBF24] transition-all group">
-                                            <User size={18} className="text-[#FBBF24] mr-3 group-focus-within:scale-110 transition-transform" />
-                                            <input
-                                                type="text"
-                                                value={name}
-                                                onChange={(e) => setName(e.target.value)}
-                                                placeholder="Como devemos te chamar?"
-                                                className="bg-transparent border-none w-full focus:ring-0 text-sm font-medium outline-none text-[var(--text-primary)]"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Idade</label>
-                                        <div className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl p-4 flex items-center focus-within:border-[#FBBF24] transition-all group">
-                                            <Calendar size={18} className="text-[#FBBF24] mr-3 group-focus-within:scale-110 transition-transform" />
-                                            <input
-                                                type="number"
-                                                value={age}
-                                                onChange={(e) => setAge(e.target.value)}
-                                                placeholder="Sua idade"
-                                                className="bg-transparent border-none w-full focus:ring-0 text-sm font-medium outline-none text-[var(--text-primary)]"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
+                                    <Input
+                                        icon={User}
+                                        label="Nome Completo"
+                                        placeholder="Seu nome"
+                                        value={formData.name}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
+                                        required
+                                    />
+                                    <Input
+                                        icon={Calendar}
+                                        label="Idade"
+                                        type="number"
+                                        placeholder="Ex: 25"
+                                        value={formData.age}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, age: e.target.value })}
+                                        required
+                                    />
+                                    <Input
+                                        icon={Phone}
+                                        label="Telefone"
+                                        placeholder="+258 84..."
+                                        value={formData.phone}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
+                                        required
+                                    />
+                                    <Input
+                                        icon={Mail}
+                                        label="Email"
+                                        type="email"
+                                        placeholder="email@exemplo.com"
+                                        value={formData.email}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, email: e.target.value })}
+                                        required
+                                    />
+                                    <Input
+                                        icon={Lock}
+                                        label="Palavra-passe"
+                                        type="password"
+                                        placeholder="******"
+                                        value={formData.password}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, password: e.target.value })}
+                                        required
+                                    />
 
                                     <Button
                                         type="submit"
                                         className="w-full h-14 bg-[#FBBF24] text-black font-black uppercase tracking-tighter text-lg rounded-2xl shadow-xl shadow-[#FBBF24]/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                        isLoading={isLoading}
                                     >
-                                        Começar Viagem
+                                        Criar Conta
                                     </Button>
                                 </form>
                             </div>
