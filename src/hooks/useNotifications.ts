@@ -66,6 +66,15 @@ export const useNotifications = () => {
         setEnabledState(value);
         localStorage.setItem('notifications_enabled', String(value));
 
+        // Persistir no Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+            await supabase
+                .from('profiles')
+                .update({ notifications_enabled: value })
+                .eq('id', session.user.id);
+        }
+
         if (value) {
             if (isNative) {
                 await setupPushNotifications();
