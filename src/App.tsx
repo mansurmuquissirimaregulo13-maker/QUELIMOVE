@@ -153,7 +153,7 @@ function AppContent() {
 
     switch (currentPage) {
       case 'home':
-        return <HomePage onNavigate={setCurrentPage} />;
+        return <HomePage onNavigate={setCurrentPage} user={user} />;
       case 'ride':
         return <RideRequestPage onNavigate={setCurrentPage} />;
       case 'driver-reg':
@@ -168,7 +168,7 @@ function AppContent() {
       case 'profile':
         return <ProfilePage onNavigate={setCurrentPage} />;
       default:
-        return <HomePage onNavigate={setCurrentPage} />;
+        return <HomePage onNavigate={setCurrentPage} user={user} />;
     }
   };
 
