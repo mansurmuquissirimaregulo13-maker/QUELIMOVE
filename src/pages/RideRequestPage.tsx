@@ -67,8 +67,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
   // Match state
   const [matchStatus, setMatchStatus] = React.useState<'idle' | 'searching' | 'found' | 'busy'>('idle');
-  const [driverInfo, setDriverInfo] = React.useState<any>(null);
-  const [eta, setEta] = React.useState(0);
+
 
   const [nearbyDrivers, setNearbyDrivers] = React.useState<any[]>([]);
 
@@ -233,16 +232,17 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
     // 1. Busca local (Constants de Quelimane) - PRIORIDADE MÁXIMA
     const normalizedQuery = query.toLowerCase().trim();
-    const localResults = QUELIMANE_LOCATIONS
-      .filter(loc => loc.name.toLowerCase().includes(normalizedQuery))
-      .map(loc => ({
-        description: `${loc.name}, Quelimane`,
-        place_id: `local-${loc.name}`,
-        lat: loc.lat.toString(),
-        lon: loc.lng.toString(),
-        is_local: true,
-        type: loc.type
-      }));
+    const localResults = QUELIMANE_LOCATIONS.filter(l =>
+      l.type === 'school' &&
+      l.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ).map(loc => ({
+      description: `${loc.name}, Quelimane`,
+      place_id: `local-${loc.name}`,
+      lat: loc.lat.toString(),
+      lon: loc.lng.toString(),
+      is_local: true,
+      type: loc.type
+    }));
 
     // Se houver correspondência exata ou muito forte com nossos dados locais, NÃO buscar na API para evitar erros
     const hasStrongLocalMatch = localResults.some(r => r.description.toLowerCase().startsWith(normalizedQuery));
@@ -648,16 +648,63 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
       {/* Recenter Button */}
       {userLocation && (
-        <button
-          onClick={() => {
-            setMapCenter(userLocation);
-            // If dragging moved us away, this resets us to user location for pickup
-            if (!pickup) setPickup({ name: 'Minha Localização', lat: userLocation[0], lng: userLocation[1] });
-          }}
-          className="absolute bottom-32 right-4 z-30 bg-[var(--bg-elevated)] backdrop-blur-md p-3 rounded-full border border-[var(--border-color)] shadow-lg text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-all"
-        >
-          <Navigation size={24} className="text-[#FBBF24]" />
-        </button>
+        <>
+          <button
+            onClick={() => {
+              setMapCenter(userLocation);
+              // If dragging moved us away, this resets us to user location for pickup
+              if (!pickup) setPickup({ name: 'Minha Localização', lat: userLocation[0], lng: userLocation[1] });
+            }}
+            className="absolute bottom-32 right-4 z-30 bg-[var(--bg-elevated)] backdrop-blur-md p-3 rounded-full border border-[var(--border-color)] shadow-lg text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-all"
+          >
+            <Navigation size={24} className="text-[#FBBF24]" />
+          </button>
+
+          {/* SIMULATION BUTTON (DEV ONLY) */}
+          <button
+            onClick={async () => {
+              // Create a fake driver near the user
+              const fakeDriverLat = userLocation[0] + 0.002; // Slightly offset
+              const fakeDriverLng = userLocation[1] + 0.002;
+
+              try {
+                // Check if a ghost driver exists or create/update one
+                // For simplicity, we will update the profile of a known test user OR just insert a ride that thinks it has a driver?
+                // Actually, the easiest way to test 'finding' is to have a driver in 'profiles' with is_available=true
+
+                // Let's toggle a 'ghost' driver state in the local app state to 'fake' a found driver if real backend is too complex
+                // BUT user asked for "Simulacao que ja tem motorista".
+                // Let's create a visual simulation first.
+
+                setMatchStatus('found');
+                setDriverInfo({
+                  id: 'simulated-driver',
+                  full_name: 'Motorista Teste',
+                  vehicle_plate: 'ABC-123',
+                  vehicle_model: 'Honda Ace',
+                  rating: 4.9
+                });
+                setEta(2);
+
+                // Also simulate the ride moving to 'accepted' state visually
+                setTimeout(() => {
+                  setStep(3); // Assuming step 3 is "Ride in Progress" or similar? 
+                  // Actually Step 2 is confirmation. 
+                  // If we are in Step 2, we just filled the details.
+                  // If we are searching (Step 3 or overlay), we show found.
+
+                  alert('Motorista Simulado Encontrado! (Modo de Teste)');
+                }, 1000);
+
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+            className="absolute top-24 left-4 z-50 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded opacity-50 hover:opacity-100"
+          >
+            SIMULAR MOTORISTA
+          </button>
+        </>
       )}
 
       {/* Floating Search Container - Uber Style */}

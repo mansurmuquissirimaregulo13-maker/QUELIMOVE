@@ -2,7 +2,7 @@ export interface Location {
     name: string;
     lat: number;
     lng: number;
-    type?: 'bairro' | 'street' | 'landmark';
+    type?: 'bairro' | 'street' | 'landmark' | 'school';
 }
 
 export const QUELIMANE_LOCATIONS: Location[] = [

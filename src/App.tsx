@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { supabase } from './lib/supabase';
 import { HomePage } from './pages/HomePage';
 import { RideRequestPage } from './pages/RideRequestPage';
 import { DriverRegistrationPage } from './pages/DriverRegistrationPage';
@@ -27,10 +28,73 @@ function AppContent() {
   });
 
   React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 1000); // 1.0s total display time
-    return () => clearTimeout(timer);
+    // 2. Check for active Supabase Session (Drivers & Persistent Users)
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profile) {
+            if (profile.role === 'driver') {
+              console.log('Restoring Driver Session:', profile);
+              setCurrentPage('driver-dash');
+              localStorage.setItem('user_profile', JSON.stringify({
+                ...profile,
+                name: profile.full_name || session.user.email
+              }));
+              setUser({ ...profile, role: 'driver' } as any);
+            } else if (profile.role === 'user') {
+              // Passenger Auto-Redirect
+              console.log('Restoring User Session:', profile);
+              setCurrentPage('ride'); // Go directly to map
+              localStorage.setItem('user_profile', JSON.stringify({
+                ...profile,
+                name: profile.full_name || session.user.email
+              }));
+              setUser({ ...profile, role: 'user' } as any);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Session check failed', error);
+      } finally {
+        // FAST STARTUP: Remove splash immediately after check
+        setShowSplash(false);
+      }
+    };
+
+    checkSession();
+
+    // 3. Listen for Auth Changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile?.role === 'driver') {
+          setCurrentPage('driver-dash');
+        } else if (profile?.role === 'user') {
+          setCurrentPage('ride');
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentPage('home');
+        localStorage.removeItem('user_profile');
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleRegister = (userData: { name: string; age: number }) => {
@@ -40,6 +104,27 @@ function AppContent() {
   };
 
   const renderPage = () => {
+    // STRICT ROLE ENFORCEMENT
+    // 1. Drivers MUST be on driver pages
+    const isDriver = user && (user as any).role === 'driver';
+    if (isDriver && currentPage !== 'driver-dash' && currentPage !== 'profile' && currentPage !== 'contact') {
+      return <DriverDashboardPage onNavigate={setCurrentPage} />;
+    }
+
+    // 2. Passengers can generally roam, but if they are on 'home' (the selection screen), we might want to push them to 'ride'
+    // UNLESS they explicitly navigated there. For now, let's keep it simple:
+    // If we land on 'home' during initial load, the useEffect handles it.
+    // If user clicks "Back" to home, let them be?
+    // User requested "Pedir Mota / Sou Motorista not to appear for logged in users".
+    // So if logged in as passenger, 'home' should probably redirect to 'ride' unless 'home' has other utility.
+    // Looking at HomePage.tsx, it IS the "Pedir Mota" selection screen.
+    // So yes, block 'home' for authenticated passengers.
+
+    const isPassenger = user && (user as any).role === 'user';
+    if (isPassenger && currentPage === 'home') {
+      return <RideRequestPage onNavigate={setCurrentPage} />;
+    }
+
     // Verificação de Admin
     const isAdminAuthenticated = localStorage.getItem('admin_session') === 'true';
 

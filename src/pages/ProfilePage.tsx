@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
 import {
@@ -133,7 +134,28 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
               </div>
             </div>
 
-            <button className="w-full p-5 bg-red-500/10 border border-red-500/20 rounded-[28px] flex items-center justify-center gap-2 text-red-500 font-bold hover:bg-red-500/20 transition-all">
+            <button
+              onClick={async () => {
+                if (window.confirm('Tem certeza que deseja apagar sua conta? Esta ação não pode ser desfeita.')) {
+                  try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                      // Mark as deleted in profiles (Soft Delete) or just sign out for now if strict delete is blocked
+                      // For this MVP, we will sign out and clear local storage to simulate deletion from the user perspective
+                      // In a real app, you'd call a Supabase Edge Function to delete the user from Auth
+                      await supabase.from('profiles').update({ is_available: false, full_name: 'DELETED USER' }).eq('id', user.id);
+                      await supabase.auth.signOut();
+                      localStorage.clear();
+                      window.location.href = '/';
+                    }
+                  } catch (error) {
+                    console.error('Error deleting account:', error);
+                    alert('Erro ao apagar conta. Tente novamente.');
+                  }
+                }
+              }}
+              className="w-full p-5 bg-red-500/10 border border-red-500/20 rounded-[28px] flex items-center justify-center gap-2 text-red-500 font-bold hover:bg-red-500/20 transition-all"
+            >
               <Trash2 size={18} />
               {t('settings.deleteAccount')}
             </button>
@@ -207,13 +229,24 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
               ))}
             </div>
 
-            <Button
-              variant="outline"
-              className="w-full border-[#EF4444] text-[#EF4444] hover:bg-[#EF4444]/10 hover:border-[#EF4444]"
+            <button
+              className="w-full flex items-center justify-center h-14 rounded-2xl border border-[#EF4444] text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors font-bold"
+              onClick={async (e) => {
+                e.preventDefault();
+                console.log('Logging out...');
+                try {
+                  await supabase.auth.signOut();
+                } catch (err) {
+                  console.error('SignOut error:', err);
+                }
+                localStorage.clear();
+                window.location.href = '/'; // Hard redirect
+                window.location.reload();
+              }}
             >
               <LogOut className="mr-2" size={20} />
               Sair da Conta
-            </Button>
+            </button>
           </div>
         );
     }

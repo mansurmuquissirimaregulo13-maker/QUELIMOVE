@@ -17,8 +17,7 @@ export function Button({
   className = '',
   ...props
 }: ButtonProps) {
-  const baseStyles =
-    'inline-flex items-center justify-center rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:pointer-events-none';
+
 
   const variants = {
     primary: 'bg-[#FBBF24] text-black hover:bg-[#F59E0B] focus:ring-[#FBBF24] font-bold',
@@ -38,7 +37,9 @@ export function Button({
     <motion.button
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.1 }}
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:pointer-events-none ${variants[variant]} ${sizes[size]} ${className}`}
+      disabled={isLoading || props.disabled}
+      onClick={props.onClick}
       {...props}
     >
       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
