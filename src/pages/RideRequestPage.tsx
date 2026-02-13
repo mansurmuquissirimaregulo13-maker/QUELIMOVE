@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Header } from '../components/Header';
 import { Button } from '../components/ui/Button';
+import { BottomNav } from '../components/BottomNav';
 import {
   MapPin,
   Navigation,
@@ -1021,6 +1022,8 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           </AnimatePresence>
         </div>
       </motion.div>
+
+      <BottomNav activeTab="ride" onTabChange={(tab) => onNavigate(tab)} userType="client" />
     </div>
   );
 }

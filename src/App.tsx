@@ -119,19 +119,10 @@ function AppContent() {
       return <DriverDashboardPage onNavigate={setCurrentPage} />;
     }
 
-    // 2. Passengers can generally roam, but if they are on 'home' (the selection screen), we might want to push them to 'ride'
-    // UNLESS they explicitly navigated there. For now, let's keep it simple:
-    // If we land on 'home' during initial load, the useEffect handles it.
-    // If user clicks "Back" to home, let them be?
-    // User requested "Pedir Mota / Sou Motorista not to appear for logged in users".
-    // So if logged in as passenger, 'home' should probably redirect to 'ride' unless 'home' has other utility.
-    // Looking at HomePage.tsx, it IS the "Pedir Mota" selection screen.
-    // So yes, block 'home' for authenticated passengers.
-
-    const isPassenger = user && (user as any).role === 'user';
-    if (isPassenger && currentPage === 'home') {
-      return <RideRequestPage onNavigate={setCurrentPage} />;
-    }
+    // 2. Passengers can generally roam.
+    // REMOVED: Forced redirect to 'ride' if on 'home'. 
+    // This allows passengers to see the Landing Page if they explicitly navigate there (e.g. via BottomNav or Back button).
+    // The user specifically wants to see the "Split" choice.
 
     // Verificação de Admin
     const isAdminAuthenticated = localStorage.getItem('admin_session') === 'true';

@@ -53,6 +53,23 @@ body {
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
   touch-action: manipulation;
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth and elastic scrolling for overflow containers */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Hide scrollbar Firefox */
+  -ms-overflow-style: none;
+  /* Hide scrollbar IE/Edge */
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  display: none;
+  /* Hide scrollbar Chrome/Safari/Webkit */
 }
 
 button,
@@ -61,18 +78,36 @@ input,
 select,
 textarea {
   touch-action: manipulation;
+  outline: none;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
+/* Hide scrollbars globally but keep functionality */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
 
 .leaflet-container {
   /* Dynamic map filter based on theme */
   filter: var(--map-filter, none);
+  z-index: 1;
 }
 
 [data-theme='dark'] .leaflet-container {
   --map-filter: grayscale(1) invert(0.9) contrast(1.1);
+}
+
+/* Premium Button Hover state */
+.btn-premium-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-premium-hover:active {
+  transform: scale(0.96);
+  opacity: 0.9;
 }

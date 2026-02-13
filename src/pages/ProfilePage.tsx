@@ -33,6 +33,63 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { enabled: notificationsEnabled, setEnabled: setNotificationsEnabled } = useNotifications();
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [rideHistory, setRideHistory] = React.useState<any[]>([]);
+  const [editForm, setEditForm] = React.useState({
+    name: user.name || '',
+    age: user.age || '',
+    phone: user.phone || ''
+  });
+
+  React.useEffect(() => {
+    if (activeView === 'history') {
+      fetchHistory();
+    }
+  }, [activeView]);
+
+  const fetchHistory = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data, error } = await supabase
+      .from('rides')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+
+    if (data) setRideHistory(data);
+  };
+
+  const handleSaveProfile = async () => {
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: editForm.name,
+          age: editForm.age,
+          phone: editForm.phone
+        })
+        .eq('id', session.user.id);
+
+      if (error) throw error;
+
+      // Update local storage
+      const newProfile = { ...user, name: editForm.name, age: editForm.age, phone: editForm.phone };
+      localStorage.setItem('user_profile', JSON.stringify(newProfile));
+
+      alert('Perfil atualizado com sucesso!');
+      setActiveView('main');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Erro ao atualizar perfil.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const menuItems = [
     { id: 'edit', icon: User, label: t('profile.edit') },
@@ -61,7 +118,8 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)] opacity-60">Nome Completo</label>
                 <input
                   type="text"
-                  defaultValue={user.name}
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   className="w-full h-14 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl px-4 text-[var(--text-primary)] font-bold focus:ring-2 focus:ring-[#FBBF24]/50 outline-none"
                 />
               </div>
@@ -69,12 +127,28 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)] opacity-60">Idade</label>
                 <input
                   type="number"
-                  defaultValue={user.age}
+                  value={editForm.age}
+                  onChange={(e) => setEditForm({ ...editForm, age: e.target.value })}
+                  className="w-full h-14 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl px-4 text-[var(--text-primary)] font-bold focus:ring-2 focus:ring-[#FBBF24]/50 outline-none"
+                />
+              </div>
+              <div className="space-y-1.5 px-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)] opacity-60">Telefone</label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                   className="w-full h-14 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl px-4 text-[var(--text-primary)] font-bold focus:ring-2 focus:ring-[#FBBF24]/50 outline-none"
                 />
               </div>
             </div>
-            <Button className="w-full h-14 rounded-2xl">Salvar Alterações</Button>
+            <Button
+              className="w-full h-14 rounded-2xl"
+              onClick={handleSaveProfile}
+              isLoading={isLoading}
+            >
+              Salvar Alterações
+            </Button>
           </div>
         );
       case 'settings':
@@ -164,12 +238,33 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
       case 'history':
         return (
           <div className="space-y-4">
-            <div className="text-center py-20 opacity-50">
-              <Clock size={48} className="mx-auto mb-4 text-[var(--text-tertiary)]" />
-              <p className="font-black text-[var(--text-primary)] uppercase tracking-widest text-sm">Sem Viagens Recentes</p>
-              <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase mt-1">Tuas viagens aparecerão aqui</p>
-            </div>
-            <Button onClick={() => onNavigate('ride')} className="w-full">Pedir Primeira Viagem</Button>
+            {rideHistory.length === 0 ? (
+              <div className="text-center py-20 opacity-50">
+                <Clock size={48} className="mx-auto mb-4 text-[var(--text-tertiary)]" />
+                <p className="font-black text-[var(--text-primary)] uppercase tracking-widest text-sm">Sem Viagens Recentes</p>
+                <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase mt-1">Tuas viagens aparecerão aqui</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {rideHistory.map((ride) => (
+                  <div key={ride.id} className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)] flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-[var(--text-primary)]">{new Date(ride.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        {ride.status === 'completed' ? 'Concluída' : ride.status === 'cancelled' ? 'Cancelada' : 'Em andamento'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-[#FBBF24]">{ride.price} MT</p>
+                      <p className="text-[10px] text-[var(--text-secondary)] uppercase">
+                        {ride.distance?.toFixed(1)} km
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button onClick={() => onNavigate('ride')} className="w-full">Pedir {rideHistory.length > 0 ? 'Nova' : 'Primeira'} Viagem</Button>
           </div>
         );
       case 'payments':
