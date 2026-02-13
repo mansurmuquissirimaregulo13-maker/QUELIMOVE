@@ -153,7 +153,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
     }
   };
 
-  const handleApproveDriver = async (driverId: string) => {
+  const handleApproveDriver = async (driverId: string, phone: string) => {
     try {
       const { error } = await supabase
         .from('profiles')
@@ -164,6 +164,10 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         setSelectedDriver(null);
         addLog('Aprovação', `Motorista ${driverId} aprovado.`);
         fetchStats();
+
+        // Abrir WhatsApp com mensagem automática
+        const msg = encodeURIComponent('Olá! Sua conta no Quelimove foi aprovada. Já pode entrar na aplicação e começar a faturar! 🚀');
+        window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
       }
     } catch (err) {
       console.error('Error approving driver:', err);
@@ -751,8 +755,14 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
             >
               <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between sticky top-0 bg-[var(--bg-primary)] z-10">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[var(--bg-secondary)] flex items-center justify-center border border-[var(--border-color)] overflow-hidden">
-                    {selectedDriver.profile_url ? <img src={selectedDriver.profile_url} alt="" className="w-full h-full object-cover" /> : <Users className="text-[var(--text-tertiary)]" size={24} />}
+                  <div className="w-14 h-14 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-color)] overflow-hidden">
+                    {selectedDriver.avatar_url ? (
+                      <img src={selectedDriver.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[#FBBF24]/10 text-[#FBBF24] font-black">
+                        {selectedDriver.full_name?.charAt(0)}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{selectedDriver.full_name}</h3>
@@ -824,14 +834,26 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                     <Button variant="outline" className="flex-1 h-14 border-red-500/20 text-red-500 bg-red-500/5 hover:bg-red-500/10" onClick={() => handleRejectDriver(selectedDriver.id)}>
                       Rejeitar
                     </Button>
-                    <Button className="flex-1 h-14 shadow-xl shadow-[var(--primary-glow)]" onClick={() => handleApproveDriver(selectedDriver.id)}>
-                      Aprovar Motorista
+                    <Button className="flex-1 h-14 shadow-xl shadow-[var(--primary-glow)]" onClick={() => handleApproveDriver(selectedDriver.id, selectedDriver.phone)}>
+                      Aprovar e WhatsApp
                     </Button>
                   </>
                 ) : (
-                  <Button variant="outline" className="w-full h-14 border-red-500/20 text-red-500 bg-red-500/5" onClick={() => handleRejectDriver(selectedDriver.id)}>
-                    Desativar / Bloquear
-                  </Button>
+                  <div className="flex flex-col w-full gap-2">
+                    <Button
+                      variant="outline"
+                      className="w-full h-14 border-green-500/20 text-green-500 bg-green-500/5"
+                      onClick={() => {
+                        const msg = encodeURIComponent('Olá! Precisamos falar sobre sua conta no Quelimove.');
+                        window.open(`https://wa.me/${selectedDriver.phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                      }}
+                    >
+                      Conversar no WhatsApp
+                    </Button>
+                    <Button variant="outline" className="w-full h-14 border-red-500/20 text-red-500 bg-red-500/5" onClick={() => handleRejectDriver(selectedDriver.id)}>
+                      Desativar / Bloquear
+                    </Button>
+                  </div>
                 )}
               </div>
             </motion.div>

@@ -131,6 +131,10 @@ export function DriverRegistrationPage({
       const userId = authData.user?.id;
 
       if (userId) {
+        // [SIMULAÇÃO DE UPLOAD] - Em produção aqui usaríamos supabase.storage.from('avatars').upload()
+        // No momento usamos a URL base64/blob local ou uma placeholder para o teste
+        const profileImageUrl = uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`;
+
         // 2. Update the profile with driver details
         const { error: profileError } = await supabase
           .from('profiles')
@@ -141,9 +145,10 @@ export function DriverRegistrationPage({
             bairro: formData.bairro,
             vehicle_type: vehicleType,
             vehicle_plate: formData.plate,
-            bi_front_url: 'simulated_bi_front.jpg',
-            bi_back_url: 'simulated_bi_back.jpg',
-            license_url: 'simulated_license.jpg',
+            avatar_url: profileImageUrl, // Selfie salvada como Perfil
+            bi_front_url: uploads.biFront || 'simulated_bi_front.jpg',
+            bi_back_url: uploads.biBack || 'simulated_bi_back.jpg',
+            license_url: uploads.license || 'simulated_license.jpg',
             status: 'pending' // Administrador precisa aprovar
           })
           .eq('id', userId);
@@ -151,7 +156,7 @@ export function DriverRegistrationPage({
         if (profileError) throw profileError;
       }
 
-      alert('Cadastro realizado com sucesso! Seus dados foram enviados para análise do administrador. Você será notificado assim que sua conta for aprovada.');
+      alert('Cadastro realizado com sucesso! Seus dados (incluindo a sua foto) foram enviados para análise. Você será notificado via WhatsApp assim que aprovado.');
       onNavigate('home');
     } catch (err: any) {
       console.error('Registration error:', err);

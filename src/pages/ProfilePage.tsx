@@ -103,15 +103,59 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
       case 'edit':
         return (
           <div className="space-y-6">
-            <div className="flex flex-col items-center">
-              <div className="relative mb-6">
-                <div className="w-28 h-28 rounded-full bg-[var(--bg-secondary)] border-4 border-[#FBBF24] flex items-center justify-center overflow-hidden shadow-xl">
-                  <User size={48} className="text-[#FBBF24]" />
+            <div className="flex flex-col items-center pt-8 pb-10">
+              <div className="relative group">
+                <div className="w-28 h-28 rounded-[32px] bg-[var(--bg-secondary)] border-2 border-[#FBBF24]/20 overflow-hidden shadow-2xl relative">
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#FBBF24]/5 text-[#FBBF24]">
+                      <User size={40} className="opacity-50" />
+                    </div>
+                  )}
                 </div>
-                <button className="absolute bottom-1 right-1 p-2.5 bg-[#FBBF24] rounded-full text-black shadow-lg hover:scale-110 transition-all">
+                <label className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#FBBF24] rounded-2xl flex items-center justify-center text-black shadow-lg cursor-pointer active:scale-90 transition-all border-4 border-[var(--bg-primary)]">
                   <Camera size={18} />
-                </button>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setIsLoading(true);
+                        try {
+                          // [SIMULAÇÃO DE UPLOAD] 
+                          const url = URL.createObjectURL(file);
+                          const { data: { session } } = await supabase.auth.getSession();
+                          if (!session) throw new Error('No session');
+
+                          const { error } = await supabase
+                            .from('profiles')
+                            .update({ avatar_url: url })
+                            .eq('id', session.user.id);
+
+                          if (error) throw error;
+
+                          // Update local storage
+                          const newProfile = { ...user, avatar_url: url };
+                          localStorage.setItem('user_profile', JSON.stringify(newProfile));
+                          window.location.reload(); // Refresh to show new image
+                        } catch (err) {
+                          console.error('Error uploading image:', err);
+                          alert('Erro ao carregar imagem.');
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }
+                    }}
+                  />
+                </label>
               </div>
+              <h2 className="mt-5 text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{user.name || 'Usuário'}</h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] bg-[var(--bg-secondary)] px-4 py-1.5 rounded-full border border-[var(--border-color)] mt-2">
+                {user.role === 'driver' ? 'Motorista Parceiro' : 'Cliente Passageiro'}
+              </p>
             </div>
             <div className="space-y-4">
               <div className="space-y-1.5 px-1">

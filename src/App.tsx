@@ -15,6 +15,8 @@ import { LanguageProvider } from './context/LanguageContext';
 import { InstallPrompt } from './components/InstallPrompt';
 import { SplashScreen } from './components/SplashScreen';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Clock } from 'lucide-react';
+import { Button } from './components/ui/Button';
 
 function AppContent() {
   /* Splash Screen State */
@@ -117,12 +119,28 @@ function AppContent() {
 
     // Se estiver autenticado, aplica redirecionamento automático estrito
     if (user) {
-      if (user.role === 'driver') {
-        // Motoristas só podem ver dashboard, perfil e contacto
+      const userProfile = user as any;
+      if (userProfile.role === 'driver') {
+        // Bloqueio de Motorista Pendente
+        if (userProfile.status === 'pending' || userProfile.status === 'rejected') {
+          return (
+            <div className="h-[100dvh] w-full flex flex-col items-center justify-center p-8 text-center bg-[var(--bg-primary)]">
+              <div className="w-24 h-24 bg-orange-500/10 rounded-full flex items-center justify-center mb-6">
+                <Clock size={48} className="text-orange-500 animate-pulse" />
+              </div>
+              <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter mb-2">Conta em Análise</h2>
+              <p className="text-[var(--text-secondary)] text-sm mb-8">O seu cadastro foi enviado com sucesso. O administrador está a analisar os seus dados. Receberá uma notificação via WhatsApp assim que for aprovado.</p>
+              <Button onClick={() => { localStorage.clear(); window.location.reload(); }} variant="ghost" className="text-red-500 font-bold uppercase tracking-tight">Sair e Entrar com outra conta</Button>
+            </div>
+          );
+        }
+
+        // Motoristas aprovados só podem ver dashboard, perfil e contacto
+        // Se o motorista aprovado tentar acessar outra página, redireciona para o dashboard
         if (currentPage !== 'driver-dash' && currentPage !== 'profile' && currentPage !== 'contact') {
           return <DriverDashboardPage onNavigate={setCurrentPage} />;
         }
-      } else if (user.role === 'user') {
+      } else if (userProfile.role === 'user') {
         // Passageiros não devem ver a HomePage de escolha se já estiverem logados
         if (currentPage === 'home' || currentPage === 'driver-reg') {
           return <RideRequestPage onNavigate={setCurrentPage} />;
@@ -156,7 +174,7 @@ function AppContent() {
 
     switch (currentPage) {
       case 'home':
-        return <HomePage onNavigate={setCurrentPage} user={user} />;
+        return <HomePage onNavigate={setCurrentPage} />;
       case 'ride':
         return <RideRequestPage onNavigate={setCurrentPage} />;
       case 'driver-reg':
@@ -171,7 +189,7 @@ function AppContent() {
       case 'profile':
         return <ProfilePage onNavigate={setCurrentPage} />;
       default:
-        return <HomePage onNavigate={setCurrentPage} user={user} />;
+        return <HomePage onNavigate={setCurrentPage} />;
     }
   };
 
