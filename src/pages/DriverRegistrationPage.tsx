@@ -14,7 +14,8 @@ import {
   FileText,
   ChevronRight,
   Mail,
-  Lock
+  Lock,
+  DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -61,9 +62,7 @@ export function DriverRegistrationPage({
     vehicleColor: '',
     vehicleYear: '',
     paymentMethods: {
-      cash: true,
-      mpesa: false,
-      emola: false
+      cash: true
     },
     termsAccepted: false
   });
@@ -185,7 +184,11 @@ export function DriverRegistrationPage({
       window.location.href = '/';
     } catch (err: any) {
       console.error('Registration error:', err);
-      alert('Erro ao realizar cadastro: ' + (err.message || 'Tente novamente.'));
+      if (err.message?.toLowerCase().includes('rate limit')) {
+        alert('Demasiadas tentativas seguidas. Por favor, aguarde alguns minutos antes de tentar novamente ou use uma rede diferente.');
+      } else {
+        alert('Erro ao realizar cadastro: ' + (err.message || 'Tente novamente.'));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -501,26 +504,10 @@ export function DriverRegistrationPage({
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <h3 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Métodos de Pagamento</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {['cash', 'mpesa', 'emola'].map((id) => (
-                        <button
-                          key={id}
-                          onClick={() => setFormData({
-                            ...formData,
-                            paymentMethods: {
-                              ...formData.paymentMethods,
-                              [id]: !formData.paymentMethods[id as keyof typeof formData.paymentMethods]
-                            }
-                          })}
-                          className={`py-3 rounded-2xl border-2 transition-all text-[10px] font-black uppercase text-center ${formData.paymentMethods[id as keyof typeof formData.paymentMethods]
-                            ? 'border-[var(--primary-color)] bg-[var(--primary-color)]/10 text-[var(--primary-color)]'
-                            : 'border-[var(--border-color)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)]'
-                            }`}
-                        >
-                          {id}
-                        </button>
-                      ))}
+                    <h3 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Método de Pagamento</h3>
+                    <div className="p-4 rounded-2xl border-2 border-[var(--primary-color)] bg-[var(--primary-color)]/10 text-[var(--primary-color)] flex items-center justify-center gap-3">
+                      <DollarSign size={18} />
+                      <span className="text-xs font-black uppercase">Apenas Dinheiro (Cash)</span>
                     </div>
                   </div>
                   <label className="flex items-start gap-4 p-5 rounded-[28px] bg-[var(--bg-secondary)] border border-[var(--border-color)] cursor-pointer group active:scale-[0.98] transition-all">
@@ -587,8 +574,7 @@ export function DriverRegistrationPage({
                   className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
                   disabled={
                     !formData.termsAccepted ||
-                    isLoading ||
-                    !(formData.paymentMethods.cash || formData.paymentMethods.mpesa || formData.paymentMethods.emola)
+                    isLoading
                   }
                   isLoading={isLoading}
                   onClick={handleFinish}

@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BottomNav } from '../components/BottomNav';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
+import { useNotifications } from '../hooks/useNotifications';
 import { Button } from '../components/ui/Button';
 import { QUELIMANE_LOCATIONS } from '../constants';
 
@@ -24,6 +25,7 @@ interface AdminDashboardPageProps {
 }
 
 export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
+  const { notify } = useNotifications();
   const [loading, setLoading] = React.useState(true);
   const [subView, setSubView] = React.useState<'none' | 'bairros' | 'prices' | 'logs' | 'notifications'>('none');
   const [notificationMessage, setNotificationMessage] = React.useState('');
@@ -229,46 +231,45 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
     fetchStatsCallback();
 
     const channelName = 'admin-dashboard-channel';
-    const timeoutId = setTimeout(() => {
-      const subscription = supabase
-        .channel(channelName)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rides' }, (payload: any) => {
-          if (payload.new.status === 'pending') {
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
-          }
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rides' }, (payload: any) => {
+        if (payload.new.status === 'pending') {
+          new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
+          notify({ title: 'Nova Viagem!', body: 'Um cliente solicitou uma moto agora.' });
+        }
+        fetchStatsCallback();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
+        if (payload.new.role === 'driver' && payload.new.status === 'pending') {
+          new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
+          alert('Um utilizador acaba de concluir o registo de motorista: ' + payload.new.full_name);
+          notify({ title: 'Novo Motorista!', body: `${payload.new.full_name} concluiu o registo.` });
           fetchStatsCallback();
-        })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
-          // Se um perfil for atualizado para motorista pendente, avisa o admin
-          if (payload.new.role === 'driver' && payload.new.status === 'pending') {
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
-            alert('Um utilizador acaba de concluir o registo de motorista: ' + payload.new.full_name);
-            fetchStatsCallback();
-          } else {
-            fetchStatsCallback();
-          }
-        })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload: any) => {
-          // Novas contas criadas (embora o motorista conclusive no UPDATE)
+        } else {
           fetchStatsCallback();
-        })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rides' }, () => {
-          fetchStatsCallback();
-        })
-        .subscribe();
-
-      (window as any)[`supabase_${channelName}`] = subscription;
-    }, 100);
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, () => {
+        fetchStatsCallback();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rides' }, () => {
+        fetchStatsCallback();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Admin Dashboard Subscribed Successfully');
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Realtime Channel Error. Reconnecting...');
+          // Supabase handles reconnect automatically usually, but we can log it.
+        }
+      });
 
     return () => {
-      clearTimeout(timeoutId);
-      const ch = (window as any)[`supabase_${channelName}`];
-      if (ch) {
-        supabase.removeChannel(ch);
-        delete (window as any)[`supabase_${channelName}`];
-      }
+      supabase.removeChannel(channel);
     };
-  }, [fetchStatsCallback]);
+  }, [fetchStatsCallback, notify]);
 
   const renderSubView = () => {
     switch (subView) {

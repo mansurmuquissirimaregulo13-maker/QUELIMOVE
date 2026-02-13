@@ -7,7 +7,8 @@ import {
   ChevronRight,
   Route as RouteIcon,
   AlertCircle,
-  Plus
+  Plus,
+  DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QUELIMANE_LOCATIONS, Location as LocationType } from '../constants';
@@ -885,17 +886,10 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                       <div>
                         <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase mb-2">Método de Pagamento</p>
                         <div className="flex gap-2">
-                          {['cash', 'mpesa', 'emola'].map(m => (
-                            <button
-                              key={m}
-                              onClick={() => setPaymentMethod(m as any)}
-                              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${paymentMethod === m
-                                ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/30'
-                                : 'bg-[var(--bg-primary)] text-[var(--text-tertiary)] border border-[var(--border-color)]'}`}
-                            >
-                              {m}
-                            </button>
-                          ))}
+                          <div className="px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/30 flex items-center gap-2">
+                            <DollarSign size={14} />
+                            Dinheiro (Cash)
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
