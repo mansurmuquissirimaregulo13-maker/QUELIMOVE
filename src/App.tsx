@@ -24,10 +24,87 @@ function AppContent() {
 
   /* App State */
   const [currentPage, setCurrentPage] = React.useState('home');
-  const [user, setUser] = React.useState<{ name: string; age?: number; role?: string } | null>(() => {
+  const [user, setUser] = React.useState<{ name: string; age?: number; role?: string; status?: string; phone?: string; avatar_url?: string } | null>(() => {
     const saved = localStorage.getItem('user_profile');
     return saved ? JSON.parse(saved) : null;
   });
+
+  React.useEffect(() => {
+    // 1. Initial auth check
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Fetch latest profile to ensure local storage is fresh
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          const userData = {
+            name: profile.full_name,
+            role: profile.role,
+            status: profile.status,
+            phone: profile.phone,
+            avatar_url: profile.avatar_url
+          };
+          setUser(userData);
+          localStorage.setItem('user_profile', JSON.stringify(userData));
+        }
+      }
+    };
+
+    checkAuth();
+
+    // 2. Real-time profile listener
+    let subscription: any;
+
+    const setupSubscription = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        subscription = supabase
+          .channel(`profile-changes-${session.user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'profiles',
+              filter: `id=eq.${session.user.id}`
+            },
+            (payload) => {
+              const updated = payload.new as any;
+              const userData = {
+                name: updated.full_name,
+                role: updated.role,
+                status: updated.status,
+                phone: updated.phone,
+                avatar_url: updated.avatar_url
+              };
+              setUser(userData);
+              localStorage.setItem('user_profile', JSON.stringify(userData));
+
+              if (updated.status === 'active' && (user as any)?.status === 'pending') {
+                alert('Sua conta foi aprovada! Bem-vindo ao Quelimove. 🚀');
+              }
+            }
+          )
+          .subscribe();
+      }
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (subscription) supabase.removeChannel(subscription);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   React.useEffect(() => {
     // 2. Check for active Supabase Session (Drivers & Persistent Users)

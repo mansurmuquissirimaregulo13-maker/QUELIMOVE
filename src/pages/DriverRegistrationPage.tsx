@@ -154,10 +154,22 @@ export function DriverRegistrationPage({
           .eq('id', userId);
 
         if (profileError) throw profileError;
+
+        // 3. Update local storage so App.tsx recognizes the driver role/status
+        const updatedProfile = {
+          name: formData.name,
+          phone: formData.phone,
+          role: 'driver',
+          status: 'pending',
+          avatar_url: profileImageUrl
+        };
+        localStorage.setItem('user_profile', JSON.stringify(updatedProfile));
       }
 
       alert('Cadastro realizado com sucesso! Seus dados (incluindo a sua foto) foram enviados para análise. Você será notificado via WhatsApp assim que aprovado.');
-      onNavigate('home');
+
+      // Force reload or redirect to trigger App.tsx logic
+      window.location.href = '/';
     } catch (err: any) {
       console.error('Registration error:', err);
       alert('Erro ao realizar cadastro: ' + (err.message || 'Tente novamente.'));

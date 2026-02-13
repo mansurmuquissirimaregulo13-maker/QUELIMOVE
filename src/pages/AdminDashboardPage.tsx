@@ -480,32 +480,12 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
           <div className="space-y-6">
             {subView === 'none' ? (
               <>
-                {/* Tabs Navigation */}
-                <div className="grid grid-cols-4 gap-2 p-1 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] mb-8">
-                  <button
-                    onClick={() => setActiveTab('metrics')}
-                    className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'metrics' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
-                  >
-                    Métricas
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('rides')}
-                    className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'rides' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
-                  >
-                    Viagens {recentRides.filter(r => r.status === 'pending').length > 0 && <span className="ml-1 px-1 bg-red-500 text-white rounded-full text-[8px]">{recentRides.filter(r => r.status === 'pending').length}</span>}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('drivers')}
-                    className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'drivers' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
-                  >
-                    Drivers {pendingDrivers.length > 0 && <span className="ml-1 px-1 bg-red-500 text-white rounded-full text-[8px]">{pendingDrivers.length}</span>}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('settings')}
-                    className={`py-3 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'settings' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'text-[var(--text-secondary)]'}`}
-                  >
-                    Config
-                  </button>
+                <div className="flex items-center justify-between mb-8 px-2">
+                  <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Painel de Controlo</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-black uppercase text-[var(--text-tertiary)] tracking-widest">Tempo Real Ativo</span>
+                  </div>
                 </div>
 
                 {activeTab === 'metrics' && (
@@ -862,8 +842,15 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
       </AnimatePresence>
 
       <BottomNav
-        activeTab="admin-dash"
-        onTabChange={(tab) => { setSubView('none'); onNavigate(tab); }}
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          if (tab === 'metrics' || tab === 'drivers' || tab === 'settings' || tab === 'rides') {
+            setActiveTab(tab as any);
+            setSubView('none');
+          } else {
+            onNavigate(tab);
+          }
+        }}
         userType="admin"
       />
     </div>

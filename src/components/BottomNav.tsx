@@ -33,8 +33,9 @@ export function BottomNav({
   ];
 
   const adminTabs = [
-    { id: 'admin-dash', icon: LayoutDashboard, label: 'Painel' },
-    { id: 'users', icon: Users, label: 'Motoristas' },
+    { id: 'metrics', icon: LayoutDashboard, label: 'Geral' },
+    { id: 'rides', icon: Car, label: 'Viagens' },
+    { id: 'drivers', icon: Users, label: 'Motoristas' },
     { id: 'settings', icon: Settings, label: 'Config' }
   ];
 

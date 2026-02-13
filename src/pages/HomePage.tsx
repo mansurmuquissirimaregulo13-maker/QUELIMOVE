@@ -55,22 +55,36 @@ export function HomePage({ onNavigate }: HomePageProps) {
           transition={{ delay: 0.4 }}
           className="w-full space-y-4"
         >
-          <Button
-            className="w-full h-14 text-lg shadow-lg shadow-[#FBBF24]/20"
-            onClick={() => onNavigate('ride')}
-          >
-            Pedir Moto
-            <ArrowRight className="ml-2" size={20} />
-          </Button>
+          {!userRole && (
+            <>
+              <Button
+                className="w-full h-14 text-lg shadow-lg shadow-[#FBBF24]/20"
+                onClick={() => onNavigate('ride')}
+              >
+                Pedir Moto
+                <ArrowRight className="ml-2" size={20} />
+              </Button>
 
-          <Button
-            variant="outline"
-            className="w-full h-14 text-lg border-[#3B82F6] text-[#3B82F6] hover:bg-[#3B82F6]/10 hover:border-[#3B82F6]"
-            onClick={() => onNavigate('driver-reg')}
-          >
-            <UserPlus className="ml-2" size={20} />
-            Sou Mototaxista
-          </Button>
+              <Button
+                variant="outline"
+                className="w-full h-14 text-lg border-[#3B82F6] text-[#3B82F6] hover:bg-[#3B82F6]/10 hover:border-[#3B82F6]"
+                onClick={() => onNavigate('driver-reg')}
+              >
+                <UserPlus className="ml-2" size={20} />
+                Sou Mototaxista
+              </Button>
+            </>
+          )}
+
+          {userRole === 'user' && (
+            <Button
+              className="w-full h-14 text-lg shadow-lg shadow-[#FBBF24]/20"
+              onClick={() => onNavigate('ride')}
+            >
+              Continuar para o Mapa
+              <ArrowRight className="ml-2" size={20} />
+            </Button>
+          )}
 
           <div className="pt-8 flex justify-center gap-4">
             <button
