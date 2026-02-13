@@ -55,14 +55,28 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   const handleSendNotification = async () => {
     if (!notificationMessage.trim()) return;
     setIsSending(true);
-    // Simulação de envio (Broadcast)
-    setTimeout(() => {
-      alert('NOTIFICAÇÃO ENVIADA (E RECEBIDA POR SI): \n\n' + notificationMessage);
+
+    try {
+      const { error } = await supabase
+        .from('admin_notifications')
+        .insert({
+          title: 'Quelimove 🚖',
+          message: notificationMessage,
+          target_role: 'all'
+        });
+
+      if (error) throw error;
+
+      alert('NOTIFICAÇÃO ENVIADA COM SUCESSO! \n\nO sistema está agora a propagar para todos os telemóveis.');
       addLog('Centro Notificações', `Mensagem enviada: "${notificationMessage.substring(0, 30)}..."`);
       setNotificationMessage('');
-      setIsSending(false);
       setSubView('none');
-    }, 1200);
+    } catch (err) {
+      console.error('Error sending broadcast:', err);
+      alert('Erro ao enviar notificação. Tente novamente.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleAddBairro = () => {
