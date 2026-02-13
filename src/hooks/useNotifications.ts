@@ -33,22 +33,32 @@ export const useNotifications = () => {
     const setupPushNotifications = useCallback(async () => {
         if (!isNative) return;
 
-        // Request permissions
-        const permission = await PushNotifications.requestPermissions();
-        if (permission.receive === 'granted') {
-            // Register with Apple / Google to receive push via APNS/FCM
-            await PushNotifications.register();
+        console.log('Checking push permissions...');
+        let permStatus = await PushNotifications.checkPermissions();
+
+        if (permStatus.receive === 'prompt') {
+            permStatus = await PushNotifications.requestPermissions();
         }
+
+        if (permStatus.receive !== 'granted') {
+            alert('PERMISSÃO DE NOTIFICAÇÃO NEGADA: Por favor, ativa as notificações nas definições do teu iPhone para o Quelimove.');
+            return;
+        }
+
+        console.log('Registering for push...');
+        await PushNotifications.register();
 
         // On success, we should be able to receive notifications
         PushNotifications.addListener('registration', (token: Token) => {
             console.log('Push registration success, token: ' + token.value);
+            alert('NOTIFICAÇÕES ATIVADAS: O teu código de envio foi registado com sucesso!');
             updateFcmToken(token.value);
         });
 
         // Some issue with our setup and push will not work
         PushNotifications.addListener('registrationError', (error: any) => {
             console.error('Error on registration: ' + JSON.stringify(error));
+            alert('ERRO DE REGISTO: ' + JSON.stringify(error));
         });
 
         // Show us the notification payload if the app is open on our device
