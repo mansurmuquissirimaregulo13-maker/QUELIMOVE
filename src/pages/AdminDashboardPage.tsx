@@ -238,11 +238,18 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
           }
           fetchStatsCallback();
         })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload: any) => {
-          if (payload.new.role === 'driver') {
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
+          // Se um perfil for atualizado para motorista pendente, avisa o admin
+          if (payload.new.role === 'driver' && payload.new.status === 'pending') {
             new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
-            alert('Novo motorista cadastrado: ' + payload.new.full_name);
+            alert('Um utilizador acaba de concluir o registo de motorista: ' + payload.new.full_name);
+            fetchStatsCallback();
+          } else {
+            fetchStatsCallback();
           }
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload: any) => {
+          // Novas contas criadas (embora o motorista conclusive no UPDATE)
           fetchStatsCallback();
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rides' }, () => {
@@ -830,7 +837,17 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                     >
                       Conversar no WhatsApp
                     </Button>
-                    <Button variant="outline" className="w-full h-14 border-red-500/20 text-red-500 bg-red-500/5" onClick={() => handleRejectDriver(selectedDriver.id)}>
+                    <Button
+                      variant="outline"
+                      className="w-full h-12 border-blue-500/20 text-blue-500 bg-blue-500/5"
+                      onClick={() => {
+                        const msg = 'Olá! Precisamos falar sobre sua conta no Quelimove.';
+                        window.location.href = `sms:${selectedDriver.phone.replace(/\D/g, '')}?body=${encodeURIComponent(msg)}`;
+                      }}
+                    >
+                      Enviar SMS Normal
+                    </Button>
+                    <Button variant="outline" className="w-full h-12 border-red-500/20 text-red-500 bg-red-500/5" onClick={() => handleRejectDriver(selectedDriver.id)}>
                       Desativar / Bloquear
                     </Button>
                   </div>

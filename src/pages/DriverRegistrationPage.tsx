@@ -23,6 +23,19 @@ import { QUELIMANE_LOCATIONS } from '../constants';
 // Validação de BI Moçambicano: 12 dígitos + 1 letra
 const BI_REGEX = /^\d{12}[A-Z]$/;
 
+// Validação de Idade (Mínimo 18 anos)
+const isOldEnough = (birthdate: string) => {
+  if (!birthdate) return false;
+  const birth = new Date(birthdate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age >= 18;
+};
+
 interface DriverRegistrationPageProps {
   onNavigate: (page: string) => void;
 }
@@ -538,17 +551,45 @@ export function DriverRegistrationPage({
                   onClick={nextStep}
                   className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
                   disabled={
-                    (step === 1 && (!formData.name || !formData.email || !formData.password || !formData.phone || !BI_REGEX.test(formData.bi))) ||
-                    (step === 3 && (!uploads.biFront || !uploads.biBack || !uploads.license || !uploads.profile || !uploads.vehicleDoc))
+                    (step === 1 && (
+                      !formData.name ||
+                      !formData.email ||
+                      !formData.password ||
+                      !formData.phone ||
+                      !BI_REGEX.test(formData.bi) ||
+                      !isOldEnough(formData.birthdate)
+                    )) ||
+                    (step === 2 && (
+                      !formData.bairro ||
+                      !formData.vehicleModel ||
+                      !formData.plate ||
+                      !formData.vehicleColor ||
+                      !formData.vehicleYear
+                    )) ||
+                    (step === 3 && (
+                      !uploads.biFront ||
+                      !uploads.biBack ||
+                      !uploads.license ||
+                      !uploads.profile ||
+                      !uploads.vehicleDoc
+                    ))
                   }
                 >
-                  {step === 1 && formData.bi && !BI_REGEX.test(formData.bi) ? 'BI Inválido (12 dígitos + Letra)' : 'Continuar'}
+                  {step === 1 && formData.bi && !BI_REGEX.test(formData.bi)
+                    ? 'BI Inválido (12 dígitos + Letra)'
+                    : step === 1 && formData.birthdate && !isOldEnough(formData.birthdate)
+                      ? 'Deve ter +18 anos'
+                      : 'Continuar'}
                   <ChevronRight className="ml-2" size={24} />
                 </Button>
               ) : (
                 <Button
                   className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
-                  disabled={!formData.termsAccepted || isLoading}
+                  disabled={
+                    !formData.termsAccepted ||
+                    isLoading ||
+                    !(formData.paymentMethods.cash || formData.paymentMethods.mpesa || formData.paymentMethods.emola)
+                  }
                   isLoading={isLoading}
                   onClick={handleFinish}
                 >
