@@ -54,43 +54,53 @@ export function HomePage({ onNavigate }: HomePageProps) {
           transition={{ delay: 0.4 }}
           className="w-full space-y-4"
         >
-          {/* Option 1: Passenger */}
-          <button
-            onClick={() => onNavigate('ride')}
-            className="w-full flex items-center justify-between p-6 bg-gradient-to-r from-[#FBBF24] to-[#F59E0B] rounded-[32px] shadow-xl shadow-[#FBBF24]/20 hover:scale-[1.02] active:scale-[0.98] transition-all group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-black/10 rounded-full flex items-center justify-center text-black shadow-inner">
-                <MapPin size={28} className="group-hover:bounce transition-transform" />
-              </div>
-              <div className="text-left">
-                <p className="font-black text-black text-xl uppercase tracking-tighter">Pedir Mota</p>
-                <p className="text-black/60 text-[10px] font-bold uppercase tracking-widest">Quero Viajar</p>
-              </div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center group-hover:bg-black group-hover:text-[#FBBF24] transition-all">
-              <ArrowRight size={20} className="text-black group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
+          <AnimatePresence mode="wait">
+            {/* Option 1: Passenger */}
+            {(!user || user.role !== 'driver') && (
+              <motion.button
+                key="passenger-btn"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                onClick={() => onNavigate('ride')}
+                className="w-full flex items-center justify-between p-6 bg-[#FBBF24] rounded-2xl shadow-lg shadow-[#FBBF24]/20 hover:scale-[1.02] active:scale-[0.98] transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-black/10 rounded-full flex items-center justify-center text-black">
+                    <MapPin size={24} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-black text-black text-lg uppercase tracking-tight">Pedir Mota</p>
+                    <p className="text-black/60 text-xs font-bold uppercase">Quero Viajar</p>
+                  </div>
+                </div>
+                <ArrowRight className="text-black group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+            )}
 
-          {/* Option 2: Driver */}
-          <button
-            onClick={() => onNavigate('driver-reg')}
-            className="w-full flex items-center justify-between p-6 bg-[var(--bg-secondary)] border-2 border-[var(--border-color)] rounded-[32px] hover:border-[#3B82F6] hover:bg-[#3B82F6]/5 transition-all group shadow-sm active:scale-95"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-[var(--bg-primary)] rounded-full flex items-center justify-center text-[var(--text-primary)] border border-[var(--border-color)] shadow-inner">
-                <Bike size={28} className="group-hover:scale-110 transition-transform" />
-              </div>
-              <div className="text-left">
-                <p className="font-black text-[var(--text-primary)] text-xl uppercase tracking-tighter">Sou Motorista</p>
-                <p className="text-[var(--text-secondary)] text-[10px] font-bold uppercase tracking-widest opacity-60">Quero Trabalhar</p>
-              </div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-center group-hover:bg-[#3B82F6] group-hover:text-white transition-all">
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
+            {/* Option 2: Driver */}
+            {(!user || user.role !== 'user') && (
+              <motion.button
+                key="driver-btn"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                onClick={() => onNavigate('driver-reg')}
+                className="w-full flex items-center justify-between p-6 bg-[var(--bg-secondary)] border-2 border-[var(--border-color)] rounded-2xl hover:border-[#3B82F6] hover:bg-[#3B82F6]/5 transition-all group active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-[var(--bg-primary)] rounded-full flex items-center justify-center text-[var(--text-primary)] border border-[var(--border-color)]">
+                    <Bike size={24} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-[var(--text-primary)] text-lg uppercase tracking-tight">Sou Motorista</p>
+                    <p className="text-[var(--text-secondary)] text-xs font-bold uppercase">Quero Trabalhar</p>
+                  </div>
+                </div>
+                <ArrowRight className="text-[var(--text-secondary)] group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+            )}
+          </AnimatePresence>
 
           <div className="pt-8 flex justify-center gap-4">
             <button
