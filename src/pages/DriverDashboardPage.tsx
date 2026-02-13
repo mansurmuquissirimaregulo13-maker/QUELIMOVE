@@ -39,7 +39,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       .from('rides')
       .select('*')
       .eq('status', 'pending')
-      .eq('target_driver_id', userData.user.id)
+      .or(`target_driver_id.is.null,target_driver_id.eq.${userData.user.id}`)
       .order('created_at', { ascending: false });
 
     if (data) {
@@ -131,7 +131,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
               event: 'UPDATE',
               schema: 'public',
               table: 'rides',
-              filter: `target_driver_id=eq.${userData.user.id}`
+              filter: `status=eq.pending`
             },
             (payload) => {
               if (payload.new.status === 'pending') {
@@ -189,34 +189,61 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     fetchPassengerPhone();
   }, [currentRide]);
 
+  const [todaysEarnings, setTodaysEarnings] = React.useState(0);
+  const [todaysRidesCount, setTodaysRidesCount] = React.useState(0);
+
+  const fetchStats = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const { data } = await supabase
+      .from('rides')
+      .select('estimate')
+      .eq('driver_id', userData.user.id)
+      .eq('status', 'completed')
+      .gte('created_at', startOfDay.toISOString());
+
+    if (data) {
+      const total = data.reduce((sum, ride) => sum + (parseInt(ride.estimate) || 0), 0);
+      setTodaysEarnings(total);
+      setTodaysRidesCount(data.length);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchStats();
+  }, []);
+
   const handleAcceptRide = async (rideId: string) => {
     try {
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        alert('Erro: Deves estar logado para aceitar viagens.');
-        return;
-      }
+      if (!userData.user) return;
 
-      // Atribui o motorista real à viagem
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('rides')
         .update({
           status: 'accepted',
-          driver_id: userData.user.id
+          driver_id: userData.user.id,
+          target_driver_id: userData.user.id
         })
-        .eq('id', rideId);
+        .eq('id', rideId)
+        .eq('status', 'pending')
+        .select();
 
-      if (!error) {
-        if (currentRide) {
-          alert('Viagem aceite! Motorista a caminho para ' + currentRide.pickup_location);
-        }
-        setCurrentRide(null);
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        notify({ title: 'Viagem Aceite!', body: 'Vá ao encontro do cliente.' });
+        fetchStats();
       } else {
-        throw error;
+        alert('Esta viagem já foi aceite por outro motorista.');
+        setCurrentRide(null);
       }
     } catch (err) {
       console.error('Error accepting ride:', err);
-      alert('Erro ao aceitar viagem. Tente novamente.');
     }
   };
 
@@ -366,17 +393,17 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             <div className="bg-[#1a1a1a] p-4 rounded-2xl border border-[#2a2a2a] flex items-center justify-around">
               <div className="text-center">
                 <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">Ganhos Hoje</p>
-                <p className="text-lg font-bold text-white">0 MZN</p>
+                <p className="text-lg font-bold text-white">{todaysEarnings} MZN</p>
               </div>
               <div className="w-px h-8 bg-[#2a2a2a]" />
               <div className="text-center">
                 <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">Viagens</p>
-                <p className="text-lg font-bold text-white">0</p>
+                <p className="text-lg font-bold text-white">{todaysRidesCount}</p>
               </div>
               <div className="w-px h-8 bg-[#2a2a2a]" />
               <div className="text-center">
                 <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">Online</p>
-                <p className="text-lg font-bold text-white">0h</p>
+                <p className="text-lg font-bold text-white">Pro</p>
               </div>
             </div>
           </div>

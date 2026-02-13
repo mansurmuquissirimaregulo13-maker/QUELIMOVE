@@ -31,6 +31,12 @@ const slides = [
         description: 'Viagens monitoradas e motoristas verificados para sua tranquilidade.'
     },
     {
+        id: 'role-select',
+        type: 'role',
+        title: 'Como deseja usar o Quelimove?',
+        description: 'Escolha seu perfil para continuarmos.'
+    },
+    {
         id: 'register',
         type: 'form',
         title: 'Criar Conta',
@@ -47,7 +53,8 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         phone: '',
         email: '',
         password: '',
-        age: ''
+        age: '',
+        role: 'user' as 'user' | 'driver'
     });
 
     const nextSlide = () => {
@@ -82,19 +89,18 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                 const { error: profileError } = await supabase
                     .from('profiles')
                     .update({
-                        role: 'user',
+                        role: formData.role,
                         phone: formData.phone,
                         full_name: formData.name
                     })
                     .eq('id', data.user.id);
 
                 if (profileError) {
-                    // Try insert if update fails (though trigger should have created it)
                     console.error('Profile update failed', profileError);
                 }
 
                 // 3. Complete
-                onComplete({ name: formData.name, role: 'user' });
+                onComplete({ name: formData.name, role: formData.role });
             }
 
         } catch (err: any) {
@@ -152,6 +158,41 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                 <div className="space-y-3">
                                     <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter leading-none">{slide.title}</h2>
                                     <p className="text-[var(--text-secondary)] text-sm leading-relaxed">{slide.description}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {slide.type === 'role' && (
+                            <div className="w-full space-y-6">
+                                <div className="space-y-2">
+                                    <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{slide.title}</h2>
+                                    <p className="text-[var(--text-secondary)] text-sm">{slide.description}</p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <button
+                                        onClick={() => { setFormData({ ...formData, role: 'user' }); nextSlide(); }}
+                                        className={`p-6 rounded-3xl border-2 transition-all text-left flex items-center gap-4 ${formData.role === 'user' ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)]'}`}
+                                    >
+                                        <div className={`p-3 rounded-2xl ${formData.role === 'user' ? 'bg-black text-white' : 'bg-[var(--bg-primary)]'}`}>
+                                            <User size={24} />
+                                        </div>
+                                        <div>
+                                            <p className="font-black uppercase tracking-tight">Passageiro / Cliente</p>
+                                            <p className="text-[10px] opacity-70">Quero pedir motas e viajar</p>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => { setFormData({ ...formData, role: 'driver' }); nextSlide(); }}
+                                        className={`p-6 rounded-3xl border-2 transition-all text-left flex items-center gap-4 ${formData.role === 'driver' ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)]'}`}
+                                    >
+                                        <div className={`p-3 rounded-2xl ${formData.role === 'driver' ? 'bg-black text-white' : 'bg-[var(--bg-primary)]'}`}>
+                                            <Shield size={24} />
+                                        </div>
+                                        <div>
+                                            <p className="font-black uppercase tracking-tight">Mototaxista / Parceiro</p>
+                                            <p className="text-[10px] opacity-70">Quero trabalhar e ganhar dinheiro</p>
+                                        </div>
+                                    </button>
                                 </div>
                             </div>
                         )}

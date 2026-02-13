@@ -112,20 +112,23 @@ function AppContent() {
   };
 
   const renderPage = () => {
-    // STRICT ROLE ENFORCEMENT
-    // 1. Drivers MUST be on driver pages
-    const isDriver = user && (user as any).role === 'driver';
-    if (isDriver && currentPage !== 'driver-dash' && currentPage !== 'profile' && currentPage !== 'contact') {
-      return <DriverDashboardPage onNavigate={setCurrentPage} />;
-    }
-
-    // 2. Passengers can generally roam.
-    // REMOVED: Forced redirect to 'ride' if on 'home'. 
-    // This allows passengers to see the Landing Page if they explicitly navigate there (e.g. via BottomNav or Back button).
-    // The user specifically wants to see the "Split" choice.
-
     // Verificação de Admin
     const isAdminAuthenticated = localStorage.getItem('admin_session') === 'true';
+
+    // Se estiver autenticado, aplica redirecionamento automático estrito
+    if (user) {
+      if (user.role === 'driver') {
+        // Motoristas só podem ver dashboard, perfil e contacto
+        if (currentPage !== 'driver-dash' && currentPage !== 'profile' && currentPage !== 'contact') {
+          return <DriverDashboardPage onNavigate={setCurrentPage} />;
+        }
+      } else if (user.role === 'user') {
+        // Passageiros não devem ver a HomePage de escolha se já estiverem logados
+        if (currentPage === 'home' || currentPage === 'driver-reg') {
+          return <RideRequestPage onNavigate={setCurrentPage} />;
+        }
+      }
+    }
 
     // Se tentar aceder ao admin sem estar autenticado, mostra o Login de Admin
     if ((currentPage === 'admin' || currentPage === 'admin-dash') && !isAdminAuthenticated) {
