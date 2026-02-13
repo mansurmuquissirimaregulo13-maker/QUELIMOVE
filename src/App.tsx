@@ -85,7 +85,7 @@ function AppContent() {
               setUser(userData);
               localStorage.setItem('user_profile', JSON.stringify(userData));
 
-              if (updated.status === 'active' && (user as any)?.status === 'pending') {
+              if (updated.status === 'active' && user?.status === 'pending') {
                 alert('Sua conta foi aprovada! Bem-vindo ao Quelimove. 🚀');
               }
             }

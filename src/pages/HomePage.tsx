@@ -9,6 +9,7 @@ interface HomePageProps {
 
 export function HomePage({ onNavigate }: HomePageProps) {
   const user = JSON.parse(localStorage.getItem('user_profile') || '{}');
+  const userRole = user?.role;
 
   return (
     <div className="h-[100dvh] w-full flex flex-col relative bg-[var(--bg-primary)] overflow-hidden select-none">
