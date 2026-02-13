@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, UserPlus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -12,7 +11,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
   const user = JSON.parse(localStorage.getItem('user_profile') || '{}');
 
   return (
-    <div className="h-full flex flex-col relative bg-[var(--bg-primary)]">
+    <div className="h-[100dvh] w-full flex flex-col relative bg-[var(--bg-primary)] overflow-hidden select-none">
       {/* Background decoration */}
       <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-[#FBBF24]/5 to-transparent pointer-events-none" />
 

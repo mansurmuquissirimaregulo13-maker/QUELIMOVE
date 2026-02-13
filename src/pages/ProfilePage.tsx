@@ -358,13 +358,13 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-[var(--bg-primary)] transition-colors duration-300">
+    <div className="h-[100dvh] w-full flex flex-col bg-[var(--bg-primary)] overflow-hidden transition-colors duration-300">
       <Header
         title={getTitle()}
         onBack={activeView === 'main' ? () => onNavigate('home') : () => setActiveView('main')}
       />
 
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto mt-[72px] mb-[100px] px-4 py-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeView}

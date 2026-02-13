@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Home,
   Map,
@@ -47,7 +46,7 @@ export function BottomNav({
         : clientTabs;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 bg-[var(--bg-primary)]/90 backdrop-blur-lg border-t border-[var(--border-color)] pb-6 pt-2 px-6 z-40">
+    <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)]/90 backdrop-blur-lg border-t border-[var(--border-color)] pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2 px-6 z-50">
       <div className="flex items-center justify-between">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;

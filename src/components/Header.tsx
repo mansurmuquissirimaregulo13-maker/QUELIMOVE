@@ -17,7 +17,7 @@ export function Header({ title, onBack, rightAction }: HeaderProps) {
         y: 0,
         opacity: 1
       }}
-      className="flex items-center justify-between px-4 py-4 sticky top-0 bg-[var(--bg-primary)]/90 backdrop-blur-md z-40 border-b border-[var(--border-color)]">
+      className="fixed top-0 left-0 right-0 flex items-center justify-between px-4 py-4 bg-[var(--bg-primary)]/90 backdrop-blur-md z-[60] border-b border-[var(--border-color)]">
 
       <div className="flex items-center gap-4">
         {onBack &&

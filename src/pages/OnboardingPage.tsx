@@ -108,7 +108,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
     const slide = slides[currentSlide];
 
     return (
-        <div className="min-h-screen bg-[var(--bg-primary)] overflow-hidden flex flex-col relative">
+        <div className="h-[100dvh] w-full bg-[var(--bg-primary)] overflow-hidden flex flex-col relative select-none">
             {/* Background Glow */}
             <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#FBBF24]/10 blur-[120px] rounded-full pointer-events-none" />
             <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />

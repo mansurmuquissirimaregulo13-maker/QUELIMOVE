@@ -13,6 +13,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QUELIMANE_LOCATIONS, Location as LocationType } from '../constants';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
+import { BottomNav } from '../components/BottomNav';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface SearchResult {
   description: string;
@@ -41,6 +43,9 @@ function calculateDistance(loc1: LocationType, loc2: LocationType): number {
 }
 
 export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
+  const { notify } = useNotifications();
+  const isMounted = React.useRef(true);
+  const activeChannels = React.useRef<any[]>([]);
   const [step, setStep] = React.useState(1);
   const [isLoading, setIsLoading] = React.useState(false);
   const [pickup, setPickup] = React.useState<LocationType | null>(null);
@@ -205,17 +210,19 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         )
         .subscribe();
 
-      (window as any)[`supabase_${channelName}`] = channel;
+      activeChannels.current.push(channel);
     }, 100);
 
     return () => {
+      isMounted.current = false;
       clearTimeout(timeoutId);
       if (watchId) navigator.geolocation.clearWatch(watchId);
-      const ch = (window as any)[`supabase_${channelName}`];
-      if (ch) {
+
+      // Cleanup all active channels
+      activeChannels.current.forEach(ch => {
         supabase.removeChannel(ch);
-        delete (window as any)[`supabase_${channelName}`];
-      }
+      });
+      activeChannels.current = [];
     };
   }, []);
 
@@ -372,11 +379,13 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     setStep(3);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
       // 1. Criar entrada da viagem no Supabase
       const { data: ride, error: rideError } = await supabase
         .from('rides')
         .insert([{
-          user_id: (await supabase.auth.getUser()).data.user?.id || 'anonymous',
+          user_id: user?.id || 'anonymous',
           pickup_location: pickup.name,
           destination_location: destination.name,
           pickup_lat: pickup.lat,
@@ -393,6 +402,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         .single();
 
       if (rideError) throw rideError;
+      notify({ title: 'Sucesso', body: 'Buscando motoristas próximos...' });
 
       // 2. Escutar mudanças nesta viagem específica
       const rideChannel = supabase
@@ -406,10 +416,10 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
             filter: `id=eq.${ride.id}`
           },
           async (payload) => {
+            if (!isMounted.current) return;
             console.log('Ride update received:', payload.new);
 
             if (payload.new.status === 'accepted' && payload.new.driver_id) {
-              // Motorista aceitou! Parar despacho e atualizar UI
               const { data: driver } = await supabase
                 .from('profiles')
                 .select('*')
@@ -419,6 +429,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
               if (driver) {
                 setDriverInfo(driver);
                 setMatchStatus('found');
+                notify({ title: 'Viagem Aceite', body: `Motorista ${driver.full_name} aceitou a viagem!` });
                 subscribeToDriverLocation(driver.id);
               }
             }
@@ -426,22 +437,21 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         )
         .subscribe();
 
-      // Armazenar canal para limpeza
-      (window as any)[`ride_channel_${ride.id}`] = rideChannel;
+      activeChannels.current.push(rideChannel);
 
-      // 3. Iniciar Motor de Despacho Sequencial (Requisito 2 e 3)
+      // 3. Iniciar Motor de Despacho Sequencial
       startDispatchSystem(ride.id);
 
     } catch (error) {
       console.error('Ride error:', error);
       setIsLoading(false);
       setMatchStatus('busy');
+      notify({ title: 'Erro', body: 'Erro ao solicitar viagem. Tente novamente.' });
     }
   };
 
   const startDispatchSystem = async (rideId: string) => {
     try {
-      // a. Buscar motoristas ONLINE num raio de 5km
       const { data: drivers } = await supabase
         .from('profiles')
         .select('*')
@@ -449,30 +459,30 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         .eq('is_available', true)
         .eq('status', 'active');
 
-      if (!drivers || !pickup) {
-        setMatchStatus('busy');
+      if (!drivers || !pickup || !isMounted.current) {
+        if (isMounted.current) setMatchStatus('busy');
         return;
       }
 
-      // b. Filtrar por raio de 5km e ordenar (Requisito 2)
       const nearbyDrivers = drivers
         .map(d => ({
           ...d,
           dist: calculateDistance(pickup, { lat: d.current_lat, lng: d.current_lng, name: '' })
         }))
-        .filter(d => d.dist <= 5) // Raio de 5km
+        .filter(d => d.dist <= 5)
         .sort((a, b) => (a.dist || 0) - (b.dist || 0));
 
       if (nearbyDrivers.length === 0) {
-        setMatchStatus('busy');
+        if (isMounted.current) {
+          setMatchStatus('busy');
+          notify({ title: 'Info', body: 'Nenhum motorista disponível por perto.' });
+        }
         return;
       }
 
-      console.log(`Encontrados ${nearbyDrivers.length} motoristas no raio de 5km.`);
-
-      // c. Tentar despacho sequencial (Requisito 3)
       for (const driver of nearbyDrivers) {
-        // Verificar se a viagem ainda está pendente antes de tentar o próximo
+        if (!isMounted.current) break;
+
         const { data: currentRideStatus } = await supabase
           .from('rides')
           .select('status')
@@ -481,40 +491,33 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
         if (currentRideStatus?.status !== 'pending') break;
 
-        console.log(`Enviando solicitação para motorista: ${driver.full_name}`);
-
         await supabase
           .from('rides')
           .update({ target_driver_id: driver.id })
           .eq('id', rideId);
 
-        // Aguardar 1 minuto (60000ms) por resposta
         await new Promise(resolve => setTimeout(resolve, 60000));
 
-        // Após 1 minuto, checar se alguém aceitou
         const { data: finalCheck } = await supabase
           .from('rides')
           .select('status')
           .eq('id', rideId)
           .single();
 
-        if (finalCheck?.status !== 'pending') {
-          console.log("Viagem foi aceita!");
-          break;
-        }
-
-        console.log(`Motorista ${driver.full_name} não respondeu em 1 min. Tentando próximo...`);
+        if (finalCheck?.status !== 'pending') break;
       }
 
-      // Se sair do loop e continuar pendente, ninguém aceitou
-      const { data: lastCheck } = await supabase
-        .from('rides')
-        .select('status')
-        .eq('id', rideId)
-        .single();
+      if (isMounted.current) {
+        const { data: lastCheck } = await supabase
+          .from('rides')
+          .select('status')
+          .eq('id', rideId)
+          .single();
 
-      if (lastCheck?.status === 'pending') {
-        setMatchStatus('busy');
+        if (lastCheck?.status === 'pending') {
+          setMatchStatus('busy');
+          notify({ title: 'Info', body: 'Nenhum motorista disponível no momento.' });
+        }
       }
 
     } catch (err) {
@@ -534,12 +537,11 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           filter: `id=eq.${driverId}`
         },
         (payload) => {
-          console.log('Driver location update:', payload.new);
+          if (!isMounted.current) return;
           const newLat = payload.new.current_lat;
           const newLng = payload.new.current_lng;
 
           if (typeof newLat === 'number' && typeof newLng === 'number') {
-            // Atualizar o marcador do motorista no mapa
             setNearbyDrivers([{
               id: driverId,
               lat: newLat,
@@ -547,412 +549,411 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
               type: payload.new.vehicle_type || 'moto'
             }]);
 
-            // Calcular ETA/Distância em tempo real
             if (pickup) {
               const distToDriver = calculateDistance(
                 { lat: newLat, lng: newLng, name: 'Driver' },
                 pickup
               );
               setEta(Math.max(1, Math.round(distToDriver * 5)));
-
-              if (distToDriver < 0.3) {
-                // Notificar proximidade (pode ser um alerta ou som)
-                console.log('Motorista está muito perto!');
-              }
             }
           }
         }
       )
       .subscribe();
 
-    (window as any)[`driver_tracking_${driverId}`] = driverChannel;
+    activeChannels.current.push(driverChannel);
   };
 
   return (
-    <div className="h-full relative bg-[var(--bg-primary)] overflow-hidden transition-colors duration-300">
+    <div className="h-[100dvh] w-full flex flex-col relative bg-[var(--bg-primary)] overflow-hidden transition-colors duration-300 select-none">
       <Header
         title="Pedir Viagem"
         onBack={step === 1 ? () => onNavigate('home') : () => setStep(1)}
       />
 
-      {/* Map Background with Drag-to-Select Logic */}
-      <div className="absolute inset-0 z-0">
-        <MapComponent
-          center={mapCenter}
-          pickup={pickup}
-          destination={destination}
-          stops={stops}
-          userLocation={userLocation || undefined}
-          drivers={nearbyDrivers}
-          height="100%"
-          onMoveEnd={(newCenter) => setMapCenter(newCenter)}
-          onClick={handleMapClick}
-        />
-      </div>
+      <div className="flex-1 relative overflow-hidden mt-[72px] mb-[100px]">
 
-      {/* Map Selection Overlay - Premium Style */}
-      <AnimatePresence>
-        {isSelectingOnMap && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="absolute top-24 left-4 right-4 z-[100] bg-[#FBBF24] p-5 rounded-[28px] shadow-[0_25px_60px_rgba(251,191,36,0.5)] flex items-center justify-between border-2 border-white/30 backdrop-blur-md"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center animate-pulse shadow-xl ring-4 ring-black/5">
-                <MapPin size={24} className="text-[#FBBF24]" />
-              </div>
-              <div>
-                <p className="text-black font-black text-base uppercase tracking-tight leading-none mb-1">Clica no Mapa</p>
-                <p className="text-black/80 text-[11px] font-bold uppercase tracking-wider">
-                  Marca o local de {activeSearchField === 'pickup' ? 'partida' : (activeSearchField === 'stop' ? 'paragem' : 'destino')}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsSelectingOnMap(false);
-              }}
-              className="bg-black text-[#FBBF24] px-5 py-3 rounded-2xl text-[11px] font-black uppercase transition-all active:scale-95 shadow-lg border border-black/10"
-            >
-              Cancelar
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Crosshair indicator when selecting */}
-      {isSelectingOnMap && (
-        <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
-          <div className="w-8 h-8 relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-full bg-[#FBBF24] shadow-lg"></div>
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-[#FBBF24] shadow-lg"></div>
-            <div className="absolute inset-0 rounded-full border-2 border-[#FBBF24] animate-ping opacity-50"></div>
-          </div>
+        {/* Map Background with Drag-to-Select Logic */}
+        <div className="absolute inset-0 z-0">
+          <MapComponent
+            center={mapCenter}
+            pickup={pickup}
+            destination={destination}
+            stops={stops}
+            userLocation={userLocation || undefined}
+            drivers={nearbyDrivers}
+            height="100%"
+            onMoveEnd={(newCenter) => setMapCenter(newCenter)}
+            onClick={handleMapClick}
+          />
         </div>
-      )}
 
-      {/* Recenter Button */}
-      {userLocation && (
-        <button
-          onClick={() => {
-            setMapCenter(userLocation);
-            // If dragging moved us away, this resets us to user location for pickup
-            if (!pickup) setPickup({ name: 'Minha Localização', lat: userLocation[0], lng: userLocation[1] });
-          }}
-          className="absolute bottom-32 right-4 z-30 bg-[var(--bg-elevated)] backdrop-blur-md p-3 rounded-full border border-[var(--border-color)] shadow-lg text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-all"
-        >
-          <Navigation size={24} className="text-[#FBBF24]" />
-        </button>
-      )}
+        {/* Map Selection Overlay - Premium Style */}
+        <AnimatePresence>
+          {isSelectingOnMap && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="absolute top-24 left-4 right-4 z-[100] bg-[#FBBF24] p-5 rounded-[28px] shadow-[0_25px_60px_rgba(251,191,36,0.5)] flex items-center justify-between border-2 border-white/30 backdrop-blur-md"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center animate-pulse shadow-xl ring-4 ring-black/5">
+                  <MapPin size={24} className="text-[#FBBF24]" />
+                </div>
+                <div>
+                  <p className="text-black font-black text-base uppercase tracking-tight leading-none mb-1">Clica no Mapa</p>
+                  <p className="text-black/80 text-[11px] font-bold uppercase tracking-wider">
+                    Marca o local de {activeSearchField === 'pickup' ? 'partida' : (activeSearchField === 'stop' ? 'paragem' : 'destino')}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSelectingOnMap(false);
+                }}
+                className="bg-black text-[#FBBF24] px-5 py-3 rounded-2xl text-[11px] font-black uppercase transition-all active:scale-95 shadow-lg border border-black/10"
+              >
+                Cancelar
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Floating Search Container - Uber Style */}
-      {step === 1 && !isSelectingOnMap && (
-        <div className="absolute top-[88px] left-4 right-4 z-40 pointer-events-none">
-          <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="bg-[var(--bg-glass)] backdrop-blur-xl p-4 rounded-3xl border border-[var(--border-color)] shadow-[0_20px_50px_rgba(0,0,0,0.1)] space-y-3 pointer-events-auto"
+        {/* Crosshair indicator when selecting */}
+        {isSelectingOnMap && (
+          <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+            <div className="w-8 h-8 relative">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-full bg-[#FBBF24] shadow-lg"></div>
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-[#FBBF24] shadow-lg"></div>
+              <div className="absolute inset-0 rounded-full border-2 border-[#FBBF24] animate-ping opacity-50"></div>
+            </div>
+          </div>
+        )}
+
+        {/* Recenter Button */}
+        {userLocation && (
+          <button
+            onClick={() => {
+              setMapCenter(userLocation);
+              // If dragging moved us away, this resets us to user location for pickup
+              if (!pickup) setPickup({ name: 'Minha Localização', lat: userLocation[0], lng: userLocation[1] });
+            }}
+            className="absolute bottom-8 right-4 z-30 bg-[var(--bg-elevated)] backdrop-blur-md p-3 rounded-full border border-[var(--border-color)] shadow-lg text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-all"
           >
-            <div className="relative space-y-2">
-              <div className="absolute left-[13px] top-6 bottom-6 w-[1px] bg-[var(--border-color)] border-l border-dashed"></div>
+            <Navigation size={24} className="text-[#FBBF24]" />
+          </button>
+        )}
 
-              {/* Pickup */}
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] z-10"></div>
-                <div className="flex-1 bg-[var(--input-bg)] rounded-xl border border-[var(--border-color)] flex items-center px-3 py-2">
-                  <input
-                    placeholder="Onde estás?"
-                    className="bg-transparent border-none text-[var(--text-primary)] text-xs w-full focus:ring-0 placeholder:text-[var(--text-tertiary)] font-medium"
-                    value={activeSearchField === 'pickup' ? searchTerm : (pickup?.name || '')}
-                    onFocus={() => { setActiveSearchField('pickup'); setSearchTerm(''); }}
-                    onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
-                  />
+        {/* Floating Search Container - Uber Style */}
+        {step === 1 && !isSelectingOnMap && (
+          <div className="absolute top-6 left-4 right-4 z-[45] pointer-events-none">
+            <motion.div
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="bg-[var(--bg-glass)] backdrop-blur-xl p-4 rounded-3xl border border-[var(--border-color)] shadow-[0_20px_50px_rgba(0,0,0,0.1)] space-y-3 pointer-events-auto"
+            >
+              <div className="relative space-y-2">
+                <div className="absolute left-[13px] top-6 bottom-6 w-[1px] bg-[var(--border-color)] border-l border-dashed"></div>
+
+                {/* Pickup */}
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] z-10"></div>
+                  <div className="flex-1 bg-[var(--input-bg)] rounded-xl border border-[var(--border-color)] flex items-center px-3 py-2">
+                    <input
+                      placeholder="Onde estás?"
+                      className="bg-transparent border-none text-[var(--text-primary)] text-xs w-full focus:ring-0 placeholder:text-[var(--text-tertiary)] font-medium"
+                      value={activeSearchField === 'pickup' ? searchTerm : (pickup?.name || '')}
+                      onFocus={() => { setActiveSearchField('pickup'); setSearchTerm(''); }}
+                      onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
+                    />
+                  </div>
+                </div>
+
+                {/* Dynamic Stops */}
+                <AnimatePresence>
+                  {stops.map((stop, index) => (
+                    <motion.div
+                      key={`stop-${index}`}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      className="flex items-center gap-3"
+                    >
+                      <div className="w-2.5 h-2.5 rounded-sm bg-[var(--text-secondary)] z-10 flex items-center justify-center text-[6px] text-[var(--bg-primary)] font-bold">{index + 1}</div>
+                      <div className="flex-1 bg-[var(--input-bg)] rounded-xl border border-[var(--border-color)] flex items-center px-3 py-2">
+                        <input
+                          placeholder="Adicionar paragem"
+                          className="bg-transparent border-none text-[var(--text-primary)] text-xs w-full focus:ring-0 placeholder:text-[var(--text-tertiary)] font-medium"
+                          value={(activeSearchField === 'stop' && activeStopIndex === index) ? searchTerm : (stop.name || '')}
+                          onFocus={() => { setActiveSearchField('stop'); setActiveStopIndex(index); setSearchTerm(''); }}
+                          onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
+                        />
+                        <button
+                          onClick={() => {
+                            const newStops = stops.filter((_, i) => i !== index);
+                            setStops(newStops);
+                          }}
+                          className="text-[var(--text-secondary)] hover:text-red-400 p-1"
+                        >
+                          <AlertCircle size={14} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+
+                {/* Destination */}
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 bg-[#FBBF24] shadow-[0_0_10px_rgba(251,191,36,0.3)] z-10"></div>
+                  <div className="flex-1 bg-[var(--input-bg)] rounded-xl border border-[var(--border-color)] flex items-center px-3 py-2 relative">
+                    <input
+                      placeholder="Para onde vais?"
+                      className="bg-transparent border-none text-[var(--text-primary)] text-xs w-full focus:ring-0 placeholder:text-[var(--text-tertiary)] font-medium"
+                      value={activeSearchField === 'destination' ? searchTerm : (destination?.name || '')}
+                      onFocus={() => { setActiveSearchField('destination'); setSearchTerm(''); }}
+                      onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
+                    />
+                    {stops.length < 3 && (
+                      <button
+                        onClick={() => setStops([...stops, { name: '', lat: 0, lng: 0 }])}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#FBBF24]/10 hover:bg-[#FBBF24]/20 text-[#FBBF24] p-1.5 rounded-lg transition-colors border border-[#FBBF24]/20"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Dynamic Stops */}
               <AnimatePresence>
-                {stops.map((stop, index) => (
+                {activeSearchField && (
                   <motion.div
-                    key={`stop-${index}`}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className="flex items-center gap-3"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 bg-[var(--bg-elevated)] rounded-2xl overflow-hidden border border-[var(--border-color)] max-h-[250px] overflow-y-auto"
                   >
-                    <div className="w-2.5 h-2.5 rounded-sm bg-[var(--text-secondary)] z-10 flex items-center justify-center text-[6px] text-[var(--bg-primary)] font-bold">{index + 1}</div>
-                    <div className="flex-1 bg-[var(--input-bg)] rounded-xl border border-[var(--border-color)] flex items-center px-3 py-2">
-                      <input
-                        placeholder="Adicionar paragem"
-                        className="bg-transparent border-none text-[var(--text-primary)] text-xs w-full focus:ring-0 placeholder:text-[var(--text-tertiary)] font-medium"
-                        value={(activeSearchField === 'stop' && activeStopIndex === index) ? searchTerm : (stop.name || '')}
-                        onFocus={() => { setActiveSearchField('stop'); setActiveStopIndex(index); setSearchTerm(''); }}
-                        onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
-                      />
-                      <button
-                        onClick={() => {
-                          const newStops = stops.filter((_, i) => i !== index);
-                          setStops(newStops);
-                        }}
-                        className="text-[var(--text-secondary)] hover:text-red-400 p-1"
-                      >
-                        <AlertCircle size={14} />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-
-              {/* Destination */}
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 bg-[#FBBF24] shadow-[0_0_10px_rgba(251,191,36,0.3)] z-10"></div>
-                <div className="flex-1 bg-[var(--input-bg)] rounded-xl border border-[var(--border-color)] flex items-center px-3 py-2 relative">
-                  <input
-                    placeholder="Para onde vais?"
-                    className="bg-transparent border-none text-[var(--text-primary)] text-xs w-full focus:ring-0 placeholder:text-[var(--text-tertiary)] font-medium"
-                    value={activeSearchField === 'destination' ? searchTerm : (destination?.name || '')}
-                    onFocus={() => { setActiveSearchField('destination'); setSearchTerm(''); }}
-                    onChange={(e) => { setSearchTerm(e.target.value); handleSearch(e.target.value); }}
-                  />
-                  {stops.length < 3 && (
+                    {/* Option to Select on Map */}
                     <button
-                      onClick={() => setStops([...stops, { name: '', lat: 0, lng: 0 }])}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#FBBF24]/10 hover:bg-[#FBBF24]/20 text-[#FBBF24] p-1.5 rounded-lg transition-colors border border-[#FBBF24]/20"
+                      onClick={() => setIsSelectingOnMap(true)}
+                      className="w-full p-4 text-left hover:bg-[#FBBF24]/10 border-b border-[var(--border-color)] flex items-center gap-4 transition-colors group"
                     >
-                      <Plus size={14} />
+                      <div className="w-10 h-10 rounded-full bg-[#FBBF24]/10 flex items-center justify-center text-[#FBBF24]">
+                        <MapPin size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-[#FBBF24]">Escolher no mapa</p>
+                        <p className="text-[10px] text-[var(--text-secondary)]">Marca o ponto exato manualmente</p>
+                      </div>
+                      <ChevronRight size={16} className="ml-auto text-[var(--text-tertiary)]" />
                     </button>
+
+                    {(searchTerm ? searchResults : QUELIMANE_LOCATIONS.slice(0, 8).map(l => ({ description: `${l.name}, Quelimane`, is_local: true, type: l.type, lat: l.lat.toString(), lon: l.lng.toString() }))).map((result: any, index) => {
+                      const name = result.description.split(',')[0];
+                      const type = result.type || 'landmark';
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => selectLocation(result)}
+                          className="w-full p-4 text-left hover:bg-[var(--bg-secondary)] border-b border-[var(--border-color)] last:border-none flex items-center gap-4 transition-colors group"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center text-[var(--text-secondary)] group-hover:text-[#FBBF24] transition-colors">
+                            {type === 'street' ? <Navigation size={18} /> : <MapPin size={18} />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-[var(--text-primary)] truncate">{name}</p>
+                            <p className="text-[10px] text-[var(--text-secondary)] truncate">Quelimane, Moçambique</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Bottom Sheet UI - Draggable */}
+        <motion.div
+          className="absolute bottom-0 left-0 right-0 z-50 touch-none"
+          initial={{ y: "80%" }}
+          animate={{ y: 0 }}
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 300 }}
+          dragElastic={0.2}
+        >
+          <div className="bg-[var(--bg-elevated)] rounded-t-[30px] shadow-[0_-10px_40px_rgba(0,0,0,0.2)] p-6 pb-12 border-t border-[var(--border-color)] transition-all duration-300">
+            {/* Drag Handle */}
+            <div className="w-12 h-1.5 bg-[var(--border-color)] rounded-full mx-auto mb-6 cursor-grab active:cursor-grabbing"></div>
+
+            <AnimatePresence mode="wait">
+              {step === 1 ? (
+                <motion.div
+                  key="bottom_step1"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setServiceType('moto')}
+                      className={`relative overflow-hidden p-4 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center gap-2 ${serviceType === 'moto'
+                        ? 'border-[#FBBF24] bg-[#FBBF24]/10'
+                        : 'border-[var(--border-color)] bg-[var(--bg-secondary)]'
+                        }`}
+                    >
+                      <img src="/mota.png" alt="Moto" className="w-20 h-14 object-contain contrast-125 drop-shadow-lg" />
+                      <span className="text-sm font-bold text-[var(--text-primary)]">Moto Taxi</span>
+                      <span className="text-[9px] uppercase font-black text-[#FBBF24] tracking-widest">Rápido</span>
+                    </button>
+
+                    <button
+                      onClick={() => setServiceType('txopela')}
+                      className={`relative overflow-hidden p-4 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center gap-2 ${serviceType === 'txopela'
+                        ? 'border-[#FBBF24] bg-[#FBBF24]/10'
+                        : 'border-[var(--border-color)] bg-[var(--bg-secondary)]'
+                        }`}
+                    >
+                      <img src="/txopela.png" alt="Txopela" className="w-20 h-14 object-contain contrast-125 drop-shadow-lg" />
+                      <span className="text-sm font-bold text-[var(--text-primary)]">Txopela</span>
+                      <span className="text-[9px] uppercase font-black text-[var(--text-secondary)] opacity-50 tracking-widest">Conforto</span>
+                    </button>
+                  </div>
+
+                  {distance > 0 && (
+                    <div className="flex justify-between items-center px-2">
+                      <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-bold uppercase tracking-widest opacity-70">
+                        <RouteIcon size={14} />
+                        {distance.toFixed(1)} km
+                      </div>
+                      <div className="text-2xl font-black text-[#FBBF24]">
+                        {estimatedPrice} <span className="text-xs text-[var(--text-secondary)] opacity-50">MZN</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    className="w-full h-16 text-xl rounded-2xl shadow-xl shadow-[#FBBF24]/20 text-black font-black bg-[#FBBF24] hover:bg-[#F59E0B]"
+                    disabled={!pickup || !destination}
+                    onClick={() => {
+                      if (pickup && destination) {
+                        setMapCenter([(pickup.lat + destination.lat) / 2, (pickup.lng + destination.lng) / 2]);
+                      }
+                      setStep(2);
+                    }}
+                  >
+                    Confirmar <ChevronRight className="ml-2" />
+                  </Button>
+                </motion.div>
+              ) : step === 2 ? (
+                <motion.div
+                  key="bottom_step2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-6"
+                >
+                  {/* Trip Details Card */}
+                  <div className="bg-[var(--bg-secondary)] p-5 rounded-3xl border border-[var(--border-color)] space-y-4">
+                    {/* Trip Stats Row */}
+                    <div className="flex justify-between items-center bg-[var(--bg-primary)] p-4 rounded-2xl border border-[var(--border-color)]">
+                      <div className="flex flex-col items-center flex-1 border-r border-[var(--border-color)]">
+                        <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mb-1">Distância</span>
+                        <div className="flex items-center gap-1.5 text-[var(--text-primary)]">
+                          <RouteIcon size={16} className="text-[#3B82F6]" />
+                          <span className="text-lg font-bold">{distance?.toFixed(1)} km</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center flex-1">
+                        <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mb-1">Tempo</span>
+                        <div className="flex items-center gap-1.5 text-[var(--text-primary)]">
+                          <AlertCircle size={16} className="text-[#3B82F6]" />
+                          <span className="text-lg font-bold">{Math.round(distance * 3)} min</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-[var(--border-color)]"></div>
+
+                    {/* Payment & Price Row */}
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase mb-2">Método de Pagamento</p>
+                        <div className="flex gap-2">
+                          {['cash', 'mpesa', 'emola'].map(m => (
+                            <button
+                              key={m}
+                              onClick={() => setPaymentMethod(m as any)}
+                              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${paymentMethod === m
+                                ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/30'
+                                : 'bg-[var(--bg-primary)] text-[var(--text-tertiary)] border border-[var(--border-color)]'}`}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase mb-1">Total a Pagar</p>
+                        <p className="text-4xl font-black text-[#FBBF24] tracking-tight">
+                          {estimatedPrice} <span className="text-lg text-[#FBBF24]/60">MT</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    className="w-full h-16 text-xl rounded-2xl shadow-2xl shadow-[#FBBF24]/30 text-black font-black bg-[#FBBF24] hover:bg-[#F59E0B]"
+                    isLoading={isLoading}
+                    onClick={handleConfirmRide}
+                  >
+                    Confirmar Pedido
+                  </Button>
+                </motion.div>
+              ) : (
+                <div className="py-6 text-center">
+                  {matchStatus === 'searching' && (
+                    <div className="space-y-4">
+                      <div className="w-16 h-16 border-4 border-[#FBBF24]/20 border-t-[#FBBF24] rounded-full animate-spin mx-auto"></div>
+                      <p className="text-[var(--text-primary)] font-bold uppercase tracking-widest text-sm">Buscando Motorista...</p>
+                    </div>
+                  )}
+                  {/* ... existing match status UI with updated text colors ... */}
+                  {matchStatus === 'found' && (
+                    <div className="flex items-center gap-4 bg-[var(--bg-secondary)] p-4 rounded-3xl border border-[var(--border-color)] text-left shadow-sm">
+                      <div className="w-16 h-16 rounded-2xl bg-[#FBBF24] overflow-hidden shadow-inner">
+                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${driverInfo?.id}`} alt="Driver" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-[var(--text-secondary)] font-bold uppercase opacity-60">{driverInfo?.vehicle_plate}</p>
+                        <p className="text-lg font-black text-[var(--text-primary)]">{driverInfo?.full_name?.split(' ')[0]}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-black text-[#FBBF24]">{eta}</p>
+                        <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase">MIN</p>
+                      </div>
+                    </div>
+                  )}
+                  {matchStatus === 'busy' && (
+                    <div className="space-y-4">
+                      <AlertCircle className="text-red-500 mx-auto" size={48} />
+                      <p className="text-[var(--text-primary)] font-bold">Motoristas Ocupados</p>
+                      <Button onClick={() => setStep(1)} variant="outline">Tentar Novamente</Button>
+                    </div>
                   )}
                 </div>
-              </div>
-            </div>
-
-            <AnimatePresence>
-              {activeSearchField && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-2 bg-[var(--bg-elevated)] rounded-2xl overflow-hidden border border-[var(--border-color)] max-h-[250px] overflow-y-auto"
-                >
-                  {/* Option to Select on Map */}
-                  <button
-                    onClick={() => setIsSelectingOnMap(true)}
-                    className="w-full p-4 text-left hover:bg-[#FBBF24]/10 border-b border-[var(--border-color)] flex items-center gap-4 transition-colors group"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-[#FBBF24]/10 flex items-center justify-center text-[#FBBF24]">
-                      <MapPin size={18} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#FBBF24]">Escolher no mapa</p>
-                      <p className="text-[10px] text-[var(--text-secondary)]">Marca o ponto exato manualmente</p>
-                    </div>
-                    <ChevronRight size={16} className="ml-auto text-[var(--text-tertiary)]" />
-                  </button>
-
-                  {(searchTerm ? searchResults : QUELIMANE_LOCATIONS.slice(0, 8).map(l => ({ description: `${l.name}, Quelimane`, is_local: true, type: l.type, lat: l.lat.toString(), lon: l.lng.toString() }))).map((result: any, index) => {
-                    const name = result.description.split(',')[0];
-                    const type = result.type || 'landmark';
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => selectLocation(result)}
-                        className="w-full p-4 text-left hover:bg-[var(--bg-secondary)] border-b border-[var(--border-color)] last:border-none flex items-center gap-4 transition-colors group"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center text-[var(--text-secondary)] group-hover:text-[#FBBF24] transition-colors">
-                          {type === 'street' ? <Navigation size={18} /> : <MapPin size={18} />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-[var(--text-primary)] truncate">{name}</p>
-                          <p className="text-[10px] text-[var(--text-secondary)] truncate">Quelimane, Moçambique</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
-        </div>
-      )}
+          </div>
+        </motion.div>
+      </div>
 
-      {/* Bottom Sheet UI - Draggable */}
-      <motion.div
-        className="absolute bottom-0 left-0 right-0 z-50 touch-none"
-        initial={{ y: "80%" }}
-        animate={{ y: 0 }}
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 300 }}
-        dragElastic={0.2}
-      >
-        <div className="bg-[var(--bg-elevated)] rounded-t-[30px] shadow-[0_-10px_40px_rgba(0,0,0,0.2)] p-6 pb-12 border-t border-[var(--border-color)] transition-all duration-300">
-          {/* Drag Handle */}
-          <div className="w-12 h-1.5 bg-[var(--border-color)] rounded-full mx-auto mb-6 cursor-grab active:cursor-grabbing"></div>
-
-          <AnimatePresence mode="wait">
-            {step === 1 ? (
-              <motion.div
-                key="bottom_step1"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-6"
-              >
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setServiceType('moto')}
-                    className={`relative overflow-hidden p-4 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center gap-2 ${serviceType === 'moto'
-                      ? 'border-[#FBBF24] bg-[#FBBF24]/10'
-                      : 'border-[var(--border-color)] bg-[var(--bg-secondary)]'
-                      }`}
-                  >
-                    <img src="/mota.png" alt="Moto" className="w-20 h-14 object-contain contrast-125 drop-shadow-lg" />
-                    <span className="text-sm font-bold text-[var(--text-primary)]">Moto Taxi</span>
-                    <span className="text-[9px] uppercase font-black text-[#FBBF24] tracking-widest">Rápido</span>
-                  </button>
-
-                  <button
-                    onClick={() => setServiceType('txopela')}
-                    className={`relative overflow-hidden p-4 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center gap-2 ${serviceType === 'txopela'
-                      ? 'border-[#FBBF24] bg-[#FBBF24]/10'
-                      : 'border-[var(--border-color)] bg-[var(--bg-secondary)]'
-                      }`}
-                  >
-                    <img src="/txopela.png" alt="Txopela" className="w-20 h-14 object-contain contrast-125 drop-shadow-lg" />
-                    <span className="text-sm font-bold text-[var(--text-primary)]">Txopela</span>
-                    <span className="text-[9px] uppercase font-black text-[var(--text-secondary)] opacity-50 tracking-widest">Conforto</span>
-                  </button>
-                </div>
-
-                {distance > 0 && (
-                  <div className="flex justify-between items-center px-2">
-                    <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-bold uppercase tracking-widest opacity-70">
-                      <RouteIcon size={14} />
-                      {distance.toFixed(1)} km
-                    </div>
-                    <div className="text-2xl font-black text-[#FBBF24]">
-                      {estimatedPrice} <span className="text-xs text-[var(--text-secondary)] opacity-50">MZN</span>
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  className="w-full h-16 text-xl rounded-2xl shadow-xl shadow-[#FBBF24]/20 text-black font-black bg-[#FBBF24] hover:bg-[#F59E0B]"
-                  disabled={!pickup || !destination}
-                  onClick={() => {
-                    if (pickup && destination) {
-                      setMapCenter([(pickup.lat + destination.lat) / 2, (pickup.lng + destination.lng) / 2]);
-                    }
-                    setStep(2);
-                  }}
-                >
-                  Confirmar <ChevronRight className="ml-2" />
-                </Button>
-              </motion.div>
-            ) : step === 2 ? (
-              <motion.div
-                key="bottom_step2"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-6"
-              >
-                {/* Trip Details Card */}
-                <div className="bg-[var(--bg-secondary)] p-5 rounded-3xl border border-[var(--border-color)] space-y-4">
-                  {/* Trip Stats Row */}
-                  <div className="flex justify-between items-center bg-[var(--bg-primary)] p-4 rounded-2xl border border-[var(--border-color)]">
-                    <div className="flex flex-col items-center flex-1 border-r border-[var(--border-color)]">
-                      <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mb-1">Distância</span>
-                      <div className="flex items-center gap-1.5 text-[var(--text-primary)]">
-                        <RouteIcon size={16} className="text-[#3B82F6]" />
-                        <span className="text-lg font-bold">{distance?.toFixed(1)} km</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center flex-1">
-                      <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mb-1">Tempo</span>
-                      <div className="flex items-center gap-1.5 text-[var(--text-primary)]">
-                        <AlertCircle size={16} className="text-[#3B82F6]" />
-                        <span className="text-lg font-bold">{Math.round(distance * 3)} min</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-[var(--border-color)]"></div>
-
-                  {/* Payment & Price Row */}
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase mb-2">Método de Pagamento</p>
-                      <div className="flex gap-2">
-                        {['cash', 'mpesa', 'emola'].map(m => (
-                          <button
-                            key={m}
-                            onClick={() => setPaymentMethod(m as any)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${paymentMethod === m
-                              ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/30'
-                              : 'bg-[var(--bg-primary)] text-[var(--text-tertiary)] border border-[var(--border-color)]'}`}
-                          >
-                            {m}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase mb-1">Total a Pagar</p>
-                      <p className="text-4xl font-black text-[#FBBF24] tracking-tight">
-                        {estimatedPrice} <span className="text-lg text-[#FBBF24]/60">MT</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full h-16 text-xl rounded-2xl shadow-2xl shadow-[#FBBF24]/30 text-black font-black bg-[#FBBF24] hover:bg-[#F59E0B]"
-                  isLoading={isLoading}
-                  onClick={handleConfirmRide}
-                >
-                  Confirmar Pedido
-                </Button>
-              </motion.div>
-            ) : (
-              <div className="py-6 text-center">
-                {matchStatus === 'searching' && (
-                  <div className="space-y-4">
-                    <div className="w-16 h-16 border-4 border-[#FBBF24]/20 border-t-[#FBBF24] rounded-full animate-spin mx-auto"></div>
-                    <p className="text-[var(--text-primary)] font-bold uppercase tracking-widest text-sm">Buscando Motorista...</p>
-                  </div>
-                )}
-                {/* ... existing match status UI with updated text colors ... */}
-                {matchStatus === 'found' && (
-                  <div className="flex items-center gap-4 bg-[var(--bg-secondary)] p-4 rounded-3xl border border-[var(--border-color)] text-left shadow-sm">
-                    <div className="w-16 h-16 rounded-2xl bg-[#FBBF24] overflow-hidden shadow-inner">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${driverInfo?.id}`} alt="Driver" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-[var(--text-secondary)] font-bold uppercase opacity-60">{driverInfo?.vehicle_plate}</p>
-                      <p className="text-lg font-black text-[var(--text-primary)]">{driverInfo?.full_name?.split(' ')[0]}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-black text-[#FBBF24]">{eta}</p>
-                      <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase">MIN</p>
-                    </div>
-                  </div>
-                )}
-                {matchStatus === 'busy' && (
-                  <div className="space-y-4">
-                    <AlertCircle className="text-red-500 mx-auto" size={48} />
-                    <p className="text-[var(--text-primary)] font-bold">Motoristas Ocupados</p>
-                    <Button onClick={() => setStep(1)} variant="outline">Tentar Novamente</Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
-      </motion.div>
+      <BottomNav activeTab="ride" onTabChange={(tab) => onNavigate(tab)} />
     </div>
   );
 }

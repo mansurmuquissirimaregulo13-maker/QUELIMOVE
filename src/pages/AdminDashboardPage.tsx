@@ -464,10 +464,10 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-[var(--bg-primary)] transition-colors duration-300">
+    <div className="h-[100dvh] w-full flex flex-col bg-[var(--bg-primary)] overflow-hidden transition-colors duration-300">
       <Header title="Painel Admin" onBack={() => onNavigate('home')} />
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 pb-24">
+      <div className="flex-1 overflow-y-auto mt-[72px] mb-[100px] px-4 py-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="animate-spin text-[#FBBF24]" size={32} />

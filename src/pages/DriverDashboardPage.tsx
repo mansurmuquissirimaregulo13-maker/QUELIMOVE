@@ -54,17 +54,26 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   React.useEffect(() => {
     let watchId: number | undefined;
     const updateLocationInDB = async (lat: number, lng: number) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData.user && isOnline) {
-        await supabase
-          .from('profiles')
-          .update({
-            current_lat: lat,
-            current_lng: lng,
-            is_available: true,
-            last_online: new Date().toISOString()
-          })
-          .eq('id', userData.user.id);
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user && isOnline) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({
+              current_lat: lat,
+              current_lng: lng,
+              is_available: true,
+              last_online: new Date().toISOString()
+            })
+            .eq('id', userData.user.id);
+
+          if (error) {
+            console.error('Retry: Location update failed', error);
+            // Podemos adicionar logica de retentativa aqui se necessario
+          }
+        }
+      } catch (err) {
+        console.error('Fatal: Location update error', err);
       }
     };
 
@@ -255,8 +264,8 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#0a0a0a]">
-      <div className="px-4 pt-4 pb-4 flex items-center justify-between bg-[#0a0a0a] sticky top-0 z-40 border-b border-[#1a1a1a]">
+    <div className="h-[100dvh] w-full flex flex-col bg-[#0a0a0a] overflow-hidden">
+      <div className="fixed top-0 left-0 right-0 px-4 pt-4 pb-4 flex items-center justify-between bg-[#0a0a0a] z-[60] border-b border-[#1a1a1a]">
         <div>
           <h1 className="text-xl font-bold text-white">Olá, {driverName}</h1>
           <p className="text-xs text-[#9CA3AF] uppercase tracking-wider">{vehicleInfo}</p>
@@ -270,7 +279,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-24">
+      <div className="flex-1 overflow-y-auto mt-[72px] mb-[100px] safe-area-bottom">
         {isOnline && currentRide ? (
           <div className="p-4 space-y-4">
             <div className="bg-[#1a1a1a] rounded-2xl border-2 border-[#FBBF24] overflow-hidden shadow-2xl">

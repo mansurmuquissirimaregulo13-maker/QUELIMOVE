@@ -173,12 +173,12 @@ export function DriverRegistrationPage({
     </div>
   );
   return (
-    <div className="h-full flex flex-col bg-[var(--bg-primary)]">
+    <div className="h-[100dvh] w-full bg-[var(--bg-primary)] overflow-hidden flex flex-col relative select-none">
       <Header
         title={isLoginMode ? "Login Motorista" : "Cadastro Motorista"}
         onBack={step === 1 || isLoginMode ? () => onNavigate('home') : prevStep}
       />
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto mt-[72px] px-4 py-6">
         {!isLoginMode && renderStepIndicator()}
 
         <AnimatePresence mode="wait">
