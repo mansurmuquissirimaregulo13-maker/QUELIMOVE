@@ -131,16 +131,13 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         .select('*')
         .eq('role', 'driver');
 
-      const { count: pendingCount } = await supabase
-        .from('rides')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+      const pendingDriversCount = driversData?.filter(d => d.status === 'pending').length || 0;
 
       setStats([
         { label: 'Total Viagens', value: (ridesCount || 0).toString(), icon: Activity, color: 'text-blue-500', bg: 'bg-blue-500/10' },
         { label: 'Receita (MZN)', value: ((ridesCount || 0) * 60).toString(), icon: DollarSign, color: 'text-[#FBBF24]', bg: 'bg-[#FBBF24]/10' },
         { label: 'Motoristas', value: (driversCount || 0).toString(), icon: Users, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-        { label: 'Pendentes', value: (pendingCount || 0).toString(), icon: TrendingUp, color: 'text-orange-500', bg: 'bg-orange-500/10' }
+        { label: 'Pendentes (Motoristas)', value: pendingDriversCount.toString(), icon: TrendingUp, color: 'text-orange-500', bg: 'bg-orange-500/10' }
       ]);
 
       if (ridesData) {
