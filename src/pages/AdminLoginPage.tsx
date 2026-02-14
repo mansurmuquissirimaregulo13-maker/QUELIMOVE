@@ -32,7 +32,30 @@ export function AdminLoginPage({ onLogin, onNavigate }: AdminLoginPageProps) {
                 password: password
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                // SE falhar e forem as credenciais "Mestras", tentar criar a conta (Auto-Repair)
+                if (authError.message.includes("Invalid login credentials") && email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+                    console.log("Admin account missing or wrong password. Re-creating...");
+                    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                        email: email,
+                        password: password,
+                        options: {
+                            data: { full_name: 'Mansur Regulo', role: 'admin' } // Metadata ensures auto-promotion via Triggers
+                        }
+                    });
+
+                    if (signUpError) throw signUpError;
+
+                    // Se sucesso no sign up, tentar login de novo ou avançar se auto-login
+                    if (signUpData.session) {
+                        localStorage.setItem('admin_session', 'true');
+                        localStorage.setItem('admin_email', email);
+                        onLogin(true);
+                        return;
+                    }
+                }
+                throw authError;
+            }
 
             // 2. Verificar se é realmente Admin (Opcional, mas bom para segurança no frontend)
             // A RLS já vai bloquear os dados se não for, mas aqui damos feedback visual
