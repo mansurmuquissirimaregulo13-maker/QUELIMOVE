@@ -30,22 +30,56 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   const [vehicleInfo] = React.useState('Honda Ace • ABC-123');
   const { notify } = useNotifications();
 
+  // Monitorar mudanças na corrida atual (Ex: Cancelamento pelo cliente)
+  React.useEffect(() => {
+    if (!currentRide) return;
+
+    const rideChannel = supabase
+      .channel(`driver-active-ride-${currentRide.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rides',
+          filter: `id=eq.${currentRide.id}`
+        },
+        (payload) => {
+          console.log('Active ride update:', payload.new);
+          if (payload.new.status === 'cancelled') {
+            notify({ title: 'Atenção', body: 'A viagen foi cancelada pelo cliente.' });
+            setCurrentRide(null);
+          } else {
+            // Atualizar estado local (ex: mudanças de destino, etc)
+            setCurrentRide(payload.new);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(rideChannel);
+    };
+  }, [currentRide?.id]);
+
   const fetchPotentialRides = async () => {
     if (!isOnline) return;
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
 
+    // Se já temos uma corrida ativa/pendente na tela, não buscar outra
+    if (currentRide && currentRide.status !== 'completed' && currentRide.status !== 'cancelled') return;
+
     const { data } = await supabase
       .from('rides')
       .select('*')
-      .eq('status', 'pending')
-      .or(`target_driver_id.is.null,target_driver_id.eq.${userData.user.id}`)
-      .order('created_at', { ascending: false });
+      .in('status', ['pending', 'accepted', 'a_caminho', 'em_corrida'])
+      .or(`target_driver_id.is.null,target_driver_id.eq.${userData.user.id},driver_id.eq.${userData.user.id}`)
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    if (data) {
-      if (data.length > 0 && !currentRide) {
-        setCurrentRide(data[0]);
-      }
+    if (data && data.length > 0) {
+      setCurrentRide(data[0]);
     }
   };
 
@@ -69,7 +103,6 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
           if (error) {
             console.error('Retry: Location update failed', error);
-            // Podemos adicionar logica de retentativa aqui se necessario
           }
         }
       } catch (err) {
@@ -94,7 +127,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
         );
       }
 
-      // 2. Sincronizar com banco a cada 5 segundos (Requisito)
+      // 2. Sincronizar com banco a cada 5 segundos
       syncInterval = window.setInterval(() => {
         if (lastCoords) {
           updateLocationInDB(lastCoords.lat, lastCoords.lng);
@@ -102,7 +135,6 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       }, 5000);
 
     } else {
-      // Set unavailable when offline
       const setOffline = async () => {
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
@@ -119,43 +151,37 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       fetchPotentialRidesCallback();
 
       const channelName = 'driver-rides-presence';
-      const timeoutId = setTimeout(async () => {
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData.user) return;
-
-        const subscription = supabase
-          .channel(channelName)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'rides',
-              filter: `status=eq.pending`
-            },
-            (payload) => {
-              if (payload.new.status === 'pending') {
+      // Subscrever para NOVAS corridas
+      const subscription = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT', // Escutar novas inserções também
+            schema: 'public',
+            table: 'rides'
+          },
+          (payload) => {
+            if (payload.new.status === 'pending') {
+              // Verificar se é pra mim (se tiver target_driver_id logica no backend ou filtro aqui)
+              // Como RLS filtra, se recebermos é porque podemos ver
+              if (!currentRide) {
                 setCurrentRide(payload.new);
-
-                // Notificação Robusta (Requisito: Barra do Sistema)
                 notify({
                   title: 'Nova Corrida Disponível!',
                   body: `Passageiro em ${payload.new.pickup_location}. Valor: ${payload.new.estimate} MZN`
                 });
-
-                // Alerta sonoro básico
                 const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2505/2505-preview.mp3');
                 audio.play().catch(e => console.log('Audio play failed', e));
               }
             }
-          )
-          .subscribe();
+          }
+        )
+        .subscribe();
 
-        (window as any)[`supabase_${channelName}`] = subscription;
-      }, 100);
+      (window as any)[`supabase_${channelName}`] = subscription;
 
       return () => {
-        clearTimeout(timeoutId);
         if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
         if (syncInterval) clearInterval(syncInterval);
         const ch = (window as any)[`supabase_${channelName}`];
@@ -237,6 +263,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
       if (data && data.length > 0) {
         notify({ title: 'Viagem Aceite!', body: 'Vá ao encontro do cliente.' });
+        setCurrentRide(data[0]); // Atualizar com os dados novos (status accepted)
         fetchStats();
       } else {
         alert('Esta viagem já foi aceite por outro motorista.');
@@ -247,40 +274,47 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     }
   };
 
+  const handleFinishRide = async () => {
+    if (!currentRide) return;
+    try {
+      const { error } = await supabase
+        .from('rides')
+        .update({ status: 'completed' })
+        .eq('id', currentRide.id);
+
+      if (error) throw error;
+
+      notify({ title: 'Viagem Finalizada', body: 'O valor foi adicionado aos teus ganhos.' });
+      setCurrentRide(null);
+      fetchStats();
+    } catch (err) {
+      console.error('Error finishing ride:', err);
+    }
+  };
+
   const toggleOnline = async () => {
     const nextState = !isOnline;
     setIsOnline(nextState);
 
     if (nextState) {
-      // 1. Capturar token (Web ou Nativo)
       try {
         if (Capacitor.isNativePlatform()) {
-          // Registro Nativo (Requisito: Barra de Notificação Real)
           const permission = await PushNotifications.requestPermissions();
           if (permission.receive === 'granted') {
             await PushNotifications.register();
-
             PushNotifications.addListener('registration', async (token) => {
-              console.log('Native Token:', token.value);
               const { data: userData } = await supabase.auth.getUser();
               if (userData.user) {
-                await supabase
-                  .from('profiles')
-                  .update({ fcm_token: token.value })
-                  .eq('id', userData.user.id);
+                await supabase.from('profiles').update({ fcm_token: token.value }).eq('id', userData.user.id);
               }
             });
           }
         } else {
-          // Registro Web (Firebase)
           const token = await requestForToken();
           if (token) {
             const { data: userData } = await supabase.auth.getUser();
             if (userData.user) {
-              await supabase
-                .from('profiles')
-                .update({ fcm_token: token })
-                .eq('id', userData.user.id);
+              await supabase.from('profiles').update({ fcm_token: token }).eq('id', userData.user.id);
             }
           }
         }
@@ -322,7 +356,9 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
               <div className="p-4 space-y-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="bg-[#FBBF24]/20 text-[#FBBF24] text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block">Nova Solicitação</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block ${currentRide.status === 'pending' ? 'bg-[#FBBF24]/20 text-[#FBBF24]' : 'bg-green-500/20 text-green-500'}`}>
+                      {currentRide.status === 'pending' ? 'Nova Solicitação' : 'Em Curso'}
+                    </span>
                     <h3 className="text-white font-bold text-lg">Cliente em {currentRide.pickup_location}</h3>
                   </div>
                   <div className="text-right">
@@ -362,31 +398,36 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                {currentRide.status === 'pending' ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="ghost"
+                      className="border border-[#2a2a2a]"
+                      onClick={async () => {
+                        await supabase.from('rides').update({ target_driver_id: null }).eq('id', currentRide.id);
+                        setCurrentRide(null);
+                      }}
+                    >
+                      <XCircle className="mr-2" size={18} />
+                      Pular
+                    </Button>
+                    <Button
+                      className="shadow-lg shadow-[#FBBF24]/20"
+                      onClick={() => handleAcceptRide(currentRide.id)}
+                    >
+                      <CheckCircle className="mr-2" size={18} />
+                      Aceitar
+                    </Button>
+                  </div>
+                ) : (
                   <Button
-                    variant="ghost"
-                    className="border border-[#2a2a2a]"
-                    onClick={async () => {
-                      if (currentRide) {
-                        await supabase
-                          .from('rides')
-                          .update({ target_driver_id: null })
-                          .eq('id', currentRide.id);
-                      }
-                      setCurrentRide(null);
-                    }}
-                  >
-                    <XCircle className="mr-2" size={18} />
-                    Pular
-                  </Button>
-                  <Button
-                    className="shadow-lg shadow-[#FBBF24]/20"
-                    onClick={() => handleAcceptRide(currentRide.id)}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
+                    onClick={handleFinishRide}
                   >
                     <CheckCircle className="mr-2" size={18} />
-                    Aceitar
+                    Finalizar Corrida
                   </Button>
-                </div>
+                )}
               </div>
             </div>
 

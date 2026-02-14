@@ -43,10 +43,27 @@ class RideNotifier extends StateNotifier<RideState> {
   void setVehicleType(String type) => state = state.copyWith(vehicleType: type);
 
   Future<void> requestRide() async {
+    if (state.pickup == null || state.destination == null || state.vehicleType == null) {
+      state = state.copyWith(error: 'Preencha todos os campos');
+      return;
+    }
+
     state = state.copyWith(isLoading: true, error: null);
     try {
-      // Implement Supabase insert here
-      // await _supabaseService.createRideRequest(...)
+      final user = _supabaseService.currentUser;
+      if (user == null) throw Exception('Usuário não autenticado');
+
+      await _supabaseService.client.from('rides').insert({
+        'user_id': user.id,
+        'pickup_location': state.pickup, // In real app, this should be JSON or separate lat/lng columns
+        'destination_location': state.destination,
+        'vehicle_type': state.vehicleType,
+        'status': 'pending',
+        'created_at': DateTime.now().toIso8601String(),
+         // Add lat/lng fields if your schema supports them, e.g.
+         // 'pickup_lat': ..., 'pickup_lng': ...
+      });
+
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

@@ -433,6 +433,21 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                 notify({ title: 'Viagem Aceite', body: `Motorista ${driver.full_name} aceitou a viagem!` });
                 subscribeToDriverLocation(driver.id);
               }
+            } else if (payload.new.status === 'completed') {
+              notify({ title: 'Chegou ao Destino', body: 'Viagem finalizada. Obrigado por escolher a Quelimove!' });
+              setMatchStatus('idle');
+              setStep(1);
+              // Limpar dados da viagem
+              setPickup(null);
+              setDestination(null);
+              setDriverInfo(null);
+              setNearbyDrivers([]);
+              fetchDrivers(); // Voltar a mostrar "mock" ou drivers livres
+            } else if (payload.new.status === 'cancelled') {
+              notify({ title: 'Viagem Cancelada', body: 'A viagem foi cancelada.' });
+              setMatchStatus('idle');
+              setStep(1);
+              setDriverInfo(null);
             }
           }
         )

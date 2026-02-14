@@ -28,12 +28,10 @@ class _RidePageState extends ConsumerState<RidePage> {
             initialCameraPosition: _initialPosition,
             onMapCreated: (controller) {
               _controller = controller;
-              _controller?.setMapStyle(_darkMapStyle);
             },
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
-            mapStyle: _darkMapStyle, // Needs to be loaded from assets
           ),
           
           // Floating Search Bar
@@ -45,13 +43,13 @@ class _RidePageState extends ConsumerState<RidePage> {
                   _SearchCard(
                     icon: Icons.my_location,
                     label: rideState.pickup ?? 'Local de partida',
-                    onTap: () {}, // Open search modal
+                    onTap: () => _showSearchDialog(isPickup: true),
                   ),
                   const SizedBox(height: 8),
                   _SearchCard(
                     icon: Icons.location_on,
                     label: rideState.destination ?? 'Para onde vamos?',
-                    onTap: () {}, // Open search modal
+                    onTap: () => _showSearchDialog(isPickup: false),
                   ),
                 ],
               ),
@@ -64,7 +62,14 @@ class _RidePageState extends ConsumerState<RidePage> {
             child: _VehicleSelectionSheet(
               onSelected: (type) => ref.read(rideProvider.notifier).setVehicleType(type),
               selectedType: rideState.vehicleType,
-              onRequest: () => ref.read(rideProvider.notifier).requestRide(),
+              onRequest: () async {
+                 await ref.read(rideProvider.notifier).requestRide();
+                 if (rideState.error != null && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(rideState.error!)));
+                 } else if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Viagem solicitada! Aguardando motorista...')));
+                 }
+              },
               isLoading: rideState.isLoading,
             ),
           ),
@@ -73,138 +78,37 @@ class _RidePageState extends ConsumerState<RidePage> {
     );
   }
 
-  static const String _darkMapStyle = '''
-[
-  {
-    "elementType": "geometry",
-    "stylers": [{"color": "#1d2c4d"}]
-  },
-  {
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#8ec3b9"}]
-  },
-  {
-    "elementType": "labels.text.stroke",
-    "stylers": [{"color": "#1a3646"}]
-  },
-  {
-    "featureType": "administrative.country",
-    "elementType": "geometry.stroke",
-    "stylers": [{"color": "#4b6878"}]
-  },
-  {
-    "featureType": "administrative.land_parcel",
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#64779e"}]
-  },
-  {
-    "featureType": "administrative.province",
-    "elementType": "geometry.stroke",
-    "stylers": [{"color": "#4b6878"}]
-  },
-  {
-    "featureType": "landscape.man_made",
-    "elementType": "geometry.stroke",
-    "stylers": [{"color": "#334e87"}]
-  },
-  {
-    "featureType": "landscape.natural",
-    "elementType": "geometry",
-    "stylers": [{"color": "#023e58"}]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "geometry",
-    "stylers": [{"color": "#283d6a"}]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#6f9ba5"}]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "labels.text.stroke",
-    "stylers": [{"color": "#1d2c4d"}]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "geometry.fill",
-    "stylers": [{"color": "#023e58"}]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#3C7680"}]
-  },
-  {
-    "featureType": "road",
-    "elementType": "geometry",
-    "stylers": [{"color": "#304a7d"}]
-  },
-  {
-    "featureType": "road",
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#98a5be"}]
-  },
-  {
-    "featureType": "road",
-    "elementType": "labels.text.stroke",
-    "stylers": [{"color": "#1d2c4d"}]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry",
-    "stylers": [{"color": "#2c6675"}]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry.stroke",
-    "stylers": [{"color": "#255763"}]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#b0d5ce"}]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "labels.text.stroke",
-    "stylers": [{"color": "#023e58"}]
-  },
-  {
-    "featureType": "transit",
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#98a5be"}]
-  },
-  {
-    "featureType": "transit",
-    "elementType": "labels.text.stroke",
-    "stylers": [{"color": "#1d2c4d"}]
-  },
-  {
-    "featureType": "transit.line",
-    "elementType": "geometry.fill",
-    "stylers": [{"color": "#283d6a"}]
-  },
-  {
-    "featureType": "transit.station",
-    "elementType": "geometry",
-    "stylers": [{"color": "#3a4762"}]
-  },
-  {
-    "featureType": "water",
-    "elementType": "geometry",
-    "stylers": [{"color": "#0e1626"}]
-  },
-  {
-    "featureType": "water",
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#4e6d70"}]
+  Future<void> _showSearchDialog({required bool isPickup}) async {
+    final controller = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isPickup ? 'Definir Partida' : 'Definir Destino'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Digite o endereço...'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                if (isPickup) {
+                  ref.read(rideProvider.notifier).setPickup(controller.text);
+                } else {
+                  ref.read(rideProvider.notifier).setDestination(controller.text);
+                }
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
   }
-]
-''';
-}
+
+
 
 class _SearchCard extends StatelessWidget {
   final IconData icon;

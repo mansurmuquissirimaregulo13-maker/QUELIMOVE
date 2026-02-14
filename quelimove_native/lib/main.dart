@@ -23,16 +23,18 @@ void main() async {
   );
 }
 
-class QuelimoveApp extends StatelessWidget {
+class QuelimoveApp extends ConsumerWidget {
   const QuelimoveApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
+    
     return MaterialApp.router(
       title: 'QUELIMOVE',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      routerConfig: AppRouter,
+      routerConfig: router,
     );
   }
 }

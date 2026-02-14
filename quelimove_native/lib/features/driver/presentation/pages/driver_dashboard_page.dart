@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
+import '../../auth/presentation/providers/auth_provider.dart';
 
-class DriverDashboardPage extends StatefulWidget {
+class DriverDashboardPage extends ConsumerStatefulWidget {
   const DriverDashboardPage({super.key});
 
   @override
-  State<DriverDashboardPage> createState() => _DriverDashboardPageState();
+  ConsumerState<DriverDashboardPage> createState() => _DriverDashboardPageState();
 }
 
-class _DriverDashboardPageState extends State<DriverDashboardPage> {
+class _DriverDashboardPageState extends ConsumerState<DriverDashboardPage> {
   bool _isOnline = false;
   GoogleMapController? _mapController;
   
@@ -19,12 +22,150 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  Future<void> _checkStatus() async {
+     // Check validation status or saved online state
+  }
+
+  StreamSubscription? _rideSubscription;
+  List<Map<String, dynamic>> _pendingRides = [];
+
+  @override
+  void dispose() {
+    _rideSubscription?.cancel();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  void _startLocationUpdates() {
+      // Simulate location updates every 10s
+      // In real app, use geolocator stream
+  }
+
+  void _listenToRides() {
+    _rideSubscription?.cancel();
+    _rideSubscription = ref.read(supabaseServiceProvider).client
+        .from('rides')
+        .stream(primaryKey: ['id'])
+        .eq('status', 'pending')
+        .listen((rides) {
+          if (mounted) {
+            setState(() {
+              _pendingRides = rides;
+            });
+            if (_pendingRides.isNotEmpty) {
+              _showRideRequestDialog(_pendingRides.first);
+            }
+          }
+        });
+  }
+
+  void _stopListeningToRides() {
+    _rideSubscription?.cancel();
+    if (mounted) {
+      setState(() => _pendingRides = []);
+    }
+  }
+
+  Future<void> _toggleOnline() async {
+    setState(() => _isOnline = !_isOnline);
+    
+    final user = ref.read(supabaseServiceProvider).currentUser;
+    if (user != null) {
+      await ref.read(supabaseServiceProvider).client.from('profiles').update({
+        'is_available': _isOnline,
+        'status': _isOnline ? 'active' : 'inactive',
+      }).eq('id', user.id);
+      
+      if (_isOnline) {
+        _startLocationUpdates();
+        _listenToRides();
+      } else {
+        _stopListeningToRides();
+      }
+    }
+  }
+
+  Future<void> _acceptRide(String rideId) async {
+    final user = ref.read(supabaseServiceProvider).currentUser;
+    if (user == null) return;
+    
+    try {
+      await ref.read(supabaseServiceProvider).client.from('rides').update({
+        'status': 'accepted',
+        'driver_id': user.id,
+      }).eq('id', rideId);
+      
+      if (mounted) {
+        Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Corrida aceita!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao aceitar: $e')),
+        );
+      }
+    }
+  }
+
+  void _showRideRequestDialog(Map<String, dynamic> ride) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Nova Solicitação'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Passageiro'),
+              subtitle: const Text('Calculando distância...'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.my_location),
+              title: const Text('Origem'),
+              subtitle: Text(ride['pickup_location'] ?? 'Desconhecido'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.location_on),
+              title: const Text('Destino'),
+              subtitle: Text(ride['destination_location'] ?? 'Desconhecido'),
+            ),
+             Text(
+              '${ride['vehicle_type']?.toString().toUpperCase()}',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFBBF24)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Recusar', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () => _acceptRide(ride['id']),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Aceitar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Fundo Branco solicitado
+      backgroundColor: Colors.white, 
       body: Stack(
         children: [
-          // Mapa com estilo Midnight (mantivemos o estilo premium mas o dashboard agora é Light)
           GoogleMap(
             initialCameraPosition: _initialPosition,
             onMapCreated: (controller) {
@@ -37,7 +178,6 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
             compassEnabled: false,
           ),
           
-          // Header Flutuante (Adaptado para Light Theme)
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -78,15 +218,13 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
             ),
           ),
           
-          // Painel Inferior (Branco, Dourado e Preto)
           Align(
             alignment: Alignment.bottomCenter,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Interruptor principal
                 GestureDetector(
-                  onTap: () => setState(() => _isOnline = !_isOnline),
+                  onTap: _toggleOnline, // Updated to use method
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                     margin: const EdgeInsets.only(bottom: 16),
@@ -106,7 +244,6 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                   ),
                 ),
                 
-                // Cards de Estatísticas (White & Premium Shadow)
                 Container(
                   padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
                   decoration: const BoxDecoration(
@@ -119,25 +256,25 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _StatCard(label: 'Viagens', value: '14', icon: Icons.map),
-                          _StatCard(label: 'Ganhos', value: '850 MT', icon: Icons.payments, isPrimary: true),
-                          _StatCard(label: 'Nota', value: '4.9', icon: Icons.star),
+                          _StatCard(label: 'Viagens', value: '0', icon: Icons.map),
+                          _StatCard(label: 'Ganhos', value: '0 MT', icon: Icons.payments, isPrimary: true),
+                          _StatCard(label: 'Nota', value: '5.0', icon: Icons.star),
                         ],
                       ),
                       if (_isOnline) ...[
                         const SizedBox(height: 24),
                         const Divider(color: Colors.black12),
                         const SizedBox(height: 16),
-                        const Row(
+                         Row(
                           children: [
-                            Icon(Icons.radar, color: Color(0xFFFBBF24), size: 20),
-                            SizedBox(width: 12),
-                            Text(
+                            const Icon(Icons.radar, color: Color(0xFFFBBF24), size: 20),
+                            const SizedBox(width: 12),
+                            const Text(
                               'Procurando viagens próximas...',
                               style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
                             ),
-                            Spacer(),
-                            SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
+                            const Spacer(),
+                            const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
                           ],
                         ),
                       ],

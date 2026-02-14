@@ -35,7 +35,7 @@ class RoleSelectionPage extends StatelessWidget {
                 title: 'Sou Passageiro',
                 subtitle: 'Preciso de uma moto agora',
                 icon: Icons.person_pin_circle,
-                onTap: () => context.go('/'),
+                onTap: () => context.push('/login', extra: 'passenger'),
               ),
               
               const SizedBox(height: 20),
@@ -44,7 +44,7 @@ class RoleSelectionPage extends StatelessWidget {
                 title: 'Sou Motorista',
                 subtitle: 'Quero realizar viagens',
                 icon: Icons.motorcycle,
-                onTap: () => context.go('/driver-dash'),
+                onTap: () => context.push('/login', extra: 'driver'),
                 isSecondary: true,
               ),
             ],
