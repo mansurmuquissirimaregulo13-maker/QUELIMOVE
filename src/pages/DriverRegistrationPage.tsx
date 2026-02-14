@@ -92,23 +92,14 @@ export function DriverRegistrationPage({
     try {
       if (!formData.phone) throw new Error("Informe o número de telefone.");
 
-      // Try WhatsApp first
+      // Disable WhatsApp for now to ensure stability
+      console.log('Sending OTP via default channel (SMS)...');
       const { error } = await supabase.auth.signInWithOtp({
         phone: formData.phone,
-        options: {
-          channel: 'whatsapp'
-        }
+        // options: { channel: 'whatsapp' } 
       });
 
-      if (error) {
-        // Fallback to SMS for ANY error with WhatsApp (configuration, provider, etc)
-        console.warn('WhatsApp OTP failed, falling back to SMS:', error.message);
-        const { error: smsError } = await supabase.auth.signInWithOtp({
-          phone: formData.phone,
-          // No channel option defaults to SMS/Global setting
-        });
-        if (smsError) throw smsError;
-      }
+      if (error) throw error;
 
       setShowOtpInput(true);
     } catch (err: any) {
@@ -159,22 +150,14 @@ export function DriverRegistrationPage({
     // However, to create the PROFILE with data, we need to be authenticated first.
     setIsLoading(true);
     try {
-      // Try WhatsApp first
+      // Forcing SMS/Default to ensure registration works without WhatsApp config
+      console.log('Sending OTP via default channel (SMS)...');
       const { error } = await supabase.auth.signInWithOtp({
         phone: formData.phone,
-        options: {
-          channel: 'whatsapp'
-        }
+        // options: { channel: 'whatsapp' } // Temporarily disabled to ensure stability
       });
 
-      if (error) {
-        // Fallback to SMS for ANY error with WhatsApp
-        console.warn('WhatsApp OTP failed (Registration), falling back to SMS:', error.message);
-        const { error: smsError } = await supabase.auth.signInWithOtp({
-          phone: formData.phone,
-        });
-        if (smsError) throw smsError;
-      }
+      if (error) throw error;
 
       setShowOtpInput(true); // Now show OTP input to verify and COMPLETE registration
     } catch (err: any) {
