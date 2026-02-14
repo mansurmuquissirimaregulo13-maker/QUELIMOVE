@@ -559,8 +559,7 @@ export function DriverRegistrationPage({
                         </label>
                       </div>
                     )}
-                  </>
-                  )}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -613,12 +612,12 @@ export function DriverRegistrationPage({
                         isLoading={isLoading}
                         onClick={handleFinish}
                       >
-                        Verificar Celular e Criar Conta
+                        Criar Conta Agora
                       </Button>
                     )}
                   </div>
                 </div>
-                <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.6 (SMS Fix)</div>
+                <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.7 (Auth Refactor)</div>
               </>
             )}
           </>
