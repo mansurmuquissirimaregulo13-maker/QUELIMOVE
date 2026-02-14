@@ -183,6 +183,7 @@ export function DriverRegistrationPage({
             full_name: formData.name,
             role: 'driver',
             phone: formData.phone, // UI representation
+            phone_whatsapp: formData.phone, // Match schema for WA notifications
             phone_call: formData.phone,
             bi_number: formData.bi,
             bairro: formData.bairro,
@@ -196,6 +197,10 @@ export function DriverRegistrationPage({
           }, { onConflict: 'id' });
 
         if (upsertError) throw upsertError;
+
+        // Automatically open WhatsApp to notify Admin if possible
+        const msg = encodeURIComponent(`Olá Mansur! Meu nome é ${formData.name}, acabei de concluir o meu registo de motorista na App Quelimove. Podes dar uma olhada e aprovar a minha conta? 🤔📲`);
+        window.open(`https://wa.me/258868840054?text=${msg}`, '_blank');
 
         // Success!
         setIsSuccess(true);
@@ -638,7 +643,7 @@ export function DriverRegistrationPage({
                     )}
                   </div>
                 </div>
-                <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.8 (Fail-safe Auth)</div>
+                <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.9 (Final Registration Fix)</div>
               </>
             )}
           </>
