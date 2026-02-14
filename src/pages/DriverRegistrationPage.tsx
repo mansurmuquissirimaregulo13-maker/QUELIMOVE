@@ -96,7 +96,10 @@ export function DriverRegistrationPage({
       if (!formData.phone) throw new Error("Informe o número de telefone.");
 
       const { error } = await supabase.auth.signInWithOtp({
-        phone: formData.phone
+        phone: formData.phone,
+        options: {
+          channel: 'whatsapp'
+        }
       });
       if (error) throw error;
 
@@ -150,7 +153,10 @@ export function DriverRegistrationPage({
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({
-        phone: formData.phone
+        phone: formData.phone,
+        options: {
+          channel: 'whatsapp'
+        }
       });
       if (error) throw error;
       setShowOtpInput(true); // Now show OTP input to verify and COMPLETE registration

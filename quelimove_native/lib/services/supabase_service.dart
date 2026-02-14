@@ -9,7 +9,7 @@ class SupabaseService {
   Future<void> signInWithPhone(String phone) async {
     await _client.auth.signInWithOtp(
       phone: phone,
-      channel: OtpChannel.sms,
+      channel: OtpChannel.whatsapp,
     );
   }
 
