@@ -175,10 +175,10 @@ export function DriverRegistrationPage({
       if (userId) {
         const profileImageUrl = uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`;
 
-        // 2. Create the Profile
-        const { error: insertError } = await supabase
+        // 2. Create or Update the Profile (UPSERT to avoid duplicate key errors)
+        const { error: upsertError } = await supabase
           .from('profiles')
-          .insert({
+          .upsert({
             id: userId,
             full_name: formData.name,
             role: 'driver',
@@ -192,10 +192,10 @@ export function DriverRegistrationPage({
             bi_front_url: uploads.biFront,
             bi_back_url: uploads.biBack,
             license_url: uploads.license,
-            status: 'pending'
-          });
+            status: 'pending' // Always reset to pending on re-registration/update
+          }, { onConflict: 'id' });
 
-        if (insertError) throw insertError;
+        if (upsertError) throw upsertError;
 
         // Success!
         setIsSuccess(true);
