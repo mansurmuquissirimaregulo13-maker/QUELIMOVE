@@ -639,7 +639,12 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                     </div>
 
                     <div className="space-y-3">
-                      {allDrivers.map((driver) => (
+                      {/* Mostrar pendentes primeiro */}
+                      {[...allDrivers].sort((a, b) => {
+                        if (a.status === 'pending' && b.status !== 'pending') return -1;
+                        if (a.status !== 'pending' && b.status === 'pending') return 1;
+                        return 0;
+                      }).map((driver) => (
                         <button
                           key={driver.id}
                           onClick={() => setSelectedDriver(driver)}
