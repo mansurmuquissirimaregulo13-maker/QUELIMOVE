@@ -87,6 +87,7 @@ function AppContent() {
 
               if (updated.status === 'active' && user?.status === 'pending') {
                 alert('Sua conta foi aprovada! Bem-vindo ao Quelimove. 🚀');
+                setCurrentPage('driver-dash'); // Force immediate redirect
               }
             }
           )
