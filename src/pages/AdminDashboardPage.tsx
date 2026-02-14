@@ -179,11 +179,17 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         fetchStats();
 
         // Abrir WhatsApp com mensagem automática
-        const msg = encodeURIComponent(`Olá! Sua conta no Quelimove foi APROVADA com sucesso! 🎉\n\nJá podes abrir a aplicação e começar a faturar. Estamos felizes por te ter connosco! 🚀🚖\n\nAtt: Equipa Quelimove`);
-        window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+        const cleanPhone = (phone || '').replace(/\D/g, '');
+        if (cleanPhone) {
+          const msg = encodeURIComponent(`Olá! Sua conta no Quelimove foi APROVADA com sucesso! 🎉\n\nJá podes abrir a aplicação e começar a faturar. Estamos felizes por te ter connosco! 🚀🚖\n\nAtt: Equipa Quelimove`);
+          window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+        } else {
+          alert('Motorista aprovado, mas o telefone não foi encontrado para enviar WhatsApp.');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error approving driver:', err);
+      alert('Erro ao aprovar: ' + err.message);
     }
   };
 
@@ -198,9 +204,11 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         setSelectedDriver(null);
         addLog('Rejeição', `Motorista ${driverId} rejeitado.`);
         fetchStats();
+        alert('Motorista bloqueado/rejeitado com sucesso.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error rejecting driver:', err);
+      alert('Erro ao rejeitar: ' + err.message);
     }
   };
 
@@ -725,7 +733,14 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                           <span className="text-xs font-bold text-[var(--text-primary)]">Enviar Email Suporte</span>
                           <ChevronRight size={16} className="text-[var(--text-tertiary)]" />
                         </a>
-                        <button className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center active:scale-[0.98] transition-all" onClick={() => { localStorage.clear(); onNavigate('home'); }}>
+                        <button
+                          className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center active:scale-[0.98] transition-all"
+                          onClick={async () => {
+                            await supabase.auth.signOut();
+                            localStorage.clear();
+                            onNavigate('home');
+                          }}
+                        >
                           <span className="text-xs font-black text-red-500 uppercase">Sair do Painel Admin</span>
                         </button>
                       </div>
@@ -848,8 +863,14 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                       variant="outline"
                       className="w-full h-14 border-green-500/20 text-green-500 bg-green-500/5"
                       onClick={() => {
-                        const msg = encodeURIComponent('Olá! Precisamos falar sobre sua conta no Quelimove.');
-                        window.open(`https://wa.me/${selectedDriver.phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                        const driverPhone = selectedDriver.phone_whatsapp || selectedDriver.phone || '';
+                        const cleanPhone = driverPhone.replace(/\D/g, '');
+                        if (cleanPhone) {
+                          const msg = encodeURIComponent('Olá! Precisamos falar sobre sua conta no Quelimove.');
+                          window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+                        } else {
+                          alert('Telefone não encontrado.');
+                        }
                       }}
                     >
                       Conversar no WhatsApp
@@ -858,8 +879,14 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                       variant="outline"
                       className="w-full h-12 border-blue-500/20 text-blue-500 bg-blue-500/5"
                       onClick={() => {
-                        const msg = 'Olá! Precisamos falar sobre sua conta no Quelimove.';
-                        window.location.href = `sms:${selectedDriver.phone.replace(/\D/g, '')}?body=${encodeURIComponent(msg)}`;
+                        const driverPhone = selectedDriver.phone || selectedDriver.phone_whatsapp || '';
+                        const cleanPhone = driverPhone.replace(/\D/g, '');
+                        if (cleanPhone) {
+                          const msg = 'Olá! Precisamos falar sobre sua conta no Quelimove.';
+                          window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`;
+                        } else {
+                          alert('Telefone não encontrado.');
+                        }
                       }}
                     >
                       Enviar SMS Normal
