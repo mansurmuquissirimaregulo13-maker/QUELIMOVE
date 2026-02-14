@@ -70,15 +70,7 @@ export function AdminLoginPage({ onLogin, onNavigate }: AdminLoginPageProps) {
 
         } catch (err: any) {
             console.error('Admin Login Error:', err);
-            // Se falhar login (ex: user não existe), tentar validar hardcoded APENAS para emergência
-            // mas sem acesso ao Supabase real isso não ajuda muito com os dados.
-            if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-                alert("Aviso: A entrar em modo offline/hardcoded. Dados reais podem não carregar.");
-                localStorage.setItem('admin_session', 'true');
-                onLogin(true);
-            } else {
-                setError('Login falhou: ' + err.message);
-            }
+            setError('Login falhou: ' + (err.message || 'Erro desconhecido'));
         } finally {
             setIsLoading(false);
         }
