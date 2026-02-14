@@ -101,16 +101,13 @@ export function DriverRegistrationPage({
       });
 
       if (error) {
-        // Fallback to SMS if WhatsApp is not configured
-        if (error.message && error.message.includes('Unsupported phone provider')) {
-          console.log('WhatsApp not configured, falling back to SMS');
-          const { error: smsError } = await supabase.auth.signInWithOtp({
-            phone: formData.phone,
-          });
-          if (smsError) throw smsError;
-        } else {
-          throw error;
-        }
+        // Fallback to SMS for ANY error with WhatsApp (configuration, provider, etc)
+        console.warn('WhatsApp OTP failed, falling back to SMS:', error.message);
+        const { error: smsError } = await supabase.auth.signInWithOtp({
+          phone: formData.phone,
+          // No channel option defaults to SMS/Global setting
+        });
+        if (smsError) throw smsError;
       }
 
       setShowOtpInput(true);
@@ -171,16 +168,12 @@ export function DriverRegistrationPage({
       });
 
       if (error) {
-        // Fallback to SMS if WhatsApp is not configured
-        if (error.message && error.message.includes('Unsupported phone provider')) {
-          console.log('WhatsApp not configured, falling back to SMS');
-          const { error: smsError } = await supabase.auth.signInWithOtp({
-            phone: formData.phone,
-          });
-          if (smsError) throw smsError;
-        } else {
-          throw error;
-        }
+        // Fallback to SMS for ANY error with WhatsApp
+        console.warn('WhatsApp OTP failed (Registration), falling back to SMS:', error.message);
+        const { error: smsError } = await supabase.auth.signInWithOtp({
+          phone: formData.phone,
+        });
+        if (smsError) throw smsError;
       }
 
       setShowOtpInput(true); // Now show OTP input to verify and COMPLETE registration
