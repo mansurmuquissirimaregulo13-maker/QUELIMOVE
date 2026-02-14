@@ -59,31 +59,51 @@ export function HomePage({ onNavigate }: HomePageProps) {
           {!userRole && (
             <>
               <Button
-                className="w-full h-14 text-lg shadow-lg shadow-[#FBBF24]/20"
+                className="w-full h-16 text-lg shadow-xl shadow-[#FBBF24]/20 font-black uppercase tracking-tighter rounded-2xl"
                 onClick={() => onNavigate('ride')}
               >
-                Pedir Moto
-                <ArrowRight className="ml-2" size={20} />
+                Pedir Moto-Táxi
+                <ArrowRight className="ml-2" size={24} />
               </Button>
 
               <Button
                 variant="outline"
-                className="w-full h-14 text-lg border-[#3B82F6] text-[#3B82F6] hover:bg-[#3B82F6]/10 hover:border-[#3B82F6]"
+                className="w-full h-14 border-[#3B82F6] text-[#3B82F6] hover:bg-[#3B82F6]/5 font-black uppercase tracking-tighter rounded-2xl"
                 onClick={() => onNavigate('driver-reg')}
               >
-                <UserPlus className="ml-2" size={20} />
-                Sou Mototaxista
+                <UserPlus className="mr-2" size={20} />
+                Quero ser Motorista
               </Button>
             </>
           )}
 
+          {userRole === 'admin' && (
+            <Button
+              className="w-full h-16 bg-[#FBBF24] text-black shadow-xl shadow-[#FBBF24]/20 font-black uppercase tracking-tighter rounded-2xl"
+              onClick={() => onNavigate('admin')}
+            >
+              Entrar no Painel Admin
+              <ArrowRight className="ml-2" size={24} />
+            </Button>
+          )}
+
+          {userRole === 'driver' && (
+            <Button
+              className="w-full h-16 bg-[#1a1a1a] text-[#FBBF24] border-2 border-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 font-black uppercase tracking-tighter rounded-2xl"
+              onClick={() => onNavigate('driver-dash')}
+            >
+              Painel do Motorista
+              <ArrowRight className="ml-2" size={24} />
+            </Button>
+          )}
+
           {userRole === 'user' && (
             <Button
-              className="w-full h-14 text-lg shadow-lg shadow-[#FBBF24]/20"
+              className="w-full h-16 shadow-xl shadow-[#FBBF24]/20 font-black uppercase tracking-tighter rounded-2xl"
               onClick={() => onNavigate('ride')}
             >
-              Continuar para o Mapa
-              <ArrowRight className="ml-2" size={20} />
+              Solicitar Viagem
+              <ArrowRight className="ml-2" size={24} />
             </Button>
           )}
 
