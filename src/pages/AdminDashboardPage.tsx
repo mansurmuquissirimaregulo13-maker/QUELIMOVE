@@ -182,7 +182,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         fetchStats();
 
         // Abrir WhatsApp com mensagem automática
-        const msg = encodeURIComponent('Olá! Sua conta no Quelimove foi aprovada. Já pode entrar na aplicação e começar a faturar! 🚀');
+        const msg = encodeURIComponent(`Olá! Sua conta no Quelimove foi APROVADA com sucesso! 🎉\n\nJá podes abrir a aplicação e começar a faturar. Estamos felizes por te ter connosco! 🚀🚖\n\nAtt: Equipa Quelimove`);
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
       }
     } catch (err) {

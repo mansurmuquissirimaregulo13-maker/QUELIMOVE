@@ -46,6 +46,7 @@ export function DriverRegistrationPage({
   const [vehicleType, setVehicleType] = React.useState<'moto' | 'carro' | 'txopela'>('moto');
   const [isLoginMode, setIsLoginMode] = React.useState(false);
   const [showOtpInput, setShowOtpInput] = React.useState(false);
+  const [isSuccess, setIsSuccess] = React.useState(false);
   const [otpCode, setOtpCode] = React.useState('');
 
   const [formData, setFormData] = React.useState({
@@ -228,8 +229,8 @@ export function DriverRegistrationPage({
           if (updateError) throw updateError;
         }
 
-        alert('Cadastro realizado! Seus dados foram enviados para análise.');
-        window.location.href = '/';
+
+        setIsSuccess(true);
       }
     } catch (err: any) {
       alert('Erro ao finalizar cadastro: ' + err.message);
@@ -249,6 +250,51 @@ export function DriverRegistrationPage({
       ))}
     </div>
   );
+
+  const renderSuccess = () => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="flex flex-col items-center justify-center text-center space-y-8 py-12"
+    >
+      <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mb-4">
+        <CheckCircle size={64} className="animate-bounce" />
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter">CADASTRO CONCLUÍDO!</h2>
+        <p className="text-sm text-[var(--text-secondary)] px-8">
+          Teus dados foram enviados para análise. Agora, avisa o nosso admin no WhatsApp para acelerar a tua aprovação! 🚀
+        </p>
+      </div>
+
+      <div className="w-full space-y-4 pt-4">
+        <Button
+          className="w-full h-16 bg-[#25D366] hover:bg-[#128C7E] text-white font-black uppercase tracking-tighter rounded-2xl shadow-xl shadow-[#25D366]/20 flex items-center justify-center gap-3"
+          onClick={() => {
+            const msg = encodeURIComponent(`Olá Mansur! Meu nome é ${formData.name}, acabei de concluir o meu registo de motorista na App Quelimove. Podes dar uma olhada e aprovar a minha conta? 🤔📲`);
+            window.open(`https://wa.me/258868840054?text=${msg}`, '_blank');
+          }}
+        >
+          <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" className="w-6 h-6 invert" />
+          Avisar no WhatsApp
+        </Button>
+
+        <Button
+          variant="outline"
+          className="w-full h-14"
+          onClick={() => onNavigate('home')}
+        >
+          Voltar ao Início
+        </Button>
+      </div>
+
+      <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest opacity-50">
+        QUELIMOVE v2.6 - QUALIDADE E MOVIMENTO
+      </p>
+    </motion.div>
+  );
+
   return (
     <div className="h-[100dvh] w-full bg-[var(--bg-primary)] overflow-hidden flex flex-col relative select-none">
       <Header
@@ -256,121 +302,29 @@ export function DriverRegistrationPage({
         onBack={step === 1 || isLoginMode ? (showOtpInput ? () => setShowOtpInput(false) : () => onNavigate('home')) : prevStep}
       />
       <div className="flex-1 overflow-y-auto mt-[72px] px-4 py-6">
-        {!isLoginMode && renderStepIndicator()}
+        {isSuccess ? (
+          renderSuccess()
+        ) : (
+          <>
+            {!isLoginMode && renderStepIndicator()}
 
-        <AnimatePresence mode="wait">
-          {isLoginMode ? (
-            <motion.div
-              key="login"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              {!showOtpInput ? (
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Bem-vindo de volta</h2>
-                    <p className="text-xs text-[var(--text-secondary)]">Entre com seu telefone para acessar.</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <Input
-                      icon={Phone}
-                      label="WhatsApp / Telefone"
-                      placeholder="+258 84..."
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
-                    />
-
-                    <Button
-                      className="w-full h-14 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-xl shadow-[var(--primary-glow)]"
-                      isLoading={isLoading}
-                      onClick={handleSendLoginOtp}
-                    >
-                      Receber Código
-                    </Button>
-
-                    <div className="pt-4">
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setIsLoginMode(false)}
-                      >
-                        Criar Nova Conta
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Código de Verificação</h2>
-                    <p className="text-xs text-[var(--text-secondary)]">Insira o código enviado para {formData.phone}</p>
-                  </div>
-                  <Input
-                    label="Código (6 dígitos)"
-                    placeholder="123456"
-                    value={otpCode}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtpCode(e.target.value)}
-                    className="text-center text-2xl tracking-widest"
-                  />
-                  <Button
-                    className="w-full h-14"
-                    isLoading={isLoading}
-                    onClick={handleVerifyLoginOtp}
-                  >
-                    Verificar e Entrar
-                  </Button>
-                </div>
-              )}
-            </motion.div>
-          ) : (
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.02 }}
-              className="space-y-6 pb-32"
-            >
-              {showOtpInput ? (
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Verificar Cadastro</h2>
-                    <p className="text-xs text-[var(--text-secondary)]">Insira o código enviado para {formData.phone}</p>
-                  </div>
-                  <Input
-                    label="Código (6 dígitos)"
-                    placeholder="123456"
-                    value={otpCode}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtpCode(e.target.value)}
-                    className="text-center text-2xl tracking-widest"
-                  />
-                  <Button
-                    className="w-full h-14"
-                    isLoading={isLoading}
-                    onClick={handleCompleteRegistration}
-                  >
-                    Confirmar Cadastro
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  {step === 1 && (
+            <AnimatePresence mode="wait">
+              {isLoginMode ? (
+                <motion.div
+                  key="login"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  {!showOtpInput ? (
                     <div className="space-y-6">
                       <div className="space-y-1">
-                        <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Conta e Dados</h2>
-                        <p className="text-xs text-[var(--text-secondary)]">Insira seus dados pessoais para começar.</p>
+                        <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Bem-vindo de volta</h2>
+                        <p className="text-xs text-[var(--text-secondary)]">Entre com seu telefone para acessar.</p>
                       </div>
+
                       <div className="space-y-4">
-                        <Input
-                          icon={User}
-                          label="Nome Completo"
-                          placeholder="Seu nome"
-                          value={formData.name}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
-                        />
                         <Input
                           icon={Phone}
                           label="WhatsApp / Telefone"
@@ -379,275 +333,373 @@ export function DriverRegistrationPage({
                           value={formData.phone}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
                         />
-                        <div className="space-y-4">
-                          <Input
-                            icon={FileText}
-                            label="Número do BI"
-                            placeholder="BI..."
-                            value={formData.bi}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, bi: e.target.value })}
-                          />
-                          <Input
-                            icon={Calendar}
-                            label="Nascimento"
-                            type="date"
-                            value={formData.birthdate}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, birthdate: e.target.value })}
-                          />
+
+                        <Button
+                          className="w-full h-14 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-xl shadow-[var(--primary-glow)]"
+                          isLoading={isLoading}
+                          onClick={handleSendLoginOtp}
+                        >
+                          Receber Código
+                        </Button>
+
+                        <div className="pt-4">
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => setIsLoginMode(false)}
+                          >
+                            Criar Nova Conta
+                          </Button>
                         </div>
                       </div>
-
-                      <div className="pt-4">
-                        <button
-                          onClick={() => setIsLoginMode(true)}
-                          className="w-full text-center text-sm text-[var(--primary-color)] font-bold hover:underline"
-                        >
-                          Já tenho uma conta? Fazer Login
-                        </button>
-                      </div>
                     </div>
-                  )}
-
-                  {step === 2 && (
+                  ) : (
                     <div className="space-y-6">
                       <div className="space-y-1">
-                        <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Informação do Veículo</h2>
-                        <p className="text-xs text-[var(--text-secondary)]">Diga-nos o que você conduz.</p>
+                        <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Código de Verificação</h2>
+                        <p className="text-xs text-[var(--text-secondary)]">Insira o código enviado para {formData.phone}</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {[
-                          { id: 'moto', icon: Bike, label: 'Moto' },
-                          { id: 'txopela', icon: Bike, label: 'Txopela' }
-                        ].map((type) => (
-                          <button
-                            key={type.id}
-                            onClick={() => setVehicleType(type.id as any)}
-                            className={`relative flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all min-h-[100px] ${vehicleType === type.id
-                              ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black shadow-xl shadow-[var(--primary-glow)] scale-105'
-                              : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--primary-color)]/30'
-                              }`}
-                          >
-                            {type.id === 'txopela' ? (
-                              <img src="/txopela.png" alt="Txopela" className="w-16 h-12 object-contain mb-1 drop-shadow-sm" />
-                            ) : type.id === 'moto' ? (
-                              <img src="/mota.png" alt="Moto" className="w-16 h-12 object-contain mb-1 drop-shadow-sm" />
-                            ) : (
-                              <type.icon size={28} className="mb-2" />
-                            )}
-                            <span className="text-[10px] font-black uppercase tracking-widest">{type.label}</span>
-                          </button>
-                        ))}
+                      <Input
+                        label="Código (6 dígitos)"
+                        placeholder="123456"
+                        value={otpCode}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtpCode(e.target.value)}
+                        className="text-center text-2xl tracking-widest"
+                      />
+                      <Button
+                        className="w-full h-14"
+                        isLoading={isLoading}
+                        onClick={handleVerifyLoginOtp}
+                      >
+                        Verificar e Entrar
+                      </Button>
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={step}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.02 }}
+                  className="space-y-6 pb-32"
+                >
+                  {showOtpInput ? (
+                    <div className="space-y-6">
+                      <div className="space-y-1">
+                        <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Verificar Cadastro</h2>
+                        <p className="text-xs text-[var(--text-secondary)]">Insira o código enviado para {formData.phone}</p>
                       </div>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Bairro de Atuação</label>
-                          <div className="relative">
-                            <select
-                              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl p-4 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--primary-color)] outline-none appearance-none cursor-pointer"
-                              value={formData.bairro}
-                              onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                      <Input
+                        label="Código (6 dígitos)"
+                        placeholder="123456"
+                        value={otpCode}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtpCode(e.target.value)}
+                        className="text-center text-2xl tracking-widest"
+                      />
+                      <Button
+                        className="w-full h-14"
+                        isLoading={isLoading}
+                        onClick={handleCompleteRegistration}
+                      >
+                        Confirmar Cadastro
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {step === 1 && (
+                        <div className="space-y-6">
+                          <div className="space-y-1">
+                            <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Conta e Dados</h2>
+                            <p className="text-xs text-[var(--text-secondary)]">Insira seus dados pessoais para começar.</p>
+                          </div>
+                          <div className="space-y-4">
+                            <Input
+                              icon={User}
+                              label="Nome Completo"
+                              placeholder="Seu nome"
+                              value={formData.name}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
+                            />
+                            <Input
+                              icon={Phone}
+                              label="WhatsApp / Telefone"
+                              placeholder="+258 84..."
+                              type="tel"
+                              value={formData.phone}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
+                            />
+                            <div className="space-y-4">
+                              <Input
+                                icon={FileText}
+                                label="Número do BI"
+                                placeholder="BI..."
+                                value={formData.bi}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, bi: e.target.value })}
+                              />
+                              <Input
+                                icon={Calendar}
+                                label="Nascimento"
+                                type="date"
+                                value={formData.birthdate}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, birthdate: e.target.value })}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-4">
+                            <button
+                              onClick={() => setIsLoginMode(true)}
+                              className="w-full text-center text-sm text-[var(--primary-color)] font-bold hover:underline"
                             >
-                              <option value="">Selecionar Bairro...</option>
-                              {QUELIMANE_LOCATIONS.filter(l => l.type === 'bairro').map(l => (
-                                <option key={l.name} value={l.name}>{l.name}</option>
-                              ))}
-                            </select>
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-tertiary)]">
-                              <ChevronRight className="rotate-90" size={16} />
+                              Já tenho uma conta? Fazer Login
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {step === 2 && (
+                        <div className="space-y-6">
+                          <div className="space-y-1">
+                            <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Informação do Veículo</h2>
+                            <p className="text-xs text-[var(--text-secondary)]">Diga-nos o que você conduz.</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { id: 'moto', icon: Bike, label: 'Moto' },
+                              { id: 'txopela', icon: Bike, label: 'Txopela' }
+                            ].map((type) => (
+                              <button
+                                key={type.id}
+                                onClick={() => setVehicleType(type.id as any)}
+                                className={`relative flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all min-h-[100px] ${vehicleType === type.id
+                                  ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black shadow-xl shadow-[var(--primary-glow)] scale-105'
+                                  : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--primary-color)]/30'
+                                  }`}
+                              >
+                                {type.id === 'txopela' ? (
+                                  <img src="/txopela.png" alt="Txopela" className="w-16 h-12 object-contain mb-1 drop-shadow-sm" />
+                                ) : type.id === 'moto' ? (
+                                  <img src="/mota.png" alt="Moto" className="w-16 h-12 object-contain mb-1 drop-shadow-sm" />
+                                ) : (
+                                  <type.icon size={28} className="mb-2" />
+                                )}
+                                <span className="text-[10px] font-black uppercase tracking-widest">{type.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <label className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Bairro de Atuação</label>
+                              <div className="relative">
+                                <select
+                                  className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl p-4 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--primary-color)] outline-none appearance-none cursor-pointer"
+                                  value={formData.bairro}
+                                  onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                                >
+                                  <option value="">Selecionar Bairro...</option>
+                                  {QUELIMANE_LOCATIONS.filter(l => l.type === 'bairro').map(l => (
+                                    <option key={l.name} value={l.name}>{l.name}</option>
+                                  ))}
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-tertiary)]">
+                                  <ChevronRight className="rotate-90" size={16} />
+                                </div>
+                              </div>
+                            </div>
+                            <Input
+                              label="Marca e Modelo"
+                              placeholder="Ex: Honda Ace 125"
+                              value={formData.vehicleModel}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleModel: e.target.value })}
+                            />
+                            <Input
+                              label="Matrícula"
+                              placeholder="ABC-123-MC"
+                              value={formData.plate}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, plate: e.target.value })}
+                            />
+                            <div className="grid grid-cols-2 gap-4">
+                              <Input
+                                label="Cor"
+                                placeholder="Vermelha"
+                                value={formData.vehicleColor}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleColor: e.target.value })}
+                              />
+                              <Input
+                                label="Ano"
+                                placeholder="2020"
+                                type="number"
+                                value={formData.vehicleYear}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleYear: e.target.value })}
+                              />
                             </div>
                           </div>
                         </div>
-                        <Input
-                          label="Marca e Modelo"
-                          placeholder="Ex: Honda Ace 125"
-                          value={formData.vehicleModel}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleModel: e.target.value })}
-                        />
-                        <Input
-                          label="Matrícula"
-                          placeholder="ABC-123-MC"
-                          value={formData.plate}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, plate: e.target.value })}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input
-                            label="Cor"
-                            placeholder="Vermelha"
-                            value={formData.vehicleColor}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleColor: e.target.value })}
-                          />
-                          <Input
-                            label="Ano"
-                            placeholder="2020"
-                            type="number"
-                            value={formData.vehicleYear}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleYear: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {step === 3 && (
-                    <div className="space-y-6">
-                      <div className="space-y-1">
-                        <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Documentação</h2>
-                        <p className="text-xs text-[var(--text-secondary)]">Carregue fotos legíveis para validação.</p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-4">
-                        {[
-                          { key: 'biFront', label: 'BI (Frente)' },
-                          { key: 'biBack', label: 'BI (Verso)' },
-                          { key: 'license', label: 'Carta de Condução' },
-                          { key: 'profile', label: 'Sua Foto (Selfie)', icon: Camera },
-                          { key: 'vehicleDoc', label: 'Livrete/Viatura' }
-                        ].map((doc) => (
-                          <div key={doc.key} className="relative">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              id={`file-${doc.key}`}
-                              className="hidden"
-                              onChange={(e) => handleFileUpload(e, doc.key as any)}
-                            />
-                            <label
-                              htmlFor={`file-${doc.key}`}
-                              className={`w-full p-5 rounded-3xl border-2 flex items-center justify-between transition-all cursor-pointer ${uploads[doc.key as keyof typeof uploads]
-                                ? 'bg-[var(--primary-color)]/5 border-[var(--primary-color)] text-[var(--primary-color)] shadow-lg'
-                                : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--primary-color)]/30'
-                                }`}
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-2xl ${uploads[doc.key as keyof typeof uploads] ? 'bg-[var(--primary-color)] text-black' : 'bg-[var(--bg-primary)]'}`}>
-                                  {doc.icon ? <doc.icon size={22} /> : <Upload size={22} />}
-                                </div>
-                                <div>
-                                  <span className="text-sm font-black uppercase tracking-tighter block">{doc.label}</span>
-                                  <span className="text-[10px] opacity-60">{uploads[doc.key as keyof typeof uploads] ? 'Ficheiro selecionado' : 'Clique para carregar'}</span>
-                                </div>
-                              </div>
-                              {uploads[doc.key as keyof typeof uploads] ? (
-                                <div className="relative group/preview">
-                                  <img src={uploads[doc.key as keyof typeof uploads]} alt="Preview" className="w-12 h-12 rounded-xl object-cover border-2 border-[var(--primary-color)]" />
-                                  <div className="absolute -top-2 -right-2 bg-green-500 rounded-full p-1 text-white shadow-lg">
-                                    <CheckCircle size={12} />
+                      )}
+                      {step === 3 && (
+                        <div className="space-y-6">
+                          <div className="space-y-1">
+                            <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Documentação</h2>
+                            <p className="text-xs text-[var(--text-secondary)]">Carregue fotos legíveis para validação.</p>
+                          </div>
+                          <div className="grid grid-cols-1 gap-4">
+                            {[
+                              { key: 'biFront', label: 'BI (Frente)' },
+                              { key: 'biBack', label: 'BI (Verso)' },
+                              { key: 'license', label: 'Carta de Condução' },
+                              { key: 'profile', label: 'Sua Foto (Selfie)', icon: Camera },
+                              { key: 'vehicleDoc', label: 'Livrete/Viatura' }
+                            ].map((doc) => (
+                              <div key={doc.key} className="relative">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  id={`file-${doc.key}`}
+                                  className="hidden"
+                                  onChange={(e) => handleFileUpload(e, doc.key as any)}
+                                />
+                                <label
+                                  htmlFor={`file-${doc.key}`}
+                                  className={`w-full p-5 rounded-3xl border-2 flex items-center justify-between transition-all cursor-pointer ${uploads[doc.key as keyof typeof uploads]
+                                    ? 'bg-[var(--primary-color)]/5 border-[var(--primary-color)] text-[var(--primary-color)] shadow-lg'
+                                    : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--primary-color)]/30'
+                                    }`}
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <div className={`p-3 rounded-2xl ${uploads[doc.key as keyof typeof uploads] ? 'bg-[var(--primary-color)] text-black' : 'bg-[var(--bg-primary)]'}`}>
+                                      {doc.icon ? <doc.icon size={22} /> : <Upload size={22} />}
+                                    </div>
+                                    <div>
+                                      <span className="text-sm font-black uppercase tracking-tighter block">{doc.label}</span>
+                                      <span className="text-[10px] opacity-60">{uploads[doc.key as keyof typeof uploads] ? 'Ficheiro selecionado' : 'Clique para carregar'}</span>
+                                    </div>
                                   </div>
-                                </div>
-                              ) : (
-                                <div className="w-8 h-8 rounded-full border-2 border-dashed border-[var(--text-tertiary)] flex items-center justify-center opacity-40">
-                                  <span className="text-xs">+</span>
-                                </div>
-                              )}
-                            </label>
+                                  {uploads[doc.key as keyof typeof uploads] ? (
+                                    <div className="relative group/preview">
+                                      <img src={uploads[doc.key as keyof typeof uploads]} alt="Preview" className="w-12 h-12 rounded-xl object-cover border-2 border-[var(--primary-color)]" />
+                                      <div className="absolute -top-2 -right-2 bg-green-500 rounded-full p-1 text-white shadow-lg">
+                                        <CheckCircle size={12} />
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full border-2 border-dashed border-[var(--text-tertiary)] flex items-center justify-center opacity-40">
+                                      <span className="text-xs">+</span>
+                                    </div>
+                                  )}
+                                </label>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {step === 4 && (
-                    <div className="space-y-6">
-                      <div className="space-y-1">
-                        <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Revisar e Finalizar</h2>
-                        <p className="text-xs text-[var(--text-secondary)]">Confirme se tudo está correto.</p>
-                      </div>
-                      <div className="bg-[var(--bg-secondary)] p-6 rounded-[32px] border border-[var(--border-color)] space-y-4 shadow-xl">
-                        <div className="space-y-1">
-                          <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Nome Completo</p>
-                          <p className="text-lg text-[var(--text-primary)] font-bold">{formData.name}</p>
                         </div>
-                        <div className="grid grid-cols-2 gap-6">
+                      )}
+                      {step === 4 && (
+                        <div className="space-y-6">
                           <div className="space-y-1">
-                            <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Veículo</p>
-                            <p className="text-sm text-[var(--text-primary)] font-bold">{formData.vehicleModel}</p>
+                            <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Revisar e Finalizar</h2>
+                            <p className="text-xs text-[var(--text-secondary)]">Confirme se tudo está correto.</p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Matrícula</p>
-                            <p className="text-sm text-[var(--text-primary)] font-bold uppercase">{formData.plate}</p>
+                          <div className="bg-[var(--bg-secondary)] p-6 rounded-[32px] border border-[var(--border-color)] space-y-4 shadow-xl">
+                            <div className="space-y-1">
+                              <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Nome Completo</p>
+                              <p className="text-lg text-[var(--text-primary)] font-bold">{formData.name}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-6">
+                              <div className="space-y-1">
+                                <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Veículo</p>
+                                <p className="text-sm text-[var(--text-primary)] font-bold">{formData.vehicleModel}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Matrícula</p>
+                                <p className="text-sm text-[var(--text-primary)] font-bold uppercase">{formData.plate}</p>
+                              </div>
+                            </div>
                           </div>
+                          <div className="space-y-3">
+                            <h3 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Método de Pagamento</h3>
+                            <div className="p-4 rounded-2xl border-2 border-[var(--primary-color)] bg-[var(--primary-color)]/10 text-[var(--primary-color)] flex items-center justify-center gap-3">
+                              <DollarSign size={18} />
+                              <span className="text-xs font-black uppercase">Apenas Dinheiro (Cash)</span>
+                            </div>
+                          </div>
+                          <label className="flex items-start gap-4 p-5 rounded-[28px] bg-[var(--bg-secondary)] border border-[var(--border-color)] cursor-pointer group active:scale-[0.98] transition-all">
+                            <div className="relative flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={formData.termsAccepted}
+                                onChange={(e) => setFormData({ ...formData, termsAccepted: e.target.checked })}
+                                className="peer h-6 w-6 rounded-lg border-2 border-[var(--border-color)] text-[var(--primary-color)] focus:ring-[var(--primary-color)] bg-transparent transition-all"
+                              />
+                              <CheckCircle className="absolute inset-0 m-auto text-[var(--primary-color)] opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" size={16} />
+                            </div>
+                            <span className="text-[10px] text-[var(--text-secondary)] leading-relaxed font-medium">
+                              Declaro que as informações acima são verdadeiras e aceito os <span className="text-[var(--primary-color)] font-bold">Termos e Condições</span> da Quelimove para parceiros.
+                            </span>
+                          </label>
                         </div>
-                      </div>
-                      <div className="space-y-3">
-                        <h3 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Método de Pagamento</h3>
-                        <div className="p-4 rounded-2xl border-2 border-[var(--primary-color)] bg-[var(--primary-color)]/10 text-[var(--primary-color)] flex items-center justify-center gap-3">
-                          <DollarSign size={18} />
-                          <span className="text-xs font-black uppercase">Apenas Dinheiro (Cash)</span>
-                        </div>
-                      </div>
-                      <label className="flex items-start gap-4 p-5 rounded-[28px] bg-[var(--bg-secondary)] border border-[var(--border-color)] cursor-pointer group active:scale-[0.98] transition-all">
-                        <div className="relative flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.termsAccepted}
-                            onChange={(e) => setFormData({ ...formData, termsAccepted: e.target.checked })}
-                            className="peer h-6 w-6 rounded-lg border-2 border-[var(--border-color)] text-[var(--primary-color)] focus:ring-[var(--primary-color)] bg-transparent transition-all"
-                          />
-                          <CheckCircle className="absolute inset-0 m-auto text-[var(--primary-color)] opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" size={16} />
-                        </div>
-                        <span className="text-[10px] text-[var(--text-secondary)] leading-relaxed font-medium">
-                          Declaro que as informações acima são verdadeiras e aceito os <span className="text-[var(--primary-color)] font-bold">Termos e Condições</span> da Quelimove para parceiros.
-                        </span>
-                      </label>
-                    </div>
+                      )}
+                    </>
                   )}
-                </>
+                </motion.div>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </AnimatePresence>
 
-        {!isLoginMode && (
-          <>
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)] to-transparent pointer-events-none">
-              <div className="pointer-events-auto">
-                {step < 4 ? (
-                  <Button
-                    onClick={nextStep}
-                    className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
-                    disabled={
-                      (step === 1 && (
-                        !formData.name ||
-                        !formData.phone ||
-                        !BI_REGEX.test(formData.bi) ||
-                        !isOldEnough(formData.birthdate)
-                      )) ||
-                      (step === 2 && (
-                        !formData.bairro ||
-                        !formData.vehicleModel ||
-                        !formData.plate ||
-                        !formData.vehicleColor ||
-                        !formData.vehicleYear
-                      )) ||
-                      (step === 3 && (
-                        !uploads.biFront ||
-                        !uploads.biBack ||
-                        !uploads.license ||
-                        !uploads.profile ||
-                        !uploads.vehicleDoc
-                      ))
-                    }
-                  >
-                    {step === 1 && formData.bi && !BI_REGEX.test(formData.bi)
-                      ? 'BI Inválido (12 dígitos + Letra)'
-                      : step === 1 && formData.birthdate && !isOldEnough(formData.birthdate)
-                        ? 'Deve ter +18 anos'
-                        : 'Continuar'}
-                    <ChevronRight className="ml-2" size={24} />
-                  </Button>
-                ) : (
-                  <Button
-                    className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
-                    disabled={
-                      !formData.termsAccepted ||
-                      isLoading
-                    }
-                    isLoading={isLoading}
-                    onClick={handleFinish}
-                  >
-                    Verificar Celular e Criar Conta
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.6 (SMS Fix)</div>
+            {!isLoginMode && (
+              <>
+                <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)] to-transparent pointer-events-none">
+                  <div className="pointer-events-auto">
+                    {step < 4 ? (
+                      <Button
+                        onClick={nextStep}
+                        className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
+                        disabled={
+                          (step === 1 && (
+                            !formData.name ||
+                            !formData.phone ||
+                            !BI_REGEX.test(formData.bi) ||
+                            !isOldEnough(formData.birthdate)
+                          )) ||
+                          (step === 2 && (
+                            !formData.bairro ||
+                            !formData.vehicleModel ||
+                            !formData.plate ||
+                            !formData.vehicleColor ||
+                            !formData.vehicleYear
+                          )) ||
+                          (step === 3 && (
+                            !uploads.biFront ||
+                            !uploads.biBack ||
+                            !uploads.license ||
+                            !uploads.profile ||
+                            !uploads.vehicleDoc
+                          ))
+                        }
+                      >
+                        {step === 1 && formData.bi && !BI_REGEX.test(formData.bi)
+                          ? 'BI Inválido (12 dígitos + Letra)'
+                          : step === 1 && formData.birthdate && !isOldEnough(formData.birthdate)
+                            ? 'Deve ter +18 anos'
+                            : 'Continuar'}
+                        <ChevronRight className="ml-2" size={24} />
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
+                        disabled={
+                          !formData.termsAccepted ||
+                          isLoading
+                        }
+                        isLoading={isLoading}
+                        onClick={handleFinish}
+                      >
+                        Verificar Celular e Criar Conta
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.6 (SMS Fix)</div>
+              </>
+            )}
           </>
         )}
       </div>
