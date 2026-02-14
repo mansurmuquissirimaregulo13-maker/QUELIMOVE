@@ -96,8 +96,8 @@ export function DriverRegistrationPage({
 
     setIsLoading(true);
     try {
-      // Internal Email Mapping Strategy
-      const cleanPhone = formData.phone.replace(/\s+/g, '').replace('+', '');
+      // Internal Email Mapping Strategy (v2.8)
+      const cleanPhone = formData.phone.replace(/\D/g, '');
       const internalEmail = `${cleanPhone}@driver.quelimove.com`;
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -105,7 +105,13 @@ export function DriverRegistrationPage({
         password: password
       });
 
-      if (error) throw error;
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('invalid login credentials') || msg.includes('email') || msg.includes('not confirmed')) {
+          throw new Error('Telefone ou senha inválidos.');
+        }
+        throw error;
+      };
 
       if (data.session) {
         const { data: profile } = await supabase
@@ -127,7 +133,7 @@ export function DriverRegistrationPage({
       }
     } catch (err: any) {
       console.error('Login Error:', err);
-      alert('Erro de login: Verifique seu telefone e senha.');
+      alert('Erro de login: ' + (err.message || 'Verifique seus dados.'));
     } finally {
       setIsLoading(false);
     }
@@ -141,8 +147,8 @@ export function DriverRegistrationPage({
 
     setIsLoading(true);
     try {
-      // Internal Email Mapping Strategy
-      const cleanPhone = formData.phone.replace(/\s+/g, '').replace('+', '');
+      // Internal Email Mapping Strategy (v2.8)
+      const cleanPhone = formData.phone.replace(/\D/g, '');
       const internalEmail = `${cleanPhone}@driver.quelimove.com`;
 
       // 1. Sign Up the User using mapped email
@@ -157,7 +163,13 @@ export function DriverRegistrationPage({
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('email') || msg.includes('signup') || msg.includes('disabled')) {
+          throw new Error('Erro ao processar o seu número. Tente outro ou contacte o suporte.');
+        }
+        throw error;
+      };
 
       const userId = data.user?.id;
       if (userId) {
@@ -190,7 +202,7 @@ export function DriverRegistrationPage({
       }
     } catch (err: any) {
       console.error('Registration error:', err);
-      alert('Erro ao realizar cadastro: ' + err.message);
+      alert('Erro ao realizar cadastro: ' + (err.message || 'Verifique seus dados.'));
     } finally {
       setIsLoading(false);
     }
@@ -626,7 +638,7 @@ export function DriverRegistrationPage({
                     )}
                   </div>
                 </div>
-                <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.7 (Auth Refactor)</div>
+                <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.8 (Fail-safe Auth)</div>
               </>
             )}
           </>
