@@ -6,15 +6,12 @@ import {
   User,
   Phone,
   Bike,
-  Car,
   CheckCircle,
   Upload,
   Camera,
   Calendar,
   FileText,
   ChevronRight,
-  Mail,
-  Lock,
   DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,13 +92,26 @@ export function DriverRegistrationPage({
     try {
       if (!formData.phone) throw new Error("Informe o número de telefone.");
 
+      // Try WhatsApp first
       const { error } = await supabase.auth.signInWithOtp({
         phone: formData.phone,
         options: {
           channel: 'whatsapp'
         }
       });
-      if (error) throw error;
+
+      if (error) {
+        // Fallback to SMS if WhatsApp is not configured
+        if (error.message && error.message.includes('Unsupported phone provider')) {
+          console.log('WhatsApp not configured, falling back to SMS');
+          const { error: smsError } = await supabase.auth.signInWithOtp({
+            phone: formData.phone,
+          });
+          if (smsError) throw smsError;
+        } else {
+          throw error;
+        }
+      }
 
       setShowOtpInput(true);
     } catch (err: any) {
@@ -152,13 +162,27 @@ export function DriverRegistrationPage({
     // However, to create the PROFILE with data, we need to be authenticated first.
     setIsLoading(true);
     try {
+      // Try WhatsApp first
       const { error } = await supabase.auth.signInWithOtp({
         phone: formData.phone,
         options: {
           channel: 'whatsapp'
         }
       });
-      if (error) throw error;
+
+      if (error) {
+        // Fallback to SMS if WhatsApp is not configured
+        if (error.message && error.message.includes('Unsupported phone provider')) {
+          console.log('WhatsApp not configured, falling back to SMS');
+          const { error: smsError } = await supabase.auth.signInWithOtp({
+            phone: formData.phone,
+          });
+          if (smsError) throw smsError;
+        } else {
+          throw error;
+        }
+      }
+
       setShowOtpInput(true); // Now show OTP input to verify and COMPLETE registration
     } catch (err: any) {
       console.error('Registration OTP error:', err);

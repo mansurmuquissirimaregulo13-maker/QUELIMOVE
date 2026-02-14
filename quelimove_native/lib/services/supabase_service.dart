@@ -7,10 +7,22 @@ class SupabaseService {
 
   // Auth Methods
   Future<void> signInWithPhone(String phone) async {
-    await _client.auth.signInWithOtp(
-      phone: phone,
-      channel: OtpChannel.whatsapp,
-    );
+    try {
+      await _client.auth.signInWithOtp(
+        phone: phone,
+        channel: OtpChannel.whatsapp,
+      );
+    } on AuthException catch (e) {
+      if (e.message.contains('Unsupported phone provider')) {
+         // Fallback to SMS if WhatsApp is not configured
+         await _client.auth.signInWithOtp(
+           phone: phone,
+           channel: OtpChannel.sms,
+         );
+      } else {
+        rethrow;
+      }
+    }
   }
 
   Future<AuthResponse> verifyOTP(String phone, String token) async {
