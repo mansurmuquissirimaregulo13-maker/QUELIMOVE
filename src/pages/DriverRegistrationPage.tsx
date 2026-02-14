@@ -96,11 +96,12 @@ export function DriverRegistrationPage({
 
     setIsLoading(true);
     try {
-      // Clean phone for Supabase Auth (must be E.164 or email-like)
-      const cleanPhone = formData.phone.replace(/\s+/g, '');
+      // Internal Email Mapping Strategy
+      const cleanPhone = formData.phone.replace(/\s+/g, '').replace('+', '');
+      const internalEmail = `${cleanPhone}@driver.quelimove.com`;
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        phone: cleanPhone,
+        email: internalEmail,
         password: password
       });
 
@@ -140,12 +141,20 @@ export function DriverRegistrationPage({
 
     setIsLoading(true);
     try {
-      const cleanPhone = formData.phone.replace(/\s+/g, '');
+      // Internal Email Mapping Strategy
+      const cleanPhone = formData.phone.replace(/\s+/g, '').replace('+', '');
+      const internalEmail = `${cleanPhone}@driver.quelimove.com`;
 
-      // 1. Sign Up the User
+      // 1. Sign Up the User using mapped email
       const { data, error } = await supabase.auth.signUp({
-        phone: cleanPhone,
-        password: formData.password
+        email: internalEmail,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+            role: 'driver'
+          }
+        }
       });
 
       if (error) throw error;
