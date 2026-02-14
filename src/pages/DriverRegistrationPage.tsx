@@ -101,7 +101,12 @@ export function DriverRegistrationPage({
 
       setShowOtpInput(true);
     } catch (err: any) {
-      alert('Erro ao enviar código: ' + err.message);
+      console.error('OTP Error:', err);
+      if (err.message?.includes('phone_provider_disabled') || err.code === 'phone_provider_disabled') {
+        alert('🚨 ERRO DE CONFIGURAÇÃO NO SUPABASE:\n\nO "Phone Provider" está desligado no teu painel.\n\nComo Resolver:\n1. Abre o Supabase Dashboard.\n2. Vai a Authentication -> Providers -> Phone.\n3. Clica no interruptor "Enable Phone Provider" para ficar VERDE.\n4. Clica em SAVE.');
+      } else {
+        alert('Erro ao enviar código: ' + (err.message || 'Erro desconhecido') + (err.code ? ` (${err.code})` : ''));
+      }
     } finally {
       setIsLoading(false);
     }
