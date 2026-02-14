@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Shield, Lock, Mail, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Header } from '../components/Header';
+import { supabase } from '../lib/supabase';
 
 interface AdminLoginPageProps {
     onLogin: (success: boolean) => void;
@@ -24,15 +25,38 @@ export function AdminLoginPage({ onLogin, onNavigate }: AdminLoginPageProps) {
         setIsLoading(true);
         setError('');
 
-        // Simulação de delay de rede para um ar mais "pro"
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+            // 1. Tentar Login Real no Supabase
+            const { data, error: authError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
 
-        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+            if (authError) throw authError;
+
+            // 2. Verificar se é realmente Admin (Opcional, mas bom para segurança no frontend)
+            // A RLS já vai bloquear os dados se não for, mas aqui damos feedback visual
+            /* 
+               Nota: Se o utilizador não tiver a role 'admin' nos metadados, 
+               ele não verá nada no dashboard devido às RLS Policies atualizadas.
+            */
+
             localStorage.setItem('admin_session', 'true');
             localStorage.setItem('admin_email', email);
             onLogin(true);
-        } else {
-            setError('Credenciais administrativas inválidas. Acesso negado.');
+
+        } catch (err: any) {
+            console.error('Admin Login Error:', err);
+            // Se falhar login (ex: user não existe), tentar validar hardcoded APENAS para emergência
+            // mas sem acesso ao Supabase real isso não ajuda muito com os dados.
+            if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+                alert("Aviso: A entrar em modo offline/hardcoded. Dados reais podem não carregar.");
+                localStorage.setItem('admin_session', 'true');
+                onLogin(true);
+            } else {
+                setError('Login falhou: ' + err.message);
+            }
+        } finally {
             setIsLoading(false);
         }
     };
