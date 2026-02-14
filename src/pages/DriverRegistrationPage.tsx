@@ -90,13 +90,11 @@ export function DriverRegistrationPage({
   const handleSendLoginOtp = async () => {
     setIsLoading(true);
     try {
-      if (!formData.phone) throw new Error("Informe o número de telefone.");
-
-      // Disable WhatsApp for now to ensure stability
-      console.log('Sending OTP via default channel (SMS)...');
+      // Force SMS explicitly to override any project defaults
+      console.log('Sending OTP via SMS channel...');
       const { error } = await supabase.auth.signInWithOtp({
         phone: formData.phone,
-        // options: { channel: 'whatsapp' } 
+        options: { channel: 'sms' }
       });
 
       if (error) throw error;
@@ -592,57 +590,60 @@ export function DriverRegistrationPage({
         </AnimatePresence>
 
         {!isLoginMode && (
-          <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)] to-transparent pointer-events-none">
-            <div className="pointer-events-auto">
-              {step < 4 ? (
-                <Button
-                  onClick={nextStep}
-                  className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
-                  disabled={
-                    (step === 1 && (
-                      !formData.name ||
-                      !formData.phone ||
-                      !BI_REGEX.test(formData.bi) ||
-                      !isOldEnough(formData.birthdate)
-                    )) ||
-                    (step === 2 && (
-                      !formData.bairro ||
-                      !formData.vehicleModel ||
-                      !formData.plate ||
-                      !formData.vehicleColor ||
-                      !formData.vehicleYear
-                    )) ||
-                    (step === 3 && (
-                      !uploads.biFront ||
-                      !uploads.biBack ||
-                      !uploads.license ||
-                      !uploads.profile ||
-                      !uploads.vehicleDoc
-                    ))
-                  }
-                >
-                  {step === 1 && formData.bi && !BI_REGEX.test(formData.bi)
-                    ? 'BI Inválido (12 dígitos + Letra)'
-                    : step === 1 && formData.birthdate && !isOldEnough(formData.birthdate)
-                      ? 'Deve ter +18 anos'
-                      : 'Continuar'}
-                  <ChevronRight className="ml-2" size={24} />
-                </Button>
-              ) : (
-                <Button
-                  className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
-                  disabled={
-                    !formData.termsAccepted ||
-                    isLoading
-                  }
-                  isLoading={isLoading}
-                  onClick={handleFinish}
-                >
-                  Verificar Celular e Criar Conta
-                </Button>
-              )}
+          <>
+            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)] to-transparent pointer-events-none">
+              <div className="pointer-events-auto">
+                {step < 4 ? (
+                  <Button
+                    onClick={nextStep}
+                    className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
+                    disabled={
+                      (step === 1 && (
+                        !formData.name ||
+                        !formData.phone ||
+                        !BI_REGEX.test(formData.bi) ||
+                        !isOldEnough(formData.birthdate)
+                      )) ||
+                      (step === 2 && (
+                        !formData.bairro ||
+                        !formData.vehicleModel ||
+                        !formData.plate ||
+                        !formData.vehicleColor ||
+                        !formData.vehicleYear
+                      )) ||
+                      (step === 3 && (
+                        !uploads.biFront ||
+                        !uploads.biBack ||
+                        !uploads.license ||
+                        !uploads.profile ||
+                        !uploads.vehicleDoc
+                      ))
+                    }
+                  >
+                    {step === 1 && formData.bi && !BI_REGEX.test(formData.bi)
+                      ? 'BI Inválido (12 dígitos + Letra)'
+                      : step === 1 && formData.birthdate && !isOldEnough(formData.birthdate)
+                        ? 'Deve ter +18 anos'
+                        : 'Continuar'}
+                    <ChevronRight className="ml-2" size={24} />
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full h-16 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-2xl shadow-[var(--primary-glow)]"
+                    disabled={
+                      !formData.termsAccepted ||
+                      isLoading
+                    }
+                    isLoading={isLoading}
+                    onClick={handleFinish}
+                  >
+                    Verificar Celular e Criar Conta
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+            <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.6 (SMS Fix)</div>
+          </>
         )}
       </div>
     </div>
