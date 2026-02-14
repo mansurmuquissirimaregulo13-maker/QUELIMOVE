@@ -26,8 +26,9 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   const [isOnline, setIsOnline] = React.useState(false);
   const [lastCoords, setLastCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [currentRide, setCurrentRide] = React.useState<any | null>(null);
-  const [driverName] = React.useState('João');
-  const [vehicleInfo] = React.useState('Honda Ace • ABC-123');
+  const [driverName, setDriverName] = React.useState('Motorista');
+  const [vehicleInfo, setVehicleInfo] = React.useState('Carregando...');
+  const [driverStatus, setDriverStatus] = React.useState<'active' | 'pending' | 'rejected'>('pending');
   const { notify } = useNotifications();
 
   // Monitorar mudanças na corrida atual (Ex: Cancelamento pelo cliente)
@@ -239,7 +240,30 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     }
   };
 
+  const fetchDriverProfile = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, vehicle_type, vehicle_plate, status')
+      .eq('id', userData.user.id)
+      .single();
+
+    if (profile) {
+      setDriverName(profile.full_name || 'Motorista');
+      setVehicleInfo(`${profile.vehicle_type || 'Moto'} • ${profile.vehicle_plate || 'S/M'}`);
+      setDriverStatus(profile.status as any);
+
+      // If pending, ensure we are offline
+      if (profile.status !== 'active') {
+        setIsOnline(false);
+      }
+    }
+  };
+
   React.useEffect(() => {
+    fetchDriverProfile();
     fetchStats();
   }, []);
 
@@ -341,7 +365,41 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto mt-[72px] mb-[100px] safe-area-bottom">
-        {isOnline && currentRide ? (
+        {driverStatus === 'pending' ? (
+          <div className="px-4 py-12 text-center space-y-6">
+            <div className="w-24 h-24 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto text-orange-500">
+              <Clock size={48} className="animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white uppercase tracking-tighter">CONTA EM ANÁLISE</h2>
+              <p className="text-sm text-gray-400">
+                Obrigado pelo teu registo, **{driverName}**! 🚀<br />
+                Os teus dados já estão com o nosso admin Mansur. Assim que fores aprovado, poderás começar a receber pedidos.
+              </p>
+            </div>
+            <Button
+              className="w-full h-16 bg-[#25D366] hover:bg-[#128C7E] text-white"
+              onClick={() => {
+                const msg = encodeURIComponent(`Olá Mansur! Sou o motorista ${driverName}. Já fiz o meu cadastro e estou à espera de aprovação. Podes verificar? 🤔📲`);
+                window.open(`https://wa.me/258868840054?text=${msg}`, '_blank');
+              }}
+            >
+              Lembrar Admin no WhatsApp
+            </Button>
+          </div>
+        ) : driverStatus === 'rejected' ? (
+          <div className="px-4 py-12 text-center space-y-6">
+            <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500">
+              <XCircle size={48} />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white uppercase tracking-tighter">CONTA REJEITADA</h2>
+              <p className="text-sm text-gray-400">
+                Infelizmente a tua conta não foi aprovada. Por favor, contacta o suporte para saber o motivo.
+              </p>
+            </div>
+          </div>
+        ) : isOnline && currentRide ? (
           <div className="p-4 space-y-4">
             <div className="bg-[#1a1a1a] rounded-2xl border-2 border-[#FBBF24] overflow-hidden shadow-2xl">
               <div className="p-2">
