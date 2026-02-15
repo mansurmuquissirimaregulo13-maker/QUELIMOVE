@@ -27,9 +27,7 @@ interface AdminDashboardPageProps {
 export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   const { notify } = useNotifications();
   const [loading, setLoading] = React.useState(true);
-  const [subView, setSubView] = React.useState<'none' | 'bairros' | 'prices' | 'logs' | 'notifications'>('none');
-  const [notificationMessage, setNotificationMessage] = React.useState('');
-  const [isSending, setIsSending] = React.useState(false);
+  const [subView, setSubView] = React.useState<'none' | 'bairros' | 'prices' | 'logs'>('none');
 
   // Estados de Gestão
   const [locations, setLocations] = React.useState([...QUELIMANE_LOCATIONS]);
@@ -51,48 +49,6 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   // Estado para Edição de Bairros
   const [editingLocation, setEditingLocation] = React.useState<{ index: number, name: string } | null>(null);
   const [newBairroName, setNewBairroName] = React.useState('');
-
-  const handleSendNotification = async () => {
-    if (!notificationMessage.trim()) return;
-    setIsSending(true);
-
-    try {
-      const { error } = await supabase
-        .from('admin_notifications')
-        .insert({
-          title: 'Quelimove 🚖',
-          message: notificationMessage,
-          target_role: 'all'
-        });
-
-      if (error) throw error;
-
-      alert('NOTIFICAÇÃO ENVIADA COM SUCESSO! \n\nO sistema está agora a propagar para todos os telemóveis.');
-      addLog('Centro Notificações', `Mensagem enviada: "${notificationMessage.substring(0, 30)}..."`);
-      setNotificationMessage('');
-      setSubView('none');
-    } catch (err: any) {
-      console.error('Error sending broadcast:', err);
-      alert(`ERRO AO ENVIAR: ${err.message || 'Erro desconhecido'}\n\nDica: Se o erro for de 'Row Level Security' (RLS), clica em 'Sair' e volta a entrar para atualizar as tuas permissões de Admin.`);
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleAddBairro = () => {
-    if (!newBairroName.trim()) return;
-    const newLoc = { name: newBairroName, type: 'bairro' as const, lat: -17.876, lng: 36.887 };
-    setLocations([...locations, newLoc]);
-    addLog('Gestão Bairros', `Bairro adicionado: ${newBairroName}`);
-    setNewBairroName('');
-  };
-
-  const handleRemoveBairro = (index: number) => {
-    const removing = locations[index];
-    const filtered = locations.filter((_, i) => i !== index);
-    setLocations(filtered);
-    addLog('Gestão Bairros', `Bairro removido: ${removing.name}`);
-  };
 
   const handleEditBairro = () => {
     if (!editingLocation || !editingLocation.name.trim()) return;
@@ -168,6 +124,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   };
 
   const handleApproveDriver = async (driverId: string, phone: string) => {
+    if (!window.confirm('Tem certeza que deseja APROVAR este motorista?')) return;
     try {
       const { error } = await supabase
         .from('profiles')
@@ -180,7 +137,9 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         fetchStats();
 
         // Abrir WhatsApp com mensagem automática
-        const cleanPhone = (phone || '').replace(/\D/g, '');
+        let cleanPhone = (phone || '').replace(/\D/g, '');
+        if (cleanPhone.startsWith('8')) cleanPhone = '258' + cleanPhone;
+
         if (cleanPhone) {
           const msg = encodeURIComponent(`Olá! Sua conta no Quelimove foi APROVADA com sucesso! 🎉\n\nJá podes abrir a aplicação e começar a faturar. Estamos felizes por te ter connosco! 🚀🚖\n\nAtt: Equipa Quelimove`);
           window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
@@ -195,6 +154,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   };
 
   const handleRejectDriver = async (driverId: string) => {
+    if (!window.confirm('Tem certeza que deseja BLOQUEAR/REJEITAR este motorista?')) return;
     try {
       const { error } = await supabase
         .from('profiles')
@@ -531,8 +491,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                     </div>
 
                     <div className="flex items-center justify-between px-2">
-                      <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider opacity-60">Centro de Notificações</h3>
-                      <button onClick={() => setSubView('notifications')} className="text-[10px] font-black uppercase text-[#FBBF24] tracking-widest bg-[#FBBF24]/10 px-3 py-1.5 rounded-lg border border-[#FBBF24]/20 active:scale-95 transition-all">Mandar Mensagem</button>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider opacity-60">Visão Geral de Viagens</h3>
                     </div>
 
                     {selectedRide && (
@@ -862,10 +821,12 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                   <div className="flex flex-col w-full gap-2">
                     <Button
                       variant="outline"
-                      className="w-full h-14 border-green-500/20 text-green-500 bg-green-500/5"
+                      className="w-full h-14 border-green-500/20 text-green-500 bg-green-500/5 hover:bg-green-500/10"
                       onClick={() => {
                         const driverPhone = selectedDriver.phone_whatsapp || selectedDriver.phone || '';
-                        const cleanPhone = driverPhone.replace(/\D/g, '');
+                        let cleanPhone = driverPhone.replace(/\D/g, '');
+                        if (cleanPhone.startsWith('8')) cleanPhone = '258' + cleanPhone;
+
                         if (cleanPhone) {
                           const msg = encodeURIComponent('Olá! Precisamos falar sobre sua conta no Quelimove.');
                           window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
@@ -878,10 +839,12 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                     </Button>
                     <Button
                       variant="outline"
-                      className="w-full h-12 border-blue-500/20 text-blue-500 bg-blue-500/5"
+                      className="w-full h-12 border-blue-500/20 text-blue-500 bg-blue-500/5 hover:bg-blue-500/10"
                       onClick={() => {
                         const driverPhone = selectedDriver.phone || selectedDriver.phone_whatsapp || '';
-                        const cleanPhone = driverPhone.replace(/\D/g, '');
+                        let cleanPhone = driverPhone.replace(/\D/g, '');
+                        if (cleanPhone.startsWith('8')) cleanPhone = '258' + cleanPhone;
+
                         if (cleanPhone) {
                           const msg = 'Olá! Precisamos falar sobre sua conta no Quelimove.';
                           window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`;
