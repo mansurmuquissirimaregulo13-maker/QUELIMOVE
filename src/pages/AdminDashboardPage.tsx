@@ -71,7 +71,6 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
 
   const [recentRides, setRecentRides] = React.useState<any[]>([]);
   const [allDrivers, setAllDrivers] = React.useState<any[]>([]);
-  const [pendingDrivers, setPendingDrivers] = React.useState<any[]>([]);
   const [selectedRide, setSelectedRide] = React.useState<any | null>(null);
   const [selectedDriver, setSelectedDriver] = React.useState<any | null>(null);
 
@@ -114,7 +113,6 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
           };
         });
         setAllDrivers(driversWithMetrics);
-        setPendingDrivers(driversWithMetrics.filter(d => d.status === 'pending'));
       }
     } catch (err) {
       console.error('Error fetching admin stats:', err);
@@ -373,83 +371,6 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
             </div>
           </div>
         );
-      case 'notifications':
-        return (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-black text-[var(--text-primary)]">Centro de Notificações</h3>
-              <Button size="sm" onClick={() => setSubView('none')}>Fechar</Button>
-            </div>
-
-            {/* Modelos de Mensagem */}
-            <div className="space-y-3">
-              <h4 className="text-[10px] font-black uppercase text-[var(--text-tertiary)] tracking-widest ml-1">Mensagens Preparadas</h4>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-                {[
-                  { title: 'Bom Dia', msg: 'Bom dia Quelimane! Desejamos a todos uma excelente jornada de trabalho. 🚖' },
-                  { title: 'Promoção', msg: 'Aproveita 10% de desconto em todas as corridas hoje! Só com Quelimove.' },
-                  { title: 'Chuva', msg: 'Atenção motoristas: Pistas escorregadias devido à chuva. Conduzam com prudência.' },
-                  { title: 'Oração', msg: 'Hora de ponta: Muitos passageiros à procura! Aproveitem para faturar.' }
-                ].map((tpl, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setNotificationMessage(tpl.msg)}
-                    className="flex-shrink-0 bg-[var(--bg-secondary)] border border-[var(--border-color)] p-3 rounded-xl text-[10px] font-bold hover:border-[#FBBF24] transition-all"
-                  >
-                    {tpl.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Envio Manual */}
-            <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-[var(--text-tertiary)] tracking-widest">Corpo da Mensagem (Broadcast)</label>
-                <textarea
-                  placeholder="Escreva a mensagem aqui..."
-                  value={notificationMessage}
-                  onChange={(e) => setNotificationMessage(e.target.value)}
-                  className="w-full bg-[var(--bg-primary)] p-4 rounded-xl border border-[var(--border-color)] text-sm font-medium h-32 outline-none focus:border-[#FBBF24] transition-colors"
-                />
-              </div>
-              <Button
-                className="w-full h-14 font-black uppercase tracking-tighter shadow-xl shadow-[#FBBF24]/10"
-                onClick={handleSendNotification}
-                isLoading={isSending}
-                disabled={!notificationMessage.trim()}
-              >
-                Mandar Agora
-              </Button>
-            </div>
-
-            {/* Programação Automática */}
-            <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-[10px] font-black uppercase text-[var(--text-tertiary)] tracking-widest">Programação Automática</h4>
-                <div className="w-8 h-4 bg-[#FBBF24]/20 rounded-full relative">
-                  <div className="w-3 h-3 bg-[#FBBF24] rounded-full absolute right-0.5 top-0.5 shadow-sm" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                {[
-                  { time: '07:30', msg: 'Saudação Matinal' },
-                  { time: '12:00', msg: 'Aviso de Almoço' },
-                  { time: '17:00', msg: 'Meta de Fim de Dia' }
-                ].map((task, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)]">
-                    <div className="flex items-center gap-3">
-                      <Clock size={12} className="text-[#FBBF24]" />
-                      <span className="text-[10px] font-bold">{task.time}</span>
-                    </div>
-                    <span className="text-[10px] text-[var(--text-secondary)] font-medium">{task.msg}</span>
-                    <button className="text-[8px] font-black text-red-500 uppercase">On</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
       default:
         return null;
     }
@@ -457,7 +378,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
 
   return (
     <div className="h-[100dvh] w-full flex flex-col bg-[var(--bg-primary)] overflow-hidden transition-colors duration-300">
-      <Header title="Painel Admin" onBack={() => onNavigate('home')} />
+      <Header title="Painel Admin" />
 
       <div className="flex-1 overflow-y-auto mt-[72px] mb-[100px] px-4 py-6">
         {loading ? (
