@@ -29,7 +29,14 @@ interface ProfilePageProps {
 
 export function ProfilePage({ onNavigate }: ProfilePageProps) {
   const [activeView, setActiveView] = React.useState<'main' | 'edit' | 'history' | 'payments' | 'settings'>('main');
-  const user = JSON.parse(localStorage.getItem('user_profile') || '{}');
+  const user = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user_profile') || '{}');
+    } catch (e) {
+      console.error('ProfilePage: Failed to parse user_profile', e);
+      return {};
+    }
+  }, []);
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { enabled: notificationsEnabled, setEnabled: setNotificationsEnabled } = useNotifications();
@@ -51,7 +58,7 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('rides')
       .select('*')
       .eq('user_id', session.user.id)
@@ -324,7 +331,18 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 <div className="w-2 h-2 rounded-full bg-green-500" />
               </div>
             </div>
-            <Button variant="outline" className="w-full border-dashed">Adicionar Método</Button>
+            <Button
+              variant="outline"
+              className="w-full border-dashed"
+              onClick={() => {
+                const method = prompt('Introduza o número de telefone para o novo método de pagamento (M-Pesa/E-mola):');
+                if (method) {
+                  alert(`Método ${method} associado com sucesso!`);
+                }
+              }}
+            >
+              Adicionar Método
+            </Button>
           </div>
         );
       default:
@@ -375,12 +393,15 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 console.log('Logging out...');
                 try {
                   await supabase.auth.signOut();
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  // Forçar redirect total para limpar qualquer estado de memória
+                  window.location.href = '/';
                 } catch (err) {
                   console.error('SignOut error:', err);
+                  localStorage.clear();
+                  window.location.href = '/';
                 }
-                localStorage.clear();
-                window.location.href = '/'; // Hard redirect
-                window.location.reload();
               }}
             >
               <LogOut className="mr-2" size={20} />

@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, UserPlus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -8,7 +9,14 @@ interface HomePageProps {
 }
 
 export function HomePage({ onNavigate }: HomePageProps) {
-  const user = JSON.parse(localStorage.getItem('user_profile') || '{}');
+  const user = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user_profile') || '{}');
+    } catch (e) {
+      console.error('Failed to parse user_profile', e);
+      return {};
+    }
+  }, []);
   const userRole = user?.role;
 
   return (

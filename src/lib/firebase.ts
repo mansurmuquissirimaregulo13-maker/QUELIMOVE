@@ -11,11 +11,27 @@ const firebaseConfig = {
     appId: "SEU_APP_ID"
 };
 
-const app = initializeApp(firebaseConfig);
-export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+// Guard against unconfigured Firebase
+const isFirebaseConfigured = firebaseConfig.apiKey !== "SUA_API_KEY";
+
+let app;
+let messaging: any = null;
+
+if (isFirebaseConfigured) {
+    try {
+        app = initializeApp(firebaseConfig);
+        messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+    } catch (err) {
+        console.error('Firebase initialization failed:', err);
+    }
+} else {
+    console.warn('Firebase is not configured. Notifications will not work.');
+}
+
+export { messaging };
 
 export const requestForToken = async () => {
-    if (!messaging) return null;
+    if (!messaging || !isFirebaseConfigured) return null;
     try {
         const currentToken = await getToken(messaging, {
             vapidKey: 'SUA_VAPID_KEY_DO_FIREBASE'
@@ -40,3 +56,4 @@ export const onMessageListener = () =>
             resolve(payload);
         });
     });
+

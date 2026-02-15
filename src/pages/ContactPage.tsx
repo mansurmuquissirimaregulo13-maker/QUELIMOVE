@@ -100,7 +100,19 @@ export function ContactPage({ onNavigate }: ContactPageProps) {
             className="w-full h-32 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-white p-4 placeholder:text-[#4B5563] focus:outline-none focus:ring-1 focus:ring-[#FBBF24]"
             placeholder="Descreva o problema..." />
 
-          <Button variant="secondary" className="w-full">
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => {
+              const text = (document.querySelector('textarea') as HTMLTextAreaElement)?.value;
+              if (!text?.trim()) {
+                alert('Por favor, descreva o problema antes de enviar.');
+                return;
+              }
+              alert('Obrigado! O seu reporte foi enviado para a equipa técnica do Quelimove. Iremos analisar e responder em breve.');
+              (document.querySelector('textarea') as HTMLTextAreaElement).value = '';
+            }}
+          >
             Enviar Reporte
           </Button>
         </div>

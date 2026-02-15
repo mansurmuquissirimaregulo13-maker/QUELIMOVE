@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ArrowRight, Shield, Clock, Phone, Mail, Lock, Calendar } from 'lucide-react';
+import { User, ArrowRight, Shield, Clock, Phone, Lock, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { supabase } from '../lib/supabase';
 import { Input } from '../components/ui/Input';
@@ -51,11 +51,12 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
     const [formData, setFormData] = React.useState({
         name: '',
         phone: '',
-        email: '',
         password: '',
         age: '',
         role: 'user' as 'user' | 'driver'
     });
+
+    const [isLoginMode, setIsLoginMode] = React.useState(false);
 
     const nextSlide = () => {
         if (currentSlide < slides.length - 1) {
@@ -63,37 +64,115 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.name || !formData.email || !formData.password || !formData.phone || !formData.age) return;
+        if (!formData.phone || !formData.password) {
+            alert('Por favor, preencha o telefone e a palavra-passe.');
+            return;
+        }
 
         setIsLoading(true);
         try {
+            const cleanPhone = formData.phone.replace(/\D/g, '');
+            const internalEmail = `${cleanPhone}@user.quelimove.com`;
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: internalEmail,
+                password: formData.password
+            });
+
+            if (error) {
+                const msg = error.message.toLowerCase();
+                if (msg.includes('invalid login credentials')) {
+                    throw new Error('Telefone ou senha inválidos.');
+                }
+                throw error;
+            }
+
+            if (data.user) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', data.user.id)
+                    .single();
+
+                if (profile) {
+                    onComplete({ name: profile.full_name, role: profile.role });
+                } else {
+                    // Se não houver perfil, cria um básico
+                    const { error: upsertError } = await supabase
+                        .from('profiles')
+                        .upsert({
+                            id: data.user.id,
+                            role: 'user',
+                            phone: formData.phone,
+                            full_name: 'Usuário'
+                        });
+                    if (upsertError) throw upsertError;
+                    onComplete({ name: 'Usuário', role: 'user' });
+                }
+            }
+        } catch (err: any) {
+            console.error('Login Error:', err);
+            alert('Erro de login: ' + (err.message || 'Verifique seus dados.'));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isLoginMode) {
+            return handleLogin(e);
+        }
+
+        if (!formData.name || !formData.password || !formData.phone || !formData.age) {
+            alert('Por favor, preencha todos os campos.');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // Internal Email Mapping Strategy (v2.8)
+            const cleanPhone = formData.phone.replace(/\D/g, '');
+            const internalEmail = `${cleanPhone}@user.quelimove.com`;
+
             // 1. Sign Up
             const { data, error } = await supabase.auth.signUp({
-                email: formData.email,
+                email: internalEmail,
                 password: formData.password,
                 options: {
                     data: {
                         full_name: formData.name,
                         phone: formData.phone,
-                        age: formData.age
+                        age: formData.age,
+                        role: formData.role
                     }
                 }
             });
 
-            if (error) throw error;
+            if (error) {
+                const msg = error.message.toLowerCase();
+                if (msg.includes('email') || msg.includes('signup') || msg.includes('disabled') || msg.includes('already registered') || msg.includes('already in use') || msg.includes('already exists')) {
+                    if (msg.includes('already registered') || msg.includes('already in use') || msg.includes('already exists')) {
+                        setIsLoginMode(true);
+                        throw new Error('Este número já tem conta. Por favor, introduza a sua palavra-passe para entrar.');
+                    }
+                    throw new Error('Erro ao processar o seu número. Tente outro.');
+                }
+                throw error;
+            }
 
             if (data.user) {
                 // 2. Update Profile with Role & Phone
                 const { error: profileError } = await supabase
                     .from('profiles')
-                    .update({
+                    .upsert({
+                        id: data.user.id,
                         role: formData.role,
                         phone: formData.phone,
                         full_name: formData.name
-                    })
-                    .eq('id', data.user.id);
+                    });
 
                 if (profileError) {
                     console.error('Profile update failed', profileError);
@@ -105,7 +184,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
 
         } catch (err: any) {
             console.error('Onboarding Error:', err);
-            alert('Erro ao criar conta: ' + (err.message || 'Tente novamente.'));
+            alert((err.message || 'Tente novamente.'));
         } finally {
             setIsLoading(false);
         }
@@ -200,43 +279,38 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                         {slide.type === 'form' && (
                             <div className="w-full space-y-8">
                                 <div className="space-y-2">
-                                    <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{slide.title}</h2>
-                                    <p className="text-[var(--text-secondary)] text-sm">{slide.description}</p>
+                                    <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{isLoginMode ? 'Bem-vindo de volta' : slide.title}</h2>
+                                    <p className="text-[var(--text-secondary)] text-sm">{isLoginMode ? 'Insira seus dados para entrar' : slide.description}</p>
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="space-y-4 text-left">
-                                    <Input
-                                        icon={User}
-                                        label="Nome Completo"
-                                        placeholder="Seu nome"
-                                        value={formData.name}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
-                                        required
-                                    />
-                                    <Input
-                                        icon={Calendar}
-                                        label="Idade"
-                                        type="number"
-                                        placeholder="Ex: 25"
-                                        value={formData.age}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, age: e.target.value })}
-                                        required
-                                    />
+                                    {!isLoginMode && (
+                                        <>
+                                            <Input
+                                                icon={User}
+                                                label="Nome Completo"
+                                                placeholder="Seu nome"
+                                                value={formData.name}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
+                                                required
+                                            />
+                                            <Input
+                                                icon={Calendar}
+                                                label="Idade"
+                                                type="number"
+                                                placeholder="Ex: 25"
+                                                value={formData.age}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, age: e.target.value })}
+                                                required
+                                            />
+                                        </>
+                                    )}
                                     <Input
                                         icon={Phone}
                                         label="Telefone"
                                         placeholder="+258 84..."
                                         value={formData.phone}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
-                                        required
-                                    />
-                                    <Input
-                                        icon={Mail}
-                                        label="Email"
-                                        type="email"
-                                        placeholder="email@exemplo.com"
-                                        value={formData.email}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, email: e.target.value })}
                                         required
                                     />
                                     <Input
@@ -254,8 +328,18 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                         className="w-full h-14 bg-[#FBBF24] text-black font-black uppercase tracking-tighter text-lg rounded-2xl shadow-xl shadow-[#FBBF24]/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                                         isLoading={isLoading}
                                     >
-                                        Criar Conta
+                                        {isLoginMode ? 'Entrar Agora' : 'Criar Conta'}
                                     </Button>
+
+                                    <div className="pt-4 text-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsLoginMode(!isLoginMode)}
+                                            className="text-xs font-bold text-[#FBBF24] uppercase tracking-widest hover:underline"
+                                        >
+                                            {isLoginMode ? 'Ainda não tem conta? Clique aqui' : 'Já tem conta? Clique para entrar'}
+                                        </button>
+                                    </div>
                                 </form>
                             </div>
                         )}

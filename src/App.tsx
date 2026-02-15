@@ -25,157 +25,129 @@ function AppContent() {
   /* App State */
   const [currentPage, setCurrentPage] = React.useState('home');
   const [user, setUser] = React.useState<{ name: string; age?: number; role?: string; status?: string; phone?: string; avatar_url?: string } | null>(() => {
-    const saved = localStorage.getItem('user_profile');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('user_profile');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error('Failed to parse user_profile', e);
+      localStorage.removeItem('user_profile');
+      return null;
+    }
   });
 
   React.useEffect(() => {
-    // 1. Initial auth check
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Fetch latest profile to ensure local storage is fresh
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profile) {
-          const userData = {
-            name: profile.full_name,
-            role: profile.role,
-            status: profile.status,
-            phone: profile.phone,
-            avatar_url: profile.avatar_url
-          };
-          setUser(userData);
-          localStorage.setItem('user_profile', JSON.stringify(userData));
-        }
-      }
-    };
-
-    checkAuth();
-
-    // 2. Real-time profile listener
     let subscription: any;
 
-    const setupSubscription = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        subscription = supabase
-          .channel(`profile-changes-${session.user.id}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'profiles',
-              filter: `id=eq.${session.user.id}`
-            },
-            (payload) => {
-              const updated = payload.new as any;
-              const userData = {
-                name: updated.full_name,
-                role: updated.role,
-                status: updated.status,
-                phone: updated.phone,
-                avatar_url: updated.avatar_url
-              };
-              setUser(userData);
-              localStorage.setItem('user_profile', JSON.stringify(userData));
-
-              if (updated.status === 'active' && user?.status === 'pending') {
-                alert('Sua conta foi aprovada! Bem-vindo ao Quelimove. 🚀');
-                setCurrentPage('driver-dash'); // Force immediate redirect
-              }
-            }
-          )
-          .subscribe();
-      }
-    };
-
-    setupSubscription();
-
-    return () => {
-      if (subscription) supabase.removeChannel(subscription);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  React.useEffect(() => {
-    // 2. Check for active Supabase Session (Drivers & Persistent Users)
-    const checkSession = async () => {
+    const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // 1. Initial auth check
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) throw sessionError;
 
         if (session) {
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
 
-          if (profile) {
-            if (profile.role === 'driver') {
-              console.log('Restoring Driver Session:', profile);
-              setCurrentPage('driver-dash');
-              localStorage.setItem('user_profile', JSON.stringify({
-                ...profile,
-                name: profile.full_name || session.user.email
-              }));
-              setUser({ ...profile, role: 'driver' } as any);
-            } else if (profile.role === 'user') {
-              // Passenger Auto-Redirect
-              console.log('Restoring User Session:', profile);
-              setCurrentPage('ride'); // Go directly to map
-              localStorage.setItem('user_profile', JSON.stringify({
-                ...profile,
-                name: profile.full_name || session.user.email
-              }));
-              setUser({ ...profile, role: 'user' } as any);
+          if (profileError) {
+            console.error('Profile fetch failed', profileError);
+            // Profile might not exist yet, allow onboarding if so
+            if (profileError.code !== 'PGRST116') {
+              // If it's a real error (not "no rows"), we might want to alert or handle it
             }
           }
+
+          if (profile) {
+            const userData = {
+              ...profile,
+              name: profile.full_name || session.user.user_metadata?.full_name || (session.user.email ? session.user.email.split('@')[0] : 'Usuário')
+            };
+            setUser(userData as any);
+            localStorage.setItem('user_profile', JSON.stringify(userData));
+
+            // Set initial page based on role
+            if (profile.role === 'driver') {
+              setCurrentPage('driver-dash');
+            } else {
+              setCurrentPage('ride');
+            }
+
+            // 2. Setup Real-time profile listener
+            subscription = supabase
+              .channel(`profile-changes-${session.user.id}`)
+              .on(
+                'postgres_changes',
+                {
+                  event: 'UPDATE',
+                  schema: 'public',
+                  table: 'profiles',
+                  filter: `id=eq.${session.user.id}`
+                },
+                (payload) => {
+                  const updated = payload.new as any;
+                  const newUserData = {
+                    ...updated,
+                    name: updated.full_name
+                  };
+
+                  setUser(prev => {
+                    const prevStatus = prev?.status;
+                    if (updated.status === 'active' && prevStatus === 'pending') {
+                      alert('Sua conta foi aprovada! Bem-vindo ao Quelimove. 🚀');
+                      setCurrentPage('driver-dash');
+                    }
+                    return newUserData as any;
+                  });
+                  localStorage.setItem('user_profile', JSON.stringify(newUserData));
+                }
+              )
+              .subscribe();
+          } else {
+            // Logged in but no profile - should technically be onboarding
+            setUser(null);
+            localStorage.removeItem('user_profile');
+          }
+        } else {
+          // No session
+          setUser(null);
+          localStorage.removeItem('user_profile');
         }
-      } catch (error) {
-        console.error('Session check failed', error);
+      } catch (err) {
+        console.error('initializeAuth failure', err);
       } finally {
-        // FAST STARTUP: Remove splash immediately after check
+        // Ensure splash screen always hides eventually
         setShowSplash(false);
       }
     };
 
-    checkSession();
+    initializeAuth();
 
-    // 3. Listen for Auth Changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // 3. Listen for Auth State Changes (Login/Logout)
+    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event);
       if (event === 'SIGNED_IN' && session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profile?.role === 'driver') {
-          setCurrentPage('driver-dash');
-        } else if (profile?.role === 'user') {
-          setCurrentPage('ride');
-        }
+        // Re-run initialization to fetch profile and setup listeners
+        initializeAuth();
       } else if (event === 'SIGNED_OUT') {
         setCurrentPage('home');
-        localStorage.removeItem('user_profile');
+        localStorage.clear();
         setUser(null);
+        if (subscription) {
+          supabase.removeChannel(subscription);
+          subscription = null;
+        }
       }
     });
 
     return () => {
-      subscription.unsubscribe();
+      authListener.unsubscribe();
+      if (subscription) supabase.removeChannel(subscription);
     };
   }, []);
+
 
   const handleRegister = (userData: { name: string; age?: number; role?: string }) => {
     // Persist user with role
