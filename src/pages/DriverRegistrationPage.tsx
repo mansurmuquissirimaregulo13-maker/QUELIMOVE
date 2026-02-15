@@ -650,9 +650,11 @@ export function DriverRegistrationPage({
                         Criar Conta Agora
                       </Button>
                     )}
-                    <Button variant="outline" className="w-full h-14 border-[var(--border-color)] text-[var(--text-secondary)] mt-4" onClick={() => onNavigate('onboarding')}>
-                      Já tenho uma conta? Ir para Login
-                    </Button>
+                    {step === 1 && (
+                      <Button variant="outline" className="w-full h-14 border-[var(--border-color)] text-[var(--text-secondary)] mt-4" onClick={() => onNavigate('onboarding')}>
+                        Já tenho uma conta? Ir para Login
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.9 (Final Registration Fix)</div>
