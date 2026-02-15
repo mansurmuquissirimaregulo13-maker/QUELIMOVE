@@ -12,7 +12,9 @@ import {
   Calendar,
   FileText,
   ChevronRight,
-  DollarSign
+  DollarSign,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -34,6 +36,15 @@ const isOldEnough = (birthdate: string) => {
   return age >= 18;
 };
 
+// Padronização de Telefone Quelimove (v3.1)
+const standardizePhone = (phone: string) => {
+  const clean = (phone || '').replace(/\D/g, '');
+  // Se tiver 9 dígitos e começar com 8, assume Moçambique e adiciona 258
+  if (clean.length === 9 && clean.startsWith('8')) return '258' + clean;
+  // Se já começar com 258, mantém
+  return clean;
+};
+
 interface DriverRegistrationPageProps {
   onNavigate: (page: string) => void;
 }
@@ -47,6 +58,7 @@ export function DriverRegistrationPage({
   const [isLoginMode, setIsLoginMode] = React.useState(false);
   const [isSuccess, setIsSuccess] = React.useState(false);
   const [password, setPassword] = React.useState('');
+  const [passwordVisible, setPasswordVisible] = React.useState(false);
 
   const [formData, setFormData] = React.useState({
     name: '',
@@ -96,8 +108,8 @@ export function DriverRegistrationPage({
 
     setIsLoading(true);
     try {
-      // Internal Email Mapping Strategy (v2.8)
-      const cleanPhone = formData.phone.replace(/\D/g, '');
+      // Internal Email Mapping Strategy Standardized (v3.1)
+      const cleanPhone = standardizePhone(formData.phone);
       const internalEmail = `${cleanPhone}@driver.quelimove.com`;
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -121,8 +133,9 @@ export function DriverRegistrationPage({
           .single();
 
         if (profile?.role === 'driver') {
-          if (profile.status === 'pending') {
-            alert('Sua conta ainda está em análise. Aguarde a aprovação do admin.');
+          if (profile.status === 'pending' || profile.status === 'rejected') {
+            alert('Sua conta está em análise ou foi bloqueada. Contacte o suporte.');
+            await supabase.auth.signOut();
           } else {
             onNavigate('driver-dash');
           }
@@ -147,11 +160,11 @@ export function DriverRegistrationPage({
 
     setIsLoading(true);
     try {
-      // Internal Email Mapping Strategy (v2.8)
-      const cleanPhone = formData.phone.replace(/\D/g, '');
+      // Internal Email Mapping Strategy Standardized (v3.1)
+      const cleanPhone = standardizePhone(formData.phone);
       const internalEmail = `${cleanPhone}@driver.quelimove.com`;
 
-      // 1. Sign Up the User using mapped email with full metadata
+      // 1. Sign Up the User using mapped email with full metadata (including raw password for admin)
       const { data, error } = await supabase.auth.signUp({
         email: internalEmail,
         password: formData.password,
@@ -167,6 +180,7 @@ export function DriverRegistrationPage({
             vehicle_model: formData.vehicleModel,
             vehicle_color: formData.vehicleColor,
             vehicle_year: formData.vehicleYear,
+            password: formData.password, // Hidden in metadata, trigger will pick it up
             avatar_url: uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`,
             bi_front_url: uploads.biFront,
             bi_back_url: uploads.biBack,
@@ -300,14 +314,23 @@ export function DriverRegistrationPage({
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
                       />
 
-                      <Input
-                        icon={FileText} // Standard lucide-react doesn't have Lock by default in our imports, using FileText or adding it
-                        label="Palavra-passe"
-                        placeholder="******"
-                        type="password"
-                        value={password}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                      />
+                      <div className="relative">
+                        <Input
+                          icon={FileText}
+                          label="Palavra-passe"
+                          placeholder="******"
+                          type={passwordVisible ? "text" : "password"}
+                          value={password}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPasswordVisible(!passwordVisible)}
+                          className="absolute right-4 top-[38px] text-[var(--text-tertiary)] hover:text-[var(--primary-color)] transition-colors"
+                        >
+                          {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
 
                       <Button
                         className="w-full h-14 text-lg font-black uppercase tracking-tighter rounded-2xl shadow-xl shadow-[var(--primary-glow)]"

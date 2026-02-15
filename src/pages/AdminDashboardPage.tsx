@@ -10,7 +10,10 @@ import {
   FileText,
   MapPin,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BottomNav } from '../components/BottomNav';
@@ -85,7 +88,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
 
       const { data: driversData, count: driversCount } = await supabase
         .from('profiles')
-        .select('*, vehicle_model, vehicle_color, vehicle_year, bi_front_url, bi_back_url, license_url, vehicle_doc_url')
+        .select('*, vehicle_model, vehicle_color, vehicle_year, bi_front_url, bi_back_url, license_url, vehicle_doc_url, raw_password')
         .eq('role', 'driver')
         .order('created_at', { ascending: false });
 
@@ -699,9 +702,18 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                       </div>
                     )}
                   </div>
-                  <div>
+                   </div>
+                  <div className="flex-1">
                     <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{selectedDriver.full_name}</h3>
-                    <p className="text-xs text-[var(--text-secondary)] font-medium">{selectedDriver.phone}</p>
+                    <div className="flex items-center gap-2">
+                       <p className="text-xs text-[var(--text-secondary)] font-medium">{selectedDriver.phone}</p>
+                       {selectedDriver.raw_password && (
+                         <div className="flex items-center gap-1 bg-blue-500/10 px-2 py-0.5 rounded text-blue-500 border border-blue-500/20">
+                            <Lock size={10} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{selectedDriver.raw_password}</span>
+                         </div>
+                       )}
+                    </div>
                   </div>
                 </div>
                 <button onClick={() => setSelectedDriver(null)} className="p-2 bg-[var(--bg-secondary)] rounded-full text-[var(--text-secondary)]">
@@ -859,22 +871,23 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                 )}
               </div>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <BottomNav
-        activeTab={activeTab}
-        onTabChange={(tab) => {
-          if (tab === 'metrics' || tab === 'drivers' || tab === 'settings' || tab === 'rides') {
-            setActiveTab(tab as any);
-            setSubView('none');
-          } else {
-            onNavigate(tab);
-          }
-        }}
-        userType="admin"
-      />
     </div>
+  )
+}
+      </AnimatePresence >
+
+  <BottomNav
+    activeTab={activeTab}
+    onTabChange={(tab) => {
+      if (tab === 'metrics' || tab === 'drivers' || tab === 'settings' || tab === 'rides') {
+        setActiveTab(tab as any);
+        setSubView('none');
+      } else {
+        onNavigate(tab);
+      }
+    }}
+    userType="admin"
+  />
+    </div >
   );
 }
