@@ -136,12 +136,12 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         addLog('Aprovação', `Motorista ${driverId} aprovado.`);
         fetchStats();
 
-        // Abrir WhatsApp com mensagem automática
+        // Abrir WhatsApp com mensagem automática detalhada (v2.9)
         let cleanPhone = (phone || '').replace(/\D/g, '');
         if (cleanPhone.startsWith('8')) cleanPhone = '258' + cleanPhone;
 
         if (cleanPhone) {
-          const msg = encodeURIComponent(`Olá! Sua conta no Quelimove foi APROVADA com sucesso! 🎉\n\nJá podes abrir a aplicação e começar a faturar. Estamos felizes por te ter connosco! 🚀🚖\n\nAtt: Equipa Quelimove`);
+          const msg = encodeURIComponent(`Olá! Sua conta no Quelimove foi APROVADA! 🎉\n\nAgora já podes entrar na aplicação e começar a faturar.\n\nSeus dados de acesso:\n📲 Número: ${phone}\n🔑 Senha: (Aquela que escolheste no registo)\n\nEstamos felizes por te ter connosco! 🚀🚖\n\nAtt: Equipa Quelimove`);
           window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
         } else {
           alert('Motorista aprovado, mas o telefone não foi encontrado para enviar WhatsApp.');
