@@ -195,10 +195,14 @@ export function DriverRegistrationPage({
             neighborhood: formData.neighborhood,
             vehicle_type: vehicleType,
             vehicle_plate: formData.plate,
+            vehicle_model: formData.vehicleModel,
+            vehicle_color: formData.vehicleColor,
+            vehicle_year: formData.vehicleYear,
             avatar_url: uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`,
             bi_front_url: uploads.biFront,
             bi_back_url: uploads.biBack,
-            license_url: uploads.license
+            license_url: uploads.license,
+            vehicle_doc_url: uploads.vehicleDoc
           });
 
         if (profileError && profileError.code !== '42501') { // Ignore RLS error if already profile exists but can't be updated

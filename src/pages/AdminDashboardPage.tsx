@@ -28,6 +28,8 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   const { notify } = useNotifications();
   const [loading, setLoading] = React.useState(true);
   const [subView, setSubView] = React.useState<'none' | 'bairros' | 'prices' | 'logs'>('none');
+  const [driverFilter, setDriverFilter] = React.useState<'all' | 'pending' | 'rejected'>('all');
+  const [zoomImage, setZoomImage] = React.useState<string | null>(null);
 
   // Estados de Gestão
   const [locations, setLocations] = React.useState([...QUELIMANE_LOCATIONS]);
@@ -524,47 +526,80 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                       <span className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">{allDrivers.length} Registados</span>
                     </div>
 
-                    <div className="space-y-3">
-                      {/* Mostrar pendentes primeiro */}
-                      {[...allDrivers].sort((a, b) => {
-                        if (a.status === 'pending' && b.status !== 'pending') return -1;
-                        if (a.status !== 'pending' && b.status === 'pending') return 1;
-                        return 0;
-                      }).map((driver) => (
+                    {/* Tabs de Filtro */}
+                    <div className="flex p-1 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)]">
+                      {[
+                        { id: 'all', label: 'Todos' },
+                        { id: 'pending', label: 'Pendentes' },
+                        { id: 'rejected', label: 'Reprovados' }
+                      ].map((tab) => (
                         <button
-                          key={driver.id}
-                          onClick={() => setSelectedDriver(driver)}
-                          className="w-full bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)] flex items-center justify-between hover:border-[var(--primary-color)]/50 transition-all text-left group"
+                          key={tab.id}
+                          onClick={() => setDriverFilter(tab.id as any)}
+                          className={`flex-1 py-2 text-[10px] font-black uppercase tracking-tight rounded-lg transition-all ${driverFilter === tab.id
+                            ? 'bg-[var(--bg-primary)] text-[#FBBF24] shadow-sm'
+                            : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                            }`}
                         >
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-center overflow-hidden">
-                              {driver.profile_url ? <img src={driver.profile_url} alt="" className="w-full h-full object-cover" /> : <Users className="text-[var(--text-tertiary)]" size={24} />}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-bold text-[var(--text-primary)]">{driver.full_name}</p>
-                                {driver.status === 'pending' && <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}
-                              </div>
-                              <div className="flex items-center gap-3 mt-1">
-                                <div className="flex items-center gap-1">
-                                  <Activity size={10} className="text-blue-500" />
-                                  <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalRides} Viagens</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Users size={10} className="text-purple-500" />
-                                  <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalPassengers} Passageiros</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className={`px-2 py-1 rounded text-[8px] font-black tracking-widest uppercase ${driver.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
-                              {driver.status}
-                            </span>
-                            <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
-                          </div>
+                          {tab.label}
                         </button>
                       ))}
+                    </div>
+
+                    <div className="space-y-3">
+                      {allDrivers
+                        .filter(d => {
+                          if (driverFilter === 'all') return true;
+                          return d.status === driverFilter;
+                        })
+                        .sort((a, b) => {
+                          if (a.status === 'pending' && b.status !== 'pending') return -1;
+                          if (a.status !== 'pending' && b.status === 'pending') return 1;
+                          return 0;
+                        }).map((driver) => (
+                          <button
+                            key={driver.id}
+                            onClick={() => setSelectedDriver(driver)}
+                            className="w-full bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)] flex items-center justify-between hover:border-[var(--primary-color)]/50 transition-all text-left group"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-full bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-center overflow-hidden">
+                                {driver.profile_url ? <img src={driver.profile_url} alt="" className="w-full h-full object-cover" /> : <Users className="text-[var(--text-tertiary)]" size={24} />}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-bold text-[var(--text-primary)]">{driver.full_name}</p>
+                                  {driver.status === 'pending' && <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}
+                                </div>
+                                <div className="flex items-center gap-3 mt-1">
+                                  {driver.status === 'active' ? (
+                                    <>
+                                      <div className="flex items-center gap-1">
+                                        <Activity size={10} className="text-blue-500" />
+                                        <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalRides} Viagens</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Users size={10} className="text-purple-500" />
+                                        <span className="text-[10px] font-bold text-[var(--text-tertiary)]">{driver.totalPassengers} Pass.</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <span className="text-[9px] font-bold text-orange-500/60 flex items-center gap-1 italic">
+                                      <Clock size={10} />
+                                      {driver.status === 'pending' ? 'Aguarda aprovação inicial' : 'Conta desativada'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className={`px-2 py-1 rounded text-[8px] font-black tracking-widest uppercase ${driver.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                                {driver.status}
+                              </span>
+                              <ChevronRight size={16} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                            </div>
+                          </button>
+                        ))}
 
                       {allDrivers.length === 0 && (
                         <div className="text-center py-20 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] space-y-4">
@@ -675,55 +710,96 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
-                    <Activity size={18} className="text-blue-500 mb-2" />
-                    <p className="text-xl font-black text-[var(--text-primary)]">{selectedDriver.totalRides}</p>
-                    <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Viagens Concluídas</p>
+                {/* Stats Grid - Only for Active */}
+                {selectedDriver.status === 'active' ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
+                      <Activity size={18} className="text-blue-500 mb-2" />
+                      <p className="text-xl font-black text-[var(--text-primary)]">{selectedDriver.totalRides || 0}</p>
+                      <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Viagens Concluídas</p>
+                    </div>
+                    <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
+                      <Users size={18} className="text-purple-500 mb-2" />
+                      <p className="text-xl font-black text-[var(--text-primary)]">{selectedDriver.totalPassengers || 0}</p>
+                      <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Passageiros Levados</p>
+                    </div>
                   </div>
-                  <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
-                    <Users size={18} className="text-purple-500 mb-2" />
-                    <p className="text-xl font-black text-[var(--text-primary)]">{selectedDriver.totalPassengers}</p>
-                    <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Passageiros Levados</p>
+                ) : (
+                  <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl text-center">
+                    <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Motorista Novo / Em Análise</p>
+                    <p className="text-[11px] text-orange-500 mt-1 font-medium">As estatísticas estarão disponíveis após a ativação.</p>
+                  </div>
+                )}
+
+                {/* Vehicle Info Detalhada */}
+                <div className="bg-[var(--bg-secondary)] p-6 rounded-[32px] border border-[var(--border-color)] space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Informação do Veículo</h4>
+                    <span className="px-2 py-0.5 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-md text-[8px] font-black uppercase text-[#FBBF24]">
+                      {selectedDriver.vehicle_type}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-[9px] uppercase font-black text-[var(--text-tertiary)] tracking-tighter mb-1">Modelo / Marca</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)] uppercase truncate">
+                        {selectedDriver.vehicle_model || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase font-black text-[var(--text-tertiary)] tracking-tighter mb-1">Matrícula</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)] uppercase">
+                        {selectedDriver.vehicle_plate || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase font-black text-[var(--text-tertiary)] tracking-tighter mb-1">Cor Predominante</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)] uppercase">
+                        {selectedDriver.vehicle_color || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase font-black text-[var(--text-tertiary)] tracking-tighter mb-1">Ano de Fabrico</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)] uppercase">
+                        {selectedDriver.vehicle_year || '-'}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Documents Verification */}
+                {/* Documents Verification - Bigger & Zoom */}
                 <div className="space-y-4">
-                  <h4 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)] ml-1">Verificação de Documentos</h4>
-                  <div className="grid grid-cols-1 gap-4">
+                  <h4 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)] ml-1">Documentos de Identificação</h4>
+                  <div className="grid grid-cols-1 gap-6">
                     {[
-                      { label: 'BI Frente', url: selectedDriver.bi_front_url || 'https://via.placeholder.com/400x250?text=BI+Frente' },
-                      { label: 'BI Verso', url: selectedDriver.bi_back_url || 'https://via.placeholder.com/400x250?text=BI+Verso' },
-                      { label: 'Carta de Condução', url: selectedDriver.license_url || 'https://via.placeholder.com/400x250?text=Carta+de+Condução' },
-                      { label: 'Documento da Viatura', url: selectedDriver.vehicle_doc_url || 'https://via.placeholder.com/400x250?text=Livrete' }
+                      { label: 'BI (Frente)', url: selectedDriver.bi_front_url },
+                      { label: 'BI (Verso)', url: selectedDriver.bi_back_url },
+                      { label: 'Carta de Condução', url: selectedDriver.license_url },
+                      { label: 'Livrete da Viatura', url: selectedDriver.vehicle_doc_url }
                     ].map((doc, i) => (
-                      <div key={i} className="space-y-2">
-                        <p className="text-[10px] font-bold text-[var(--text-secondary)] pl-1">{doc.label}</p>
-                        <div className="aspect-[16/9] bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] overflow-hidden group relative cursor-zoom-in">
-                          <img src={doc.url} alt={doc.label} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <FileText className="text-white" size={32} />
+                      <div key={i} className="space-y-3">
+                        <div className="flex items-center justify-between px-1">
+                          <p className="text-[10px] font-black uppercase text-[var(--text-secondary)]">{doc.label}</p>
+                          <span className="text-[8px] text-[var(--text-tertiary)] font-bold italic">Toca para ampliar</span>
+                        </div>
+                        <div
+                          className="aspect-[4/3] bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)] overflow-hidden group relative cursor-zoom-in active:scale-[0.98] transition-all shadow-md"
+                          onClick={() => doc.url && setZoomImage(doc.url)}
+                        >
+                          {doc.url ? (
+                            <img src={doc.url} alt={doc.label} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-40">
+                              <FileText size={32} />
+                              <span className="text-[10px] font-bold">Não carregado</span>
+                            </div>
+                          )}
+                          <div className="absolute top-4 right-4 p-2 bg-black/60 backdrop-blur-md rounded-xl text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Activity size={16} />
                           </div>
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-
-                {/* Vehicle Info */}
-                <div className="bg-[var(--bg-secondary)] p-6 rounded-[32px] border border-[var(--border-color)] space-y-4">
-                  <h4 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Informação do Veículo</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-[10px] font-bold text-[var(--text-tertiary)]">Tipo</p>
-                      <p className="text-sm font-bold text-[var(--text-primary)] uppercase font-black tracking-tighter">{selectedDriver.vehicle_type}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[var(--text-tertiary)]">Matrícula</p>
-                      <p className="text-sm font-bold text-[var(--text-primary)] uppercase">{selectedDriver.vehicle_plate}</p>
-                    </div>
                   </div>
                 </div>
               </div>
