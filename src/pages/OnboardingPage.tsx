@@ -99,16 +99,8 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                 if (profile) {
                     onComplete({ name: profile.full_name, role: profile.role });
                 } else {
-                    // Se não houver perfil, cria um básico
-                    const { error: upsertError } = await supabase
-                        .from('profiles')
-                        .upsert({
-                            id: data.user.id,
-                            role: 'user',
-                            phone: formData.phone,
-                            full_name: 'Usuário'
-                        });
-                    if (upsertError) throw upsertError;
+                    // Se não houver perfil, o trigger pode estar atrasado ou falhou
+                    // Tentamos completar apenas se tivermos os dados
                     onComplete({ name: 'Usuário', role: 'user' });
                 }
             }
@@ -164,21 +156,8 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             }
 
             if (data.user) {
-                // 2. Update Profile with Role & Phone
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .upsert({
-                        id: data.user.id,
-                        role: formData.role,
-                        phone: formData.phone,
-                        full_name: formData.name
-                    });
-
-                if (profileError) {
-                    console.error('Profile update failed', profileError);
-                }
-
-                // 3. Complete
+                // Profile is now handled by the 'on_auth_user_created' database trigger
+                // which captures 'full_name', 'phone', and 'role' from raw_user_meta_data
                 onComplete({ name: formData.name, role: formData.role });
             }
 
