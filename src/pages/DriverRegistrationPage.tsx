@@ -164,10 +164,14 @@ export function DriverRegistrationPage({
             bairro: formData.bairro,
             vehicle_type: vehicleType,
             vehicle_plate: formData.plate,
+            vehicle_model: formData.vehicleModel,
+            vehicle_color: formData.vehicleColor,
+            vehicle_year: formData.vehicleYear,
             avatar_url: uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`,
             bi_front_url: uploads.biFront,
             bi_back_url: uploads.biBack,
-            license_url: uploads.license
+            license_url: uploads.license,
+            vehicle_doc_url: uploads.vehicleDoc
           }
         }
       });
@@ -181,37 +185,9 @@ export function DriverRegistrationPage({
       };
 
       if (data.user) {
-        // Enforce driver role and metadata for existing users who might be trying to register again
-        // This handles the 'user_repeated_signup' case by ensuring the profile is correctly set
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: data.user.id,
-            full_name: formData.name,
-            role: 'driver',
-            status: 'pending',
-            phone: formData.phone,
-            bi_number: formData.bi,
-            neighborhood: formData.neighborhood,
-            vehicle_type: vehicleType,
-            vehicle_plate: formData.plate,
-            vehicle_model: formData.vehicleModel,
-            vehicle_color: formData.vehicleColor,
-            vehicle_year: formData.vehicleYear,
-            avatar_url: uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`,
-            bi_front_url: uploads.biFront,
-            bi_back_url: uploads.biBack,
-            license_url: uploads.license,
-            vehicle_doc_url: uploads.vehicleDoc
-          });
-
-        if (profileError && profileError.code !== '42501') { // Ignore RLS error if already profile exists but can't be updated
-          console.warn('Profile upsert warning:', profileError);
-        }
-
-        // Successfully reached this point
+        // Successfully reached this point. Profile is now handled 100% by the 'handle_new_user' trigger.
         const msg = encodeURIComponent(`Olá Mansur! Meu nome é ${formData.name}, acabei de concluir o meu registo de motorista na App Quelimove. Podes dar uma olhada e aprovar a minha conta? 🤔📲`);
-        window.open(`https://wa.me/258868840054?text=${msg}`, '_blank');
+        window.open(`https://wa.me/258868840054?text=${msg}#v3`, '_blank');
         setIsSuccess(true);
       }
     } catch (err: any) {
@@ -283,6 +259,14 @@ export function DriverRegistrationPage({
       <Header
         title={isLoginMode ? "Login Motorista" : "Cadastro Motorista"}
         onBack={step === 1 || isLoginMode ? () => onNavigate('home') : prevStep}
+        rightAction={!isLoginMode && step === 1 ? (
+          <button
+            onClick={() => setIsLoginMode(true)}
+            className="px-3 py-1.5 bg-[var(--primary-color)] text-black text-[10px] font-black rounded-lg uppercase tracking-tight active:scale-95"
+          >
+            Entrar
+          </button>
+        ) : null}
       />
       <div className="flex-1 overflow-y-auto mt-[72px] px-4 py-6">
         {isSuccess ? (
@@ -403,13 +387,7 @@ export function DriverRegistrationPage({
                           </div>
                         </div>
 
-                        <div className="pt-4">
-                          <button
-                            onClick={() => setIsLoginMode(true)}
-                            className="w-full text-center text-sm text-[var(--primary-color)] font-bold hover:underline"
-                          >
-                            Já tenho uma conta? Fazer Login
-                          </button>
+                        <div className="pt-2">
                         </div>
                       </div>
                     )}
@@ -650,11 +628,7 @@ export function DriverRegistrationPage({
                         Criar Conta Agora
                       </Button>
                     )}
-                    {step === 1 && (
-                      <Button variant="outline" className="w-full h-14 border-[var(--border-color)] text-[var(--text-secondary)] mt-4" onClick={() => onNavigate('onboarding')}>
-                        Já tenho uma conta? Ir para Login
-                      </Button>
-                    )}
+                    {/* Botão de login removido do fluxo de passos para evitar confusão v3 */}
                   </div>
                 </div>
                 <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.9 (Final Registration Fix)</div>

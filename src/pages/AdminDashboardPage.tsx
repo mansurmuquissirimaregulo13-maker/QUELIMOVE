@@ -85,7 +85,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
 
       const { data: driversData, count: driversCount } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, vehicle_model, vehicle_color, vehicle_year, bi_front_url, bi_back_url, license_url, vehicle_doc_url')
         .eq('role', 'driver')
         .order('created_at', { ascending: false });
 
