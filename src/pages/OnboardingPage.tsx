@@ -99,9 +99,8 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                 if (profile) {
                     onComplete({ name: profile.full_name, role: profile.role });
                 } else {
-                    // Se não houver perfil, o trigger pode estar atrasado ou falhou
-                    // Tentamos completar apenas se tivermos os dados
-                    onComplete({ name: 'Usuário', role: 'user' });
+                    // Espera curta para o trigger processar se necessário
+                    onComplete({ name: formData.name || 'Usuário', role: 'user' });
                 }
             }
         } catch (err: any) {

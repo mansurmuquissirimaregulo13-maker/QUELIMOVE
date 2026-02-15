@@ -20,13 +20,11 @@ export const useNotifications = () => {
     const updateFcmToken = useCallback(async (token: string) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.id) {
-            const { error } = await supabase
+            // Usamos bypass suave para evitar travar se o perfil ainda estiver a ser criado
+            await supabase
                 .from('profiles')
                 .update({ fcm_token: token })
                 .eq('id', session.user.id);
-
-            if (error) console.error('Error updating FCM token:', error);
-            else console.log('FCM token updated successfully');
         }
     }, []);
 

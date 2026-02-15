@@ -151,14 +151,23 @@ export function DriverRegistrationPage({
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const internalEmail = `${cleanPhone}@driver.quelimove.com`;
 
-      // 1. Sign Up the User using mapped email
+      // 1. Sign Up the User using mapped email with full metadata
       const { data, error } = await supabase.auth.signUp({
         email: internalEmail,
         password: formData.password,
         options: {
           data: {
             full_name: formData.name,
-            role: 'driver'
+            phone: formData.phone,
+            role: 'driver',
+            bi_number: formData.bi,
+            bairro: formData.bairro,
+            vehicle_type: vehicleType,
+            vehicle_plate: formData.plate,
+            avatar_url: uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`,
+            bi_front_url: uploads.biFront,
+            bi_back_url: uploads.biBack,
+            license_url: uploads.license
           }
         }
       });
@@ -171,33 +180,8 @@ export function DriverRegistrationPage({
         throw error;
       };
 
-      const userId = data.user?.id;
-      if (userId) {
-        const profileImageUrl = uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`;
-
-        // 2. Create or Update the Profile (UPSERT to avoid duplicate key errors)
-        const { error: upsertError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: userId,
-            full_name: formData.name,
-            role: 'driver',
-            phone: formData.phone, // UI representation
-            phone_whatsapp: formData.phone, // Match schema for WA notifications
-            phone_call: formData.phone,
-            bi_number: formData.bi,
-            bairro: formData.bairro,
-            vehicle_type: vehicleType,
-            vehicle_plate: formData.plate,
-            avatar_url: profileImageUrl,
-            bi_front_url: uploads.biFront,
-            bi_back_url: uploads.biBack,
-            license_url: uploads.license,
-            status: 'pending' // Always reset to pending on re-registration/update
-          }, { onConflict: 'id' });
-
-        if (upsertError) throw upsertError;
-
+      if (data.user) {
+        // Profile is now handled by the 'on_auth_user_created' database trigger
         // Automatically open WhatsApp to notify Admin if possible
         const msg = encodeURIComponent(`Olá Mansur! Meu nome é ${formData.name}, acabei de concluir o meu registo de motorista na App Quelimove. Podes dar uma olhada e aprovar a minha conta? 🤔📲`);
         window.open(`https://wa.me/258868840054?text=${msg}`, '_blank');
