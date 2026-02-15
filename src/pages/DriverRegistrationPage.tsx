@@ -181,12 +181,33 @@ export function DriverRegistrationPage({
       };
 
       if (data.user) {
-        // Profile is now handled by the 'on_auth_user_created' database trigger
-        // Automatically open WhatsApp to notify Admin if possible
+        // Enforce driver role and metadata for existing users who might be trying to register again
+        // This handles the 'user_repeated_signup' case by ensuring the profile is correctly set
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            full_name: formData.name,
+            role: 'driver',
+            status: 'pending',
+            phone: formData.phone,
+            bi_number: formData.bi,
+            neighborhood: formData.neighborhood,
+            vehicle_type: vehicleType,
+            vehicle_plate: formData.plate,
+            avatar_url: uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`,
+            bi_front_url: uploads.biFront,
+            bi_back_url: uploads.biBack,
+            license_url: uploads.license
+          });
+
+        if (profileError && profileError.code !== '42501') { // Ignore RLS error if already profile exists but can't be updated
+          console.warn('Profile upsert warning:', profileError);
+        }
+
+        // Successfully reached this point
         const msg = encodeURIComponent(`Olá Mansur! Meu nome é ${formData.name}, acabei de concluir o meu registo de motorista na App Quelimove. Podes dar uma olhada e aprovar a minha conta? 🤔📲`);
         window.open(`https://wa.me/258868840054?text=${msg}`, '_blank');
-
-        // Success!
         setIsSuccess(true);
       }
     } catch (err: any) {
@@ -625,6 +646,9 @@ export function DriverRegistrationPage({
                         Criar Conta Agora
                       </Button>
                     )}
+                    <Button variant="outline" className="w-full h-14 border-[var(--border-color)] text-[var(--text-secondary)] mt-4" onClick={() => onNavigate('onboarding')}>
+                      Já tenho uma conta? Ir para Login
+                    </Button>
                   </div>
                 </div>
                 <div className="fixed bottom-1 w-full text-center text-[10px] text-gray-400 opacity-50 pointer-events-none z-50">v2.9 (Final Registration Fix)</div>
