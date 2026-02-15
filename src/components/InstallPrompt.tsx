@@ -18,10 +18,10 @@ export function InstallPrompt() {
         setIsStandalone(isStandaloneMode);
 
         const handler = (e: any) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
             const hasDismissed = localStorage.getItem('install_dismissed');
             if (!hasDismissed && !isStandaloneMode) {
+                e.preventDefault();
+                setDeferredPrompt(e);
                 setIsVisible(true);
             }
         };

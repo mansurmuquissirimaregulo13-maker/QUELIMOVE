@@ -25,7 +25,7 @@ if (isFirebaseConfigured) {
         console.error('Firebase initialization failed:', err);
     }
 } else {
-    console.warn('Firebase is not configured. Notifications will not work.');
+    // Firebase not configured - notifications disabled silently
 }
 
 export { messaging };
