@@ -190,9 +190,15 @@ function AppContent() {
         if (currentPage !== 'driver-dash' && currentPage !== 'profile' && currentPage !== 'contact') {
           return <DriverDashboardPage onNavigate={setCurrentPage} />;
         }
+      } else if (userProfile.role === 'admin') {
+        // Redirecionamento automático para o Painel Admin se for o administrador logado
+        if (currentPage !== 'admin-dash' && currentPage !== 'profile') {
+          return <AdminDashboardPage onNavigate={setCurrentPage} />;
+        }
       } else if (userProfile.role === 'user') {
         // Passageiros não devem ver a HomePage de escolha se já estiverem logados
-        if (currentPage === 'home' || currentPage === 'driver-reg') {
+        // Mas se estiverem tentando aceder ao ADMIN (Mansur tentando com conta pessoal), permitimos seguir para o caso do switch
+        if ((currentPage === 'home' || currentPage === 'driver-reg') && (currentPage !== 'admin' && currentPage !== 'admin-dash')) {
           return <RideRequestPage onNavigate={setCurrentPage} />;
         }
       }

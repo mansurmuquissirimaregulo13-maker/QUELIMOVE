@@ -129,7 +129,8 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
       const { data: driversData, count: driversCount } = await supabase
         .from('profiles')
         .select('*')
-        .eq('role', 'driver');
+        .eq('role', 'driver')
+        .order('created_at', { ascending: false });
 
       const pendingDriversCount = driversData?.filter(d => d.status === 'pending').length || 0;
 
