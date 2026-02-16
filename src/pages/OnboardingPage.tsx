@@ -264,21 +264,14 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="space-y-4 text-left">
-                                    <AnimatePresence>
-                                        {error && (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: -10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -10 }}
-                                                className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 mb-4"
-                                            >
-                                                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 flex-shrink-0">
-                                                    <AlertCircle size={18} />
-                                                </div>
-                                                <p className="text-[11px] font-bold text-red-500 leading-tight">{error}</p>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                    {error && (
+                                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 flex-shrink-0">
+                                                <AlertCircle size={18} />
+                                            </div>
+                                            <p className="text-[11px] font-bold text-red-500 leading-tight">{error}</p>
+                                        </div>
+                                    )}
 
                                     {!isLoginMode && (
                                         <>

@@ -250,17 +250,16 @@ function AppContent() {
   };
 
   return (
-    <div className="relative h-[100dvh] w-screen overflow-hidden transition-colors duration-300 bg-[var(--bg-primary)]">
+    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[var(--bg-primary)]">
       <AnimatePresence mode="wait">
         {showSplash ? (
           <SplashScreen key="splash" />
         ) : (
           <motion.div
-            key="main-content"
+            key="app-main"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="w-full h-full relative"
+            className="w-full h-full"
           >
             <InstallPrompt />
             <div className="w-full h-full overflow-hidden">
