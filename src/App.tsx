@@ -15,7 +15,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { InstallPrompt } from './components/InstallPrompt';
 import { SplashScreen } from './components/SplashScreen';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Clock, XCircle, AlertCircle, CheckCircle } from 'lucide-react';
+import { Clock as LucideClock, XCircle, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from './components/ui/Button';
 
 function AppContent() {
@@ -176,7 +176,7 @@ function AppContent() {
           return (
             <div className="h-[100dvh] w-full flex flex-col items-center justify-center p-8 text-center bg-[var(--bg-primary)]">
               <div className="w-24 h-24 bg-orange-500/10 rounded-full flex items-center justify-center mb-6">
-                <Clock size={48} className="text-orange-500 animate-pulse" />
+                <LucideClock size={48} className="text-orange-500 animate-pulse" />
               </div>
               <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter mb-2">Conta em Análise</h2>
               <p className="text-[var(--text-secondary)] text-sm mb-8">O seu cadastro foi enviado com sucesso. O administrador está a analisar os seus dados. Receberá uma notificação via WhatsApp assim que for aprovado.</p>
