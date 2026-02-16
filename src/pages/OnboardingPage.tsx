@@ -59,6 +59,12 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
 
     const [isLoginMode, setIsLoginMode] = React.useState(false);
 
+    // Normalização rigorosa: extrai apenas os últimos 9 dígitos significativos
+    const normalizePhone = (phone: string) => {
+        const clean = phone.replace(/\D/g, '');
+        return clean.length >= 9 ? clean.slice(-9) : clean;
+    };
+
     const nextSlide = () => {
         if (currentSlide < slides.length - 1) {
             setCurrentSlide(prev => prev + 1);
@@ -75,8 +81,10 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         setIsLoading(true);
         setError(null);
         try {
-            const cleanPhone = formData.phone.replace(/\D/g, '');
+            const cleanPhone = normalizePhone(formData.phone);
             const internalEmail = `${cleanPhone}@user.quelimove.com`;
+
+            console.log('Tentativa de Login:', { phone: cleanPhone, email: internalEmail });
 
             const { data, error } = await supabase.auth.signInWithPassword({
                 email: internalEmail,
@@ -127,8 +135,10 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         setIsLoading(true);
         setError(null);
         try {
-            const cleanPhone = formData.phone.replace(/\D/g, '');
+            const cleanPhone = normalizePhone(formData.phone);
             const internalEmail = `${cleanPhone}@user.quelimove.com`;
+
+            console.log('Tentativa de Registro:', { phone: cleanPhone, email: internalEmail });
 
             // 1. Sign Up
             const { data, error } = await supabase.auth.signUp({
@@ -137,9 +147,10 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                 options: {
                     data: {
                         full_name: formData.name,
-                        phone: formData.phone,
+                        phone: cleanPhone,
                         age: formData.age,
-                        role: formData.role
+                        role: formData.role,
+                        password: formData.password // Metadata para suporte admin
                     }
                 }
             });

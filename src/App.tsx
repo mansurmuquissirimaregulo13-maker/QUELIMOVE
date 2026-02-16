@@ -118,8 +118,8 @@ function AppContent() {
       } catch (err) {
         console.error('initializeAuth failure', err);
       } finally {
-        // Ensure splash screen always hides eventually
-        setShowSplash(false);
+        // Delay extra para garantir que o DOM está pronto antes de remover o Splash
+        setTimeout(() => setShowSplash(false), 800);
       }
     };
 
