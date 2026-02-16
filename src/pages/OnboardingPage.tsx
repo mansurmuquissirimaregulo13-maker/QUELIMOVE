@@ -68,7 +68,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.phone || !formData.password) {
-            alert('Por favor, preencha o telefone e a palavra-passe.');
+            setError('Por favor, preencha o telefone e a palavra-passe.');
             return;
         }
 
@@ -119,13 +119,13 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         }
 
         if (!formData.name || !formData.password || !formData.phone || !formData.age) {
-            alert('Por favor, preencha todos os campos.');
+            setError('Por favor, preencha todos os campos.');
             return;
         }
 
         setIsLoading(true);
+        setError(null);
         try {
-            // Internal Email Mapping Strategy (v2.8)
             const cleanPhone = formData.phone.replace(/\D/g, '');
             const internalEmail = `${cleanPhone}@user.quelimove.com`;
 
