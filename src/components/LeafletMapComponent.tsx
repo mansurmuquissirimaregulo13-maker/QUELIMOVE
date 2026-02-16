@@ -57,6 +57,7 @@ interface LeafletMapComponentProps {
     drivers?: Array<{ id: string; lat: number; lng: number; type: string }>;
     onMoveEnd?: (center: [number, number]) => void;
     onClick?: (latlng: [number, number]) => void;
+    routeColor?: string;
 }
 
 export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
@@ -68,7 +69,8 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
     height = '100%',
     drivers = [],
     onMoveEnd,
-    onClick
+    onClick,
+    routeColor = '#3b82f6'
 }) => {
     const mapRef = React.useRef<L.Map | null>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -239,7 +241,7 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
                             routeLayerRef.current.setLatLngs(coords);
                         } else {
                             routeLayerRef.current = L.polyline(coords, {
-                                color: '#3b82f6',
+                                color: routeColor,
                                 weight: 6,
                                 opacity: 0.8,
                                 lineJoin: 'round'
@@ -262,6 +264,13 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
             }
         }
     }, [pickup?.lat, pickup?.lng, destination?.lat, destination?.lng, stops]);
+
+    // Update route color when prop changes
+    React.useEffect(() => {
+        if (routeLayerRef.current) {
+            routeLayerRef.current.setStyle({ color: routeColor });
+        }
+    }, [routeColor]);
 
     // Gerenciar Marcadores de Paragens Intermédias
     React.useEffect(() => {

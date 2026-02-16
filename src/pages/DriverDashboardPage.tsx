@@ -201,7 +201,6 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   }, [currentRide]);
 
   const [todaysEarnings, setTodaysEarnings] = React.useState(0);
-  const [todaysRidesCount, setTodaysRidesCount] = React.useState(0);
 
   const fetchStats = async () => {
     const { data: userData } = await supabase.auth.getUser();
@@ -220,7 +219,6 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     if (data) {
       const total = data.reduce((sum, ride) => sum + (parseInt(ride.estimate) || 0), 0);
       setTodaysEarnings(total);
-      setTodaysRidesCount(data.length);
     }
   };
 
@@ -372,6 +370,22 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     }
   };
 
+  // Force Light Mode for Driver Dashboard
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    return () => {
+      // Optional: Reset to system or previous preference if needed, 
+      // but for now we leave it as is or could reset to auto.
+      // document.documentElement.removeAttribute('data-theme');
+    };
+  }, []);
+
+  const getRouteColor = () => {
+    if (currentRide?.status === 'accepted') return '#FBBF24'; // Yellow for Pickup
+    if (currentRide?.status === 'in_progress') return '#3b82f6'; // Blue for Trip
+    return '#3b82f6'; // Default
+  };
+
   return (
     <div className="h-[100dvh] w-full flex flex-col bg-[var(--bg-primary)] overflow-hidden">
       <div className="fixed top-0 left-0 right-0 px-4 pt-4 pb-4 flex items-center justify-between bg-[var(--bg-primary)] z-[60] border-b border-[var(--border-color)]">
@@ -427,6 +441,8 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                   }
                   userLocation={lastCoords ? [lastCoords.lat, lastCoords.lng] : undefined}
                   height="200px"
+                  drivers={[]} // Ensure no other drivers are shown
+                  routeColor={getRouteColor()}
                 />
               </div>
 
