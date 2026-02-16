@@ -68,7 +68,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
   const [stops, setStops] = React.useState<LocationType[]>([]);
 
   // Match state
-  const [matchStatus, setMatchStatus] = React.useState<'idle' | 'searching' | 'found' | 'busy'>('idle');
+  const [matchStatus, setMatchStatus] = React.useState<'idle' | 'searching' | 'found' | 'arrived' | 'in_progress' | 'busy'>('idle');
   const [driverInfo, setDriverInfo] = React.useState<any>(null);
   const [eta, setEta] = React.useState(0);
 
@@ -433,6 +433,12 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                 notify({ title: 'Viagem Aceite', body: `Motorista ${driver.full_name} aceitou a viagem!` });
                 subscribeToDriverLocation(driver.id);
               }
+            } else if (payload.new.status === 'arrived') {
+              setMatchStatus('arrived');
+              notify({ title: 'Motorista Chegou', body: 'O seu motorista chegou ao ponto de encontro.' });
+            } else if (payload.new.status === 'in_progress') {
+              setMatchStatus('in_progress');
+              notify({ title: 'Viagem Iniciada', body: 'Tenha uma excelente viagem!' });
             } else if (payload.new.status === 'completed') {
               notify({ title: 'Chegou ao Destino', body: 'Viagem finalizada. Obrigado por escolher a Quelimove!' });
               setMatchStatus('idle');
@@ -592,12 +598,18 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         {/* Map Background with Drag-to-Select Logic */}
         <div className="absolute inset-0 z-0">
           <MapComponent
-            center={mapCenter}
-            pickup={pickup}
-            destination={destination}
-            stops={stops}
+            center={matchStatus === 'in_progress' ? [destination?.lat || mapCenter[0], destination?.lng || mapCenter[1]] : mapCenter}
+            pickup={matchStatus === 'found' && nearbyDrivers.length > 0
+              ? { lat: nearbyDrivers[0].lat, lng: nearbyDrivers[0].lng, name: 'Motorista' }
+              : pickup
+            }
+            destination={matchStatus === 'found'
+              ? pickup
+              : (matchStatus === 'in_progress' ? destination : (step === 2 ? destination : null))
+            }
+            stops={matchStatus === 'idle' ? stops : []}
             userLocation={userLocation || undefined}
-            drivers={nearbyDrivers}
+            drivers={matchStatus === 'idle' ? nearbyDrivers : (matchStatus === 'found' || matchStatus === 'arrived' || matchStatus === 'in_progress' ? nearbyDrivers : [])}
             height="100%"
             onMoveEnd={(newCenter) => setMapCenter(newCenter)}
             onClick={handleMapClick}
@@ -939,13 +951,29 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                         <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${driverInfo?.id}`} alt="Driver" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs text-[var(--text-secondary)] font-bold uppercase opacity-60">{driverInfo?.vehicle_plate}</p>
+                        <p className="text-xs text-[var(--text-secondary)] font-bold uppercase opacity-60">
+                          {matchStatus === 'arrived' ? 'CHEGOU' : (matchStatus === 'in_progress' ? 'EM VIAGEM' : driverInfo?.vehicle_plate)}
+                        </p>
                         <p className="text-lg font-black text-[var(--text-primary)]">{driverInfo?.full_name?.split(' ')[0]}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-3xl font-black text-[#FBBF24]">{eta}</p>
+                        <p className="text-3xl font-black text-[#FBBF24]">
+                          {matchStatus === 'arrived' ? '0' : (matchStatus === 'in_progress' ? Math.round(distance * 2) : eta)}
+                        </p>
                         <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase">MIN</p>
                       </div>
+                    </div>
+                  )}
+                  {matchStatus === 'arrived' && (
+                    <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-2xl">
+                      <p className="text-green-600 font-black uppercase text-sm">O motorista chegou!</p>
+                      <p className="text-xs text-green-600/70">Aguarde o início da viagem no app do motorista.</p>
+                    </div>
+                  )}
+                  {matchStatus === 'in_progress' && (
+                    <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+                      <p className="text-blue-600 font-black uppercase text-sm">Viagem em curso</p>
+                      <p className="text-xs text-blue-600/70">Aproveite a sua viagem até {destination?.name}.</p>
                     </div>
                   )}
                   {matchStatus === 'busy' && (

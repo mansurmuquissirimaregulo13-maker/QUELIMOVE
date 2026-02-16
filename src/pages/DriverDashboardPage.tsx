@@ -19,6 +19,19 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { useNotifications } from '../hooks/useNotifications';
 
+// Haversine formula to calculate distance in KM
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 interface DriverDashboardPageProps {
   onNavigate: (page: string) => void;
 }
@@ -72,7 +85,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     const { data } = await supabase
       .from('rides')
       .select('*')
-      .in('status', ['pending', 'accepted', 'a_caminho', 'em_corrida'])
+      .in('status', ['pending', 'accepted', 'arrived', 'in_progress'])
       .or(`target_driver_id.is.null,target_driver_id.eq.${userData.user.id},driver_id.eq.${userData.user.id}`)
       .order('created_at', { ascending: false })
       .limit(1);
@@ -283,6 +296,50 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     }
   };
 
+  const handleArriveAtPickup = async () => {
+    if (!currentRide) return;
+    try {
+      const { error } = await supabase
+        .from('rides')
+        .update({ status: 'arrived' })
+        .eq('id', currentRide.id);
+      if (error) throw error;
+      notify({ title: 'Mensagem enviada', body: 'O cliente foi notificado que chegaste.' });
+    } catch (err) {
+      console.error('Error arriving at pickup:', err);
+    }
+  };
+
+  const handleStartRide = async () => {
+    if (!currentRide) return;
+    try {
+      const { error } = await supabase
+        .from('rides')
+        .update({ status: 'in_progress' })
+        .eq('id', currentRide.id);
+      if (error) throw error;
+      notify({ title: 'Corrida Iniciada', body: 'Vá ao destino com segurança.' });
+    } catch (err) {
+      console.error('Error starting ride:', err);
+    }
+  };
+
+  const [distToPickup, setDistToPickup] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (currentRide?.status === 'accepted' && lastCoords) {
+      const d = calculateDistance(
+        lastCoords.lat,
+        lastCoords.lng,
+        currentRide.pickup_lat,
+        currentRide.pickup_lng
+      );
+      setDistToPickup(d);
+    } else {
+      setDistToPickup(null);
+    }
+  }, [currentRide?.status, lastCoords, currentRide?.pickup_lat, currentRide?.pickup_lng]);
+
   const toggleOnline = async () => {
     const nextState = !isOnline;
     setIsOnline(nextState);
@@ -359,9 +416,16 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             <div className="bg-[var(--bg-secondary)] rounded-2xl border-2 border-[#FBBF24] overflow-hidden shadow-2xl">
               <div className="p-2">
                 <MapComponent
-                  center={[currentRide.pickup_lat, currentRide.pickup_lng]}
-                  pickup={{ lat: currentRide.pickup_lat, lng: currentRide.pickup_lng, name: currentRide.pickup_location }}
-                  destination={{ lat: currentRide.dest_lat, lng: currentRide.dest_lng, name: currentRide.destination_location }}
+                  center={currentRide.status === 'in_progress' ? [currentRide.dest_lat, currentRide.dest_lng] : [currentRide.pickup_lat, currentRide.pickup_lng]}
+                  pickup={currentRide.status === 'accepted' && lastCoords
+                    ? { lat: lastCoords.lat, lng: lastCoords.lng, name: 'Minha Posição' }
+                    : { lat: currentRide.pickup_lat, lng: currentRide.pickup_lng, name: currentRide.pickup_location }
+                  }
+                  destination={currentRide.status === 'accepted' || currentRide.status === 'arrived' || currentRide.status === 'pending'
+                    ? { lat: currentRide.pickup_lat, lng: currentRide.pickup_lng, name: currentRide.pickup_location }
+                    : { lat: currentRide.dest_lat, lng: currentRide.dest_lng, name: currentRide.destination_location }
+                  }
+                  userLocation={lastCoords ? [lastCoords.lat, lastCoords.lng] : undefined}
                   height="200px"
                 />
               </div>
@@ -432,6 +496,29 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                       Aceitar
                     </Button>
                   </div>
+                ) : currentRide.status === 'accepted' ? (
+                  <div className="space-y-3">
+                    {distToPickup !== null && distToPickup <= 0.05 && (
+                      <Button
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold animate-bounce shadow-lg shadow-blue-500/30"
+                        onClick={handleArriveAtPickup}
+                      >
+                        <CheckCircle className="mr-2" size={18} />
+                        Cheguei ao local
+                      </Button>
+                    )}
+                    <p className="text-[10px] text-center text-[var(--text-secondary)] font-bold uppercase">
+                      {distToPickup !== null ? `Estás a ${Math.round(distToPickup * 1000)}m do cliente` : 'A caminho do cliente...'}
+                    </p>
+                  </div>
+                ) : currentRide.status === 'arrived' ? (
+                  <Button
+                    className="w-full bg-[#FBBF24] text-black font-bold shadow-xl shadow-[#FBBF24]/20"
+                    onClick={handleStartRide}
+                  >
+                    <Navigation className="mr-2" size={18} />
+                    Iniciar corrida
+                  </Button>
                 ) : (
                   <Button
                     className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
