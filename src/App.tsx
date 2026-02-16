@@ -15,7 +15,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { InstallPrompt } from './components/InstallPrompt';
 import { SplashScreen } from './components/SplashScreen';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Clock } from 'lucide-react';
+import { Clock, XCircle, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from './components/ui/Button';
 
 function AppContent() {

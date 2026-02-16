@@ -9,7 +9,8 @@ import {
   CheckCircle,
   XCircle,
   Route as RouteIcon,
-  Phone
+  Phone,
+  Clock
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
@@ -427,7 +428,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                         onClick={() => window.open(`tel:${passengerPhone}`)}
                         className="mt-2 text-xs bg-green-500/20 text-green-500 px-3 py-1 rounded-full border border-green-500/30 flex items-center justify-end gap-1 ml-auto"
                       >
-                        <Phone size={12} fill="currentColor" />
+                        <Phone size={12} className="fill-current" />
                         Ligar
                       </button>
                     )}
