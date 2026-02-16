@@ -15,16 +15,13 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { InstallPrompt } from './components/InstallPrompt';
 import { SplashScreen } from './components/SplashScreen';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Clock as LucideClock, XCircle, AlertCircle, CheckCircle } from 'lucide-react';
-import { Button } from './components/ui/Button';
 
 function AppContent() {
   /* Splash Screen State */
   const [showSplash, setShowSplash] = React.useState(true);
 
   /* App State */
-  const [currentPage, setCurrentPage] = React.useState('home');
+  const [currentPage, setCurrentPage] = React.useState<string>('home');
   const [user, setUser] = React.useState<{ name: string; age?: number; role?: string; status?: string; phone?: string; avatar_url?: string } | null>(() => {
     try {
       const saved = localStorage.getItem('user_profile');
@@ -172,41 +169,14 @@ function AppContent() {
     if (user) {
       const userProfile = user as any;
       if (userProfile.role === 'driver') {
-        // Bloqueio de Motorista Pendente
-        if (userProfile.status === 'pending' || userProfile.status === 'rejected') {
-          return (
-            <div className="h-[100dvh] w-full flex flex-col items-center justify-center p-8 text-center bg-[var(--bg-primary)]">
-              <div className="w-24 h-24 bg-orange-500/10 rounded-full flex items-center justify-center mb-6">
-                <LucideClock size={48} className="text-orange-500 animate-pulse" />
-              </div>
-              <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter mb-2">Conta em Análise</h2>
-              <p className="text-[var(--text-secondary)] text-sm mb-8">O seu cadastro foi enviado com sucesso. O administrador está a analisar os seus dados. Receberá uma notificação via WhatsApp assim que for aprovado.</p>
-
-              <div className="w-full max-w-xs space-y-3">
-                <Button
-                  onClick={async () => {
-                    const { data } = await supabase.from('profiles').select('status').eq('id', (user as any).id).single();
-                    if (data?.status === 'active') {
-                      window.location.reload();
-                    } else {
-                      // Feedback visual discreto ou nada
-                    }
-                  }}
-                  className="w-full bg-[#FBBF24] text-black font-bold uppercase"
-                >
-                  Verificar Agora
-                </Button>
-                <Button onClick={() => { localStorage.clear(); window.location.reload(); }} variant="ghost" className="w-full text-red-500 font-bold uppercase tracking-tight">Sair e Entrar com outra conta</Button>
-              </div>
-            </div>
-          );
-        }
-
-        // Motoristas aprovados só podem ver dashboard, perfil e contacto
-        // Se o motorista aprovado tentar acessar outra página, redireciona para o dashboard
-        if (currentPage !== 'driver-dash' && currentPage !== 'profile' && currentPage !== 'contact') {
+        // Motoristas aprovados ou em análise serão redirecionados para o dashboard
+        // O Dashboard controlará a exibição de "Em Análise" internamente com cache local para evitar flash
+        if (currentPage !== 'driver-dash' && currentPage !== 'profile' && currentPage !== 'contact' && currentPage !== 'earnings') {
           return <DriverDashboardPage onNavigate={setCurrentPage} />;
         }
+
+
+
       } else if (userProfile.role === 'admin') {
         // Redirecionamento automático para o Painel Admin se for o administrador logado
         if (currentPage !== 'admin-dash' && currentPage !== 'profile') {

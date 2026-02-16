@@ -458,7 +458,7 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
 
       <BottomNav
         activeTab="profile"
-        onTabChange={(tab) => onNavigate(tab)}
+        onTabChange={onNavigate}
         userType={user.role || 'client'}
       />
     </div>

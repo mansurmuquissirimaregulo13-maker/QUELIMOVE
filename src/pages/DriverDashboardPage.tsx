@@ -41,7 +41,12 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   const [currentRide, setCurrentRide] = React.useState<any | null>(null);
   const [driverName, setDriverName] = React.useState('Motorista');
   const [vehicleInfo, setVehicleInfo] = React.useState('Carregando...');
-  const [driverStatus, setDriverStatus] = React.useState<'active' | 'pending' | 'rejected'>('pending');
+  // Initialize with cached status to prevent flashing "Analysis" screen
+  const [driverStatus, setDriverStatus] = React.useState<'active' | 'pending' | 'rejected'>(() => {
+    const cached = localStorage.getItem('driverStatus');
+    return (cached as 'active' | 'pending' | 'rejected') || 'pending';
+  });
+
   const { notify } = useNotifications();
 
   // Monitorar mudanças na corrida atual
@@ -96,11 +101,13 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
   const fetchPotentialRidesCallback = React.useCallback(fetchPotentialRides, [isOnline, currentRide]);
 
+  // Optimized Location Update
   const updateLocationInDB = async (lat: number, lng: number) => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (userData.user && isOnline) {
-        await supabase
+        // Fire and forget - don't await to improve UI responsiveness
+        supabase
           .from('profiles')
           .update({
             current_lat: lat,
@@ -108,7 +115,10 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             is_available: true,
             last_online: new Date().toISOString()
           })
-          .eq('id', userData.user.id);
+          .eq('id', userData.user.id)
+          .then(({ error }) => {
+            if (error) console.error('Background location update error:', error);
+          });
 
         setLastCoords({ lat, lng });
       }
@@ -205,6 +215,14 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
 
+    // First try to get from cache to display immediately
+    const cachedStatus = localStorage.getItem('driverStatus');
+    if (cachedStatus) {
+      setDriverStatus(cachedStatus as any);
+      if (cachedStatus !== 'active') setIsOnline(false);
+    }
+
+    // Then update from network
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, vehicle_type, vehicle_plate, status')
@@ -214,8 +232,14 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     if (profile) {
       setDriverName(profile.full_name || 'Motorista');
       setVehicleInfo(`${profile.vehicle_type || 'Moto'} • ${profile.vehicle_plate || 'S/M'}`);
+
+      // Update state and cache
       setDriverStatus(profile.status as any);
-      if (profile.status !== 'active') setIsOnline(false);
+      localStorage.setItem('driverStatus', profile.status);
+
+      if (profile.status !== 'active') {
+        setIsOnline(false);
+      }
     }
   };
 
@@ -228,28 +252,59 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      const { data, error } = await supabase
-        .from('rides')
-        .update({
-          status: 'accepted',
-          driver_id: userData.user.id,
-          target_driver_id: userData.user.id
-        })
-        .eq('id', rideId)
-        .eq('status', 'pending')
-        .select();
+      // Use atomic function to prevent race conditions
+      const { data: success, error } = await supabase
+        .rpc('accept_ride_atomic', {
+          ride_id: rideId,
+          driver_id: userData.user.id
+        });
 
-      if (error) throw error;
+      if (error) {
+        // Fallback for when function doesn't exist yet
+        console.warn('Atomic Accept failed, falling back to standard update', error);
 
-      if (data && data.length > 0) {
+        const { data: legacyData, error: legacyError } = await supabase
+          .from('rides')
+          .update({
+            status: 'accepted',
+            driver_id: userData.user.id,
+            target_driver_id: userData.user.id
+          })
+          .eq('id', rideId)
+          .eq('status', 'pending')
+          .select();
+
+        if (legacyError) throw legacyError;
+
+        if (legacyData && legacyData.length > 0) {
+          notify({ title: 'Viagem Aceite!', body: 'Vá ao encontro do cliente.' });
+          setCurrentRide(legacyData[0]);
+        } else {
+          alert('Esta viagem já foi aceite por outro motorista.');
+          setCurrentRide(null);
+          fetchPotentialRides();
+        }
+        return;
+      }
+
+      if (success) {
         notify({ title: 'Viagem Aceite!', body: 'Vá ao encontro do cliente.' });
-        setCurrentRide(data[0]);
+        // Fetch the active ride details to set currentRide
+        const { data: ride } = await supabase
+          .from('rides')
+          .select('*')
+          .eq('id', rideId)
+          .single();
+        if (ride) setCurrentRide(ride);
       } else {
         alert('Esta viagem já foi aceite por outro motorista.');
         setCurrentRide(null);
+        // Refresh potential rides to remove the stale one
+        fetchPotentialRides();
       }
     } catch (err) {
       console.error('Error accepting ride:', err);
+      notify({ title: 'Erro', body: 'Não foi possível aceitar a viagem.' });
     }
   };
 

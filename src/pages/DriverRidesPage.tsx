@@ -41,7 +41,7 @@ export function DriverRidesPage({ onNavigate }: DriverRidesPageProps) {
         }
     };
 
-    const fetchHistory = async () => {
+    const fetchHistory = async (limit = 20) => {
         setLoading(true);
         const { data: userData } = await supabase.auth.getUser();
         if (!userData.user) return;
@@ -50,9 +50,9 @@ export function DriverRidesPage({ onNavigate }: DriverRidesPageProps) {
             .from('rides')
             .select('*')
             .eq('driver_id', userData.user.id)
-            .in('status', ['completed', 'cancelled']) // Show cancelled too for history
+            .in('status', ['completed', 'cancelled'])
             .order('created_at', { ascending: false })
-            .limit(20);
+            .limit(limit);
 
         if (data) {
             setRideHistory(data);
@@ -91,7 +91,12 @@ export function DriverRidesPage({ onNavigate }: DriverRidesPageProps) {
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-bold text-gray-900">Histórico Recente</h2>
-                            <button className="text-xs font-bold text-[#FBBF24] uppercase">Ver Tudo</button>
+                            <button
+                                onClick={() => fetchHistory(50)}
+                                className="text-xs font-bold text-[#FBBF24] uppercase"
+                            >
+                                Ver Tudo
+                            </button>
                         </div>
 
                         <div className="space-y-3">
