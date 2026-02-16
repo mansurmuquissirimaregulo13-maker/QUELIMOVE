@@ -8,7 +8,6 @@ import {
   Navigation,
   CheckCircle,
   XCircle,
-  Route as RouteIcon,
   Phone,
   Clock as LucideClock
 } from 'lucide-react';
@@ -200,27 +199,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     fetchPassengerPhone();
   }, [currentRide]);
 
-  const [todaysEarnings, setTodaysEarnings] = React.useState(0);
 
-  const fetchStats = async () => {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
-
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const { data } = await supabase
-      .from('rides')
-      .select('estimate')
-      .eq('driver_id', userData.user.id)
-      .eq('status', 'completed')
-      .gte('created_at', startOfDay.toISOString());
-
-    if (data) {
-      const total = data.reduce((sum, ride) => sum + (parseInt(ride.estimate) || 0), 0);
-      setTodaysEarnings(total);
-    }
-  };
 
   const fetchDriverProfile = async () => {
     const { data: userData } = await supabase.auth.getUser();
@@ -242,7 +221,6 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
   React.useEffect(() => {
     fetchDriverProfile();
-    fetchStats();
   }, []);
 
   const handleAcceptRide = async (rideId: string) => {
@@ -266,7 +244,6 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       if (data && data.length > 0) {
         notify({ title: 'Viagem Aceite!', body: 'Vá ao encontro do cliente.' });
         setCurrentRide(data[0]);
-        fetchStats();
       } else {
         alert('Esta viagem já foi aceite por outro motorista.');
         setCurrentRide(null);
@@ -288,7 +265,6 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
       notify({ title: 'Viagem Finalizada', body: 'O valor foi adicionado aos teus ganhos.' });
       setCurrentRide(null);
-      fetchStats();
     } catch (err) {
       console.error('Error finishing ride:', err);
     }
@@ -548,41 +524,47 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             </div>
           </div>
         ) : (
-          <div className="px-4 py-4 space-y-6">
-            <div className="h-[300px] w-full bg-[var(--bg-secondary)] rounded-3xl overflow-hidden border border-[var(--border-color)]">
-              <MapComponent
-                center={lastCoords ? [lastCoords.lat, lastCoords.lng] : [-17.88, 36.88]}
-                height="300px"
-              />
-            </div>
-
-            <div className="bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-8 rounded-3xl border border-[var(--border-color)] text-center space-y-4">
-              <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center transition-all ${isOnline ? 'bg-[#FBBF24]/20' : 'bg-[var(--bg-primary)] border border-[var(--border-color)]'}`}>
-                {isOnline ? <RouteIcon size={40} className="text-[#FBBF24] animate-pulse" /> : <ToggleLeft size={40} className="text-[var(--text-tertiary)]" />}
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-[var(--text-primary)]">{isOnline ? 'Procurando passageiros...' : 'Estás Offline'}</h3>
-                <p className="text-sm text-[var(--text-secondary)] mt-1">{isOnline ? 'Aguarde por novos pedidos na sua zona' : 'Fica online para começar a lucrar'}</p>
+          <div className="absolute top-20 left-4 right-4 z-[400] flex flex-col gap-2 pointer-events-none">
+            {/* Floating Status Card */}
+            <div className="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-gray-100 pointer-events-auto animate-in slide-in-from-top-5 duration-500">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors ${isOnline ? 'bg-[#FBBF24]/20' : 'bg-gray-100'}`}>
+                  {isOnline ? <div className="w-3 h-3 bg-[#FBBF24] rounded-full animate-ping" /> : <ToggleLeft size={24} className="text-gray-400" />}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 leading-tight">
+                    {isOnline ? 'Procurando passageiros...' : 'Estás Offline'}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {isOnline ? 'Mantém a app aberta' : 'Fica online para aceitar corridas'}
+                  </p>
+                </div>
               </div>
               {!isOnline && (
-                <Button onClick={toggleOnline} className="w-full mt-4">
+                <Button onClick={toggleOnline} size="sm" className="w-full mt-3 h-9 bg-gray-900 text-white hover:bg-black">
                   Ficar Online
                 </Button>
               )}
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
-                <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Ganhos Hoje</p>
-                <p className="text-xl font-bold text-[var(--text-primary)]">{todaysEarnings} MZN</p>
-              </div>
-              <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
-                <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Avaliação</p>
-                <p className="text-xl font-bold text-[var(--text-primary)]">★ 4.9</p>
-              </div>
-            </div>
           </div>
         )}
+      </div>
+
+      <div className="absolute inset-0 z-0">
+        <MapComponent
+          center={lastCoords ? [lastCoords.lat, lastCoords.lng] : [-17.88, 36.88]}
+          pickup={currentRide?.status === 'accepted' && lastCoords
+            ? { lat: lastCoords.lat, lng: lastCoords.lng, name: 'Minha Posição' }
+            : currentRide ? { lat: currentRide.pickup_lat, lng: currentRide.pickup_lng, name: currentRide.pickup_location } : null
+          }
+          destination={currentRide?.status === 'accepted' || currentRide?.status === 'arrived' || currentRide?.status === 'pending'
+            ? { lat: currentRide.pickup_lat, lng: currentRide.pickup_lng, name: currentRide.pickup_location }
+            : currentRide ? { lat: currentRide.dest_lat, lng: currentRide.dest_lng, name: currentRide.destination_location } : null
+          }
+          userLocation={lastCoords ? [lastCoords.lat, lastCoords.lng] : undefined}
+          height="100%"
+          routeColor={getRouteColor()}
+        />
       </div>
 
       <BottomNav

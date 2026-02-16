@@ -5,6 +5,7 @@ import { RideRequestPage } from './pages/RideRequestPage';
 import { DriverRegistrationPage } from './pages/DriverRegistrationPage';
 import { ContactPage } from './pages/ContactPage';
 import { DriverDashboardPage } from './pages/DriverDashboardPage';
+import { DriverRidesPage } from './pages/DriverRidesPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { OnboardingPage } from './pages/OnboardingPage';
@@ -255,6 +256,8 @@ function AppContent() {
         return <ContactPage onNavigate={setCurrentPage} />;
       case 'driver-dash':
         return <DriverDashboardPage onNavigate={setCurrentPage} />;
+      case 'earnings':
+        return <DriverRidesPage onNavigate={setCurrentPage} />;
       case 'admin':
       case 'admin-dash':
         return <AdminDashboardPage onNavigate={setCurrentPage} />;
