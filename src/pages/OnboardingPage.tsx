@@ -73,6 +73,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         }
 
         setIsLoading(true);
+        setError(null);
         try {
             const cleanPhone = formData.phone.replace(/\D/g, '');
             const internalEmail = `${cleanPhone}@user.quelimove.com`;
