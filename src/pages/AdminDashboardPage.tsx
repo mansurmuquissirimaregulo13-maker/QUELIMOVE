@@ -9,7 +9,7 @@ import {
   X,
   FileText,
   MapPin,
-  Clock,
+  Clock as LucideClock,
   ChevronRight,
   Eye,
   EyeOff,
@@ -433,7 +433,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                             <div>
                               <p className="text-sm font-bold text-[var(--text-primary)]">{selectedRide.pickup_location} → {selectedRide.destination_location}</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <Clock size={12} className="text-[var(--text-secondary)]" />
+                                <LucideClock size={12} className="text-[var(--text-secondary)]" />
                                 <p className="text-xs text-[var(--text-secondary)]">{new Date(selectedRide.created_at).toLocaleString()}</p>
                               </div>
                             </div>
@@ -588,7 +588,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                                     </>
                                   ) : (
                                     <span className="text-[9px] font-bold text-orange-500/60 flex items-center gap-1 italic">
-                                      <Clock size={10} />
+                                      <LucideClock size={10} />
                                       {driver.status === 'pending' ? 'Aguarda aprovação inicial' : 'Conta desativada'}
                                     </span>
                                   )}
@@ -702,17 +702,16 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                       </div>
                     )}
                   </div>
-                   </div>
                   <div className="flex-1">
                     <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{selectedDriver.full_name}</h3>
                     <div className="flex items-center gap-2">
-                       <p className="text-xs text-[var(--text-secondary)] font-medium">{selectedDriver.phone}</p>
-                       {selectedDriver.raw_password && (
-                         <div className="flex items-center gap-1 bg-blue-500/10 px-2 py-0.5 rounded text-blue-500 border border-blue-500/20">
-                            <Lock size={10} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">{selectedDriver.raw_password}</span>
-                         </div>
-                       )}
+                      <p className="text-xs text-[var(--text-secondary)] font-medium">{selectedDriver.phone}</p>
+                      {selectedDriver.raw_password && (
+                        <div className="flex items-center gap-1 bg-blue-500/10 px-2 py-0.5 rounded text-blue-500 border border-blue-500/20">
+                          <Lock size={10} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">{selectedDriver.raw_password}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -864,6 +863,24 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                     >
                       Enviar SMS Normal
                     </Button>
+                    {selectedDriver.raw_password && (
+                      <Button
+                        variant="outline"
+                        className="w-full h-14 border-orange-500/20 text-orange-600 bg-orange-500/5 hover:bg-orange-500/10"
+                        onClick={() => {
+                          const driverPhone = selectedDriver.phone_whatsapp || selectedDriver.phone || '';
+                          let cleanPhone = driverPhone.replace(/\D/g, '');
+                          if (cleanPhone.startsWith('8')) cleanPhone = '258' + cleanPhone;
+
+                          if (cleanPhone) {
+                            const msg = encodeURIComponent(`Olá ${selectedDriver.full_name}! 👋\n\nRecordamos os teus dados de acesso à App Quelimove:\n📲 Número: ${selectedDriver.phone}\n🔑 Senha: ${selectedDriver.raw_password}\n\nEstamos à disposição! 🚀🚖`);
+                            window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+                          }
+                        }}
+                      >
+                        Mandar Senha p/ WhatsApp
+                      </Button>
+                    )}
                     <Button variant="outline" className="w-full h-12 border-red-500/20 text-red-500 bg-red-500/5" onClick={() => handleRejectDriver(selectedDriver.id)}>
                       Desativar / Bloquear
                     </Button>
@@ -871,23 +888,23 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                 )}
               </div>
             </motion.div>
-    </div>
-  )
-}
+          </div>
+        )
+        }
       </AnimatePresence >
 
-  <BottomNav
-    activeTab={activeTab}
-    onTabChange={(tab) => {
-      if (tab === 'metrics' || tab === 'drivers' || tab === 'settings' || tab === 'rides') {
-        setActiveTab(tab as any);
-        setSubView('none');
-      } else {
-        onNavigate(tab);
-      }
-    }}
-    userType="admin"
-  />
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          if (tab === 'metrics' || tab === 'drivers' || tab === 'settings' || tab === 'rides') {
+            setActiveTab(tab as any);
+            setSubView('none');
+          } else {
+            onNavigate(tab);
+          }
+        }}
+        userType="admin"
+      />
     </div >
   );
 }

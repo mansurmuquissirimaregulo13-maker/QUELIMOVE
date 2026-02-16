@@ -10,7 +10,7 @@ import {
   XCircle,
   Route as RouteIcon,
   Phone,
-  Clock
+  Clock as LucideClock
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
@@ -369,7 +369,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
         {driverStatus === 'pending' ? (
           <div className="px-4 py-12 text-center space-y-6">
             <div className="w-24 h-24 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto text-orange-500">
-              <Clock size={48} className="animate-pulse" />
+              <LucideClock size={48} className="animate-pulse" />
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-black text-white uppercase tracking-tighter">CONTA EM ANÁLISE</h2>

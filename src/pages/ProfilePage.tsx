@@ -5,7 +5,7 @@ import { BottomNav } from '../components/BottomNav';
 import {
   User,
   Star,
-  Clock,
+  Clock as LucideClock,
   ChevronRight,
   Settings,
   CreditCard,
@@ -100,7 +100,7 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
 
   const menuItems = [
     { id: 'edit', icon: User, label: t('profile.edit') },
-    { id: 'history', icon: Clock, label: t('profile.history') },
+    { id: 'history', icon: LucideClock, label: t('profile.history') },
     { id: 'payments', icon: CreditCard, label: t('profile.payments') },
     { id: 'settings', icon: Settings, label: t('profile.settings') }
   ];
@@ -291,7 +291,7 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
           <div className="space-y-4">
             {rideHistory.length === 0 ? (
               <div className="text-center py-20 opacity-50">
-                <Clock size={48} className="mx-auto mb-4 text-[var(--text-tertiary)]" />
+                <LucideClock size={48} className="mx-auto mb-4 text-[var(--text-tertiary)]" />
                 <p className="font-black text-[var(--text-primary)] uppercase tracking-widest text-sm">Sem Viagens Recentes</p>
                 <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase mt-1">Tuas viagens aparecerão aqui</p>
               </div>

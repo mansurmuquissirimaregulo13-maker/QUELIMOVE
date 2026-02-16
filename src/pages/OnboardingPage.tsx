@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ArrowRight, Shield, Clock, Phone, Lock, Calendar } from 'lucide-react';
+import { User, ArrowRight, Shield, Clock as LucideClock, Phone, Lock, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { supabase } from '../lib/supabase';
 import { Input } from '../components/ui/Input';
@@ -19,7 +19,7 @@ const slides = [
     {
         id: 'value-1',
         type: 'content',
-        icon: <Clock className="text-[#FBBF24]" size={48} />,
+        icon: <LucideClock className="text-[#FBBF24]" size={48} />,
         title: 'Rapidez Total',
         description: 'Chegue ao seu destino em tempo recorde com nossos motoristas parceiros.'
     },
