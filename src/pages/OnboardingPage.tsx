@@ -55,6 +55,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         age: '',
         role: 'user' as 'user' | 'driver'
     });
+    const [error, setError] = React.useState<string | null>(null);
 
     const [isLoginMode, setIsLoginMode] = React.useState(false);
 
@@ -105,7 +106,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             }
         } catch (err: any) {
             console.error('Login Error:', err);
-            alert('Erro de login: ' + (err.message || 'Verifique seus dados.'));
+            setError(err.message || 'Verifique seus dados e tente novamente.');
         } finally {
             setIsLoading(false);
         }
@@ -162,7 +163,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
 
         } catch (err: any) {
             console.error('Onboarding Error:', err);
-            alert((err.message || 'Tente novamente.'));
+            setError(err.message || 'Tente novamente.');
         } finally {
             setIsLoading(false);
         }
@@ -262,6 +263,22 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="space-y-4 text-left">
+                                    <AnimatePresence>
+                                        {error && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -10 }}
+                                                className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 mb-4"
+                                            >
+                                                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 flex-shrink-0">
+                                                    <AlertCircle size={18} />
+                                                </div>
+                                                <p className="text-[11px] font-bold text-red-500 leading-tight">{error}</p>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
                                     {!isLoginMode && (
                                         <>
                                             <Input

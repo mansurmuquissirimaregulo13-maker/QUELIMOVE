@@ -251,23 +251,24 @@ function AppContent() {
 
   return (
     <div className="relative h-[100dvh] w-screen overflow-hidden transition-colors duration-300 bg-[var(--bg-primary)]">
-      <AnimatePresence>
-        {showSplash && <SplashScreen key="splash" />}
+      <AnimatePresence mode="wait">
+        {showSplash ? (
+          <SplashScreen key="splash" />
+        ) : (
+          <motion.div
+            key="main-content"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="w-full h-full relative"
+          >
+            <InstallPrompt />
+            <div className="w-full h-full overflow-hidden">
+              {renderPage()}
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
-
-      {!showSplash && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          className="w-full h-full"
-        >
-          <InstallPrompt />
-          <div className="w-full h-full overflow-hidden">
-            {renderPage()}
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 }
