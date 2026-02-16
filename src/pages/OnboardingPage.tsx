@@ -243,7 +243,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                         onClick={() => { setFormData({ ...formData, role: 'user' }); nextSlide(); }}
                                         className={`p-6 rounded-3xl border-2 transition-all text-left flex items-center gap-4 ${formData.role === 'user' ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)]'}`}
                                     >
-                                        <div className={`p-3 rounded-2xl ${formData.role === 'user' ? 'bg-black text-white' : 'bg-[var(--bg-primary)]'}`}>
+                                        <div className={`p-3 rounded-2xl ${formData.role === 'user' ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]' : 'bg-[var(--bg-primary)]'}`}>
                                             <User size={24} />
                                         </div>
                                         <div>
@@ -255,7 +255,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                         onClick={() => { setFormData({ ...formData, role: 'driver' }); nextSlide(); }}
                                         className={`p-6 rounded-3xl border-2 transition-all text-left flex items-center gap-4 ${formData.role === 'driver' ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)]'}`}
                                     >
-                                        <div className={`p-3 rounded-2xl ${formData.role === 'driver' ? 'bg-black text-white' : 'bg-[var(--bg-primary)]'}`}>
+                                        <div className={`p-3 rounded-2xl ${formData.role === 'driver' ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]' : 'bg-[var(--bg-primary)]'}`}>
                                             <Shield size={24} />
                                         </div>
                                         <div>

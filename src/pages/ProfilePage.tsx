@@ -61,7 +61,7 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
     const { data } = await supabase
       .from('rides')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq(user.role === 'driver' ? 'driver_id' : 'user_id', session.user.id)
       .order('created_at', { ascending: false });
 
     if (data) setRideHistory(data);
@@ -98,12 +98,25 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
     }
   };
 
-  const menuItems = [
-    { id: 'edit', icon: User, label: t('profile.edit') },
-    { id: 'history', icon: LucideClock, label: t('profile.history') },
-    { id: 'payments', icon: CreditCard, label: t('profile.payments') },
-    { id: 'settings', icon: Settings, label: t('profile.settings') }
-  ];
+  const menuItems = React.useMemo(() => {
+    const baseItems = [
+      { id: 'edit', icon: User, label: t('profile.edit') },
+      { id: 'settings', icon: Settings, label: t('profile.settings') }
+    ];
+
+    if (user.role === 'driver') {
+      return [
+        ...baseItems,
+        { id: 'history', icon: LucideClock, label: 'Histórico de Ganhos' }
+      ];
+    }
+
+    return [
+      ...baseItems,
+      { id: 'history', icon: LucideClock, label: t('profile.history') },
+      { id: 'payments', icon: CreditCard, label: t('profile.payments') }
+    ];
+  }, [user.role, t]);
 
   const renderContent = () => {
     switch (activeView) {
@@ -206,24 +219,7 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
         return (
           <div className="space-y-6">
             <div className="bg-[var(--bg-secondary)] rounded-[28px] border border-[var(--border-color)] overflow-hidden">
-              <div className="p-5 border-b border-[var(--border-color)] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-[var(--bg-primary)] rounded-xl text-[#FBBF24]">
-                    {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
-                  </div>
-                  <div>
-                    <p className="font-black text-[var(--text-primary)] text-sm uppercase tracking-tight">{t('settings.darkMode')}</p>
-                    <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase opacity-50">{t('settings.darkModeDesc')}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={toggleTheme}
-                  className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${theme === 'dark' ? 'bg-[#FBBF24]' : 'bg-[var(--border-color)]'}`}
-                >
-                  <div className={`w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-0'}`} />
-                </button>
-              </div>
-
+              {/* Dark Mode retirado por solicitação */}
               <div
                 className="p-5 border-b border-[var(--border-color)] flex items-center justify-between hover:opacity-80 transition-all cursor-pointer"
                 onClick={() => setLanguage(language === 'pt' ? 'en' : 'pt')}
@@ -265,9 +261,6 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                   try {
                     const { data: { user } } = await supabase.auth.getUser();
                     if (user) {
-                      // Mark as deleted in profiles (Soft Delete) or just sign out for now if strict delete is blocked
-                      // For this MVP, we will sign out and clear local storage to simulate deletion from the user perspective
-                      // In a real app, you'd call a Supabase Edge Function to delete the user from Auth
                       await supabase.from('profiles').update({ is_available: false, full_name: 'DELETED USER' }).eq('id', user.id);
                       await supabase.auth.signOut();
                       localStorage.clear();
@@ -306,7 +299,7 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-black text-[#FBBF24]">{ride.price} MT</p>
+                      <p className="font-black text-[#FBBF24]">{ride.price || ride.estimate} MT</p>
                       <p className="text-[10px] text-[var(--text-secondary)] uppercase">
                         {ride.distance?.toFixed(1)} km
                       </p>
@@ -315,7 +308,9 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 ))}
               </div>
             )}
-            <Button onClick={() => onNavigate('ride')} className="w-full">Pedir {rideHistory.length > 0 ? 'Nova' : 'Primeira'} Viagem</Button>
+            <Button onClick={() => onNavigate(user.role === 'driver' ? 'driver-dash' : 'ride')} className="w-full">
+              {user.role === 'driver' ? 'Voltar ao Mapa' : 'Pedir Viagem'}
+            </Button>
           </div>
         );
       case 'payments':
@@ -395,7 +390,6 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                   await supabase.auth.signOut();
                   localStorage.clear();
                   sessionStorage.clear();
-                  // Forçar redirect total para limpar qualquer estado de memória
                   window.location.href = '/';
                 } catch (err) {
                   console.error('SignOut error:', err);
@@ -416,7 +410,7 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
     switch (activeView) {
       case 'edit': return t('profile.edit');
       case 'settings': return t('profile.settings');
-      case 'history': return t('profile.history');
+      case 'history': return user.role === 'driver' ? 'Histórico de Ganhos' : t('profile.history');
       case 'payments': return t('profile.payments');
       default: return t('profile.title');
     }
@@ -442,7 +436,11 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
               <div className="flex flex-col items-center mb-6">
                 <div className="relative mb-4">
                   <div className="w-24 h-24 rounded-full bg-[var(--bg-secondary)] border-2 border-[#FBBF24] flex items-center justify-center overflow-hidden shadow-lg">
-                    <User size={40} className="text-[#FBBF24]" />
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={40} className="text-[#FBBF24]" />
+                    )}
                   </div>
                   <button onClick={() => setActiveView('edit')} className="absolute bottom-0 right-0 p-2 bg-[#FBBF24] rounded-full text-black shadow-lg">
                     <Camera size={16} />
@@ -458,7 +456,11 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
         </AnimatePresence>
       </div>
 
-      <BottomNav activeTab="profile" onTabChange={(tab) => onNavigate(tab)} />
+      <BottomNav
+        activeTab="profile"
+        onTabChange={(tab) => onNavigate(tab)}
+        userType={user.role || 'client'}
+      />
     </div>
   );
 }

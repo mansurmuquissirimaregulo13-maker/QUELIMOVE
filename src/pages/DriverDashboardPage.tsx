@@ -32,7 +32,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   const [driverStatus, setDriverStatus] = React.useState<'active' | 'pending' | 'rejected'>('pending');
   const { notify } = useNotifications();
 
-  // Monitorar mudanças na corrida atual (Ex: Cancelamento pelo cliente)
+  // Monitorar mudanças na corrida atual
   React.useEffect(() => {
     if (!currentRide) return;
 
@@ -47,12 +47,10 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
           filter: `id=eq.${currentRide.id}`
         },
         (payload) => {
-          console.log('Active ride update:', payload.new);
           if (payload.new.status === 'cancelled') {
             notify({ title: 'Atenção', body: 'A viagen foi cancelada pelo cliente.' });
             setCurrentRide(null);
           } else {
-            // Atualizar estado local (ex: mudanças de destino, etc)
             setCurrentRide(payload.new);
           }
         }
@@ -69,7 +67,6 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
 
-    // Se já temos uma corrida ativa/pendente na tela, não buscar outra
     if (currentRide && currentRide.status !== 'completed' && currentRide.status !== 'cancelled') return;
 
     const { data } = await supabase
@@ -87,55 +84,76 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
   const fetchPotentialRidesCallback = React.useCallback(fetchPotentialRides, [isOnline, currentRide]);
 
+  const updateLocationInDB = async (lat: number, lng: number) => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user && isOnline) {
+        await supabase
+          .from('profiles')
+          .update({
+            current_lat: lat,
+            current_lng: lng,
+            is_available: true,
+            last_online: new Date().toISOString()
+          })
+          .eq('id', userData.user.id);
+
+        setLastCoords({ lat, lng });
+      }
+    } catch (err) {
+      console.error('Location update failed:', err);
+    }
+  };
+
   React.useEffect(() => {
     let watchId: number | undefined;
-    const updateLocationInDB = async (lat: number, lng: number) => {
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData.user && isOnline) {
-          const { error } = await supabase
-            .from('profiles')
-            .update({
-              current_lat: lat,
-              current_lng: lng,
-              is_available: true,
-              last_online: new Date().toISOString()
-            })
-            .eq('id', userData.user.id);
-
-          if (error) {
-            console.error('Retry: Location update failed', error);
-          }
-        }
-      } catch (err) {
-        console.error('Fatal: Location update error', err);
-      }
-    };
-
     let syncInterval: number | undefined;
 
     if (isOnline) {
-      // 1. Iniciar monitoramento GPS
       if (navigator.geolocation) {
         watchId = navigator.geolocation.watchPosition(
           (position) => {
-            setLastCoords({
-              lat: position.coords.latitude,
-              lng: position.coords.longitude
-            });
+            const { latitude, longitude } = position.coords;
+            setLastCoords({ lat: latitude, lng: longitude });
           },
           (error) => console.error('Error watching location:', error),
           { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
       }
 
-      // 2. Sincronizar com banco a cada 5 segundos
       syncInterval = window.setInterval(() => {
         if (lastCoords) {
           updateLocationInDB(lastCoords.lat, lastCoords.lng);
         }
       }, 5000);
 
+      fetchPotentialRidesCallback();
+
+      const channelName = 'driver-rides-presence';
+      const subscription = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'rides' },
+          (payload) => {
+            if (payload.new.status === 'pending' && !currentRide) {
+              setCurrentRide(payload.new);
+              notify({
+                title: 'Nova Corrida!',
+                body: `Passageiro em ${payload.new.pickup_location}. Valor: ${payload.new.estimate} MZN`
+              });
+              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2505/2505-preview.mp3');
+              audio.play().catch(e => console.log('Audio error', e));
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+        if (syncInterval) clearInterval(syncInterval);
+        supabase.removeChannel(subscription);
+      };
     } else {
       const setOffline = async () => {
         const { data: userData } = await supabase.auth.getUser();
@@ -147,58 +165,10 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
         }
       };
       setOffline();
-    }
-
-    if (isOnline) {
-      fetchPotentialRidesCallback();
-
-      const channelName = 'driver-rides-presence';
-      // Subscrever para NOVAS corridas
-      const subscription = supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT', // Escutar novas inserções também
-            schema: 'public',
-            table: 'rides'
-          },
-          (payload) => {
-            if (payload.new.status === 'pending') {
-              // Verificar se é pra mim (se tiver target_driver_id logica no backend ou filtro aqui)
-              // Como RLS filtra, se recebermos é porque podemos ver
-              if (!currentRide) {
-                setCurrentRide(payload.new);
-                notify({
-                  title: 'Nova Corrida Disponível!',
-                  body: `Passageiro em ${payload.new.pickup_location}. Valor: ${payload.new.estimate} MZN`
-                });
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2505/2505-preview.mp3');
-                audio.play().catch(e => console.log('Audio play failed', e));
-              }
-            }
-          }
-        )
-        .subscribe();
-
-      (window as any)[`supabase_${channelName}`] = subscription;
-
-      return () => {
-        if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
-        if (syncInterval) clearInterval(syncInterval);
-        const ch = (window as any)[`supabase_${channelName}`];
-        if (ch) {
-          supabase.removeChannel(ch);
-          delete (window as any)[`supabase_${channelName}`];
-        }
-      };
-    } else {
       setCurrentRide(null);
-      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
     }
-  }, [isOnline, fetchPotentialRidesCallback]);
+  }, [isOnline, fetchPotentialRidesCallback, lastCoords]);
 
-  // Hook to fetch passenger phone when currentRide is set
   const [passengerPhone, setPassengerPhone] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -255,11 +225,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       setDriverName(profile.full_name || 'Motorista');
       setVehicleInfo(`${profile.vehicle_type || 'Moto'} • ${profile.vehicle_plate || 'S/M'}`);
       setDriverStatus(profile.status as any);
-
-      // If pending, ensure we are offline
-      if (profile.status !== 'active') {
-        setIsOnline(false);
-      }
+      if (profile.status !== 'active') setIsOnline(false);
     }
   };
 
@@ -288,7 +254,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
       if (data && data.length > 0) {
         notify({ title: 'Viagem Aceite!', body: 'Vá ao encontro do cliente.' });
-        setCurrentRide(data[0]); // Atualizar com os dados novos (status accepted)
+        setCurrentRide(data[0]);
         fetchStats();
       } else {
         alert('Esta viagem já foi aceite por outro motorista.');
@@ -350,15 +316,15 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   };
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col bg-[#0a0a0a] overflow-hidden">
-      <div className="fixed top-0 left-0 right-0 px-4 pt-4 pb-4 flex items-center justify-between bg-[#0a0a0a] z-[60] border-b border-[#1a1a1a]">
+    <div className="h-[100dvh] w-full flex flex-col bg-[var(--bg-primary)] overflow-hidden">
+      <div className="fixed top-0 left-0 right-0 px-4 pt-4 pb-4 flex items-center justify-between bg-[var(--bg-primary)] z-[60] border-b border-[var(--border-color)]">
         <div>
-          <h1 className="text-xl font-bold text-white">Olá, {driverName}</h1>
-          <p className="text-xs text-[#9CA3AF] uppercase tracking-wider">{vehicleInfo}</p>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">Olá, {driverName}</h1>
+          <p className="text-xs text-[var(--text-secondary)] uppercase tracking-wider">{vehicleInfo}</p>
         </div>
         <button
           onClick={toggleOnline}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all shadow-lg ${isOnline ? 'bg-[#FBBF24] text-black scale-105' : 'bg-[#1a1a1a] text-[#9CA3AF] border border-[#2a2a2a]'}`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all shadow-lg ${isOnline ? 'bg-[#FBBF24] text-black scale-105' : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-color)]'}`}
         >
           <span className="text-sm font-bold">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
           {isOnline ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
@@ -372,8 +338,8 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
               <LucideClock size={48} className="animate-pulse" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white uppercase tracking-tighter">CONTA EM ANÁLISE</h2>
-              <p className="text-sm text-gray-400">
+              <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">CONTA EM ANÁLISE</h2>
+              <p className="text-sm text-[var(--text-secondary)]">
                 Obrigado pelo teu registo, **{driverName}**! 🚀<br />
                 Os teus dados já estão com o nosso admin Mansur. Assim que fores aprovado, poderás começar a receber pedidos.
               </p>
@@ -388,21 +354,9 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
               Lembrar Admin no WhatsApp
             </Button>
           </div>
-        ) : driverStatus === 'rejected' ? (
-          <div className="px-4 py-12 text-center space-y-6">
-            <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500">
-              <XCircle size={48} />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white uppercase tracking-tighter">CONTA REJEITADA</h2>
-              <p className="text-sm text-gray-400">
-                Infelizmente a tua conta não foi aprovada. Por favor, contacta o suporte para saber o motivo.
-              </p>
-            </div>
-          </div>
         ) : isOnline && currentRide ? (
           <div className="p-4 space-y-4">
-            <div className="bg-[#1a1a1a] rounded-2xl border-2 border-[#FBBF24] overflow-hidden shadow-2xl">
+            <div className="bg-[var(--bg-secondary)] rounded-2xl border-2 border-[#FBBF24] overflow-hidden shadow-2xl">
               <div className="p-2">
                 <MapComponent
                   center={[currentRide.pickup_lat, currentRide.pickup_lng]}
@@ -418,11 +372,11 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase mb-1 inline-block ${currentRide.status === 'pending' ? 'bg-[#FBBF24]/20 text-[#FBBF24]' : 'bg-green-500/20 text-green-500'}`}>
                       {currentRide.status === 'pending' ? 'Nova Solicitação' : 'Em Curso'}
                     </span>
-                    <h3 className="text-white font-bold text-lg">Cliente em {currentRide.pickup_location}</h3>
+                    <h3 className="text-[var(--text-primary)] font-bold text-lg">Cliente em {currentRide.pickup_location}</h3>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-[#FBBF24]">{currentRide.estimate}</p>
-                    <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">{currentRide.distance?.toFixed(1)} KM</p>
+                    <p className="text-2xl font-bold text-[#FBBF24]">{currentRide.estimate} MT</p>
+                    <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold">{currentRide.distance?.toFixed(1)} KM</p>
                     {passengerPhone && (
                       <button
                         onClick={() => window.open(`tel:${passengerPhone}`)}
@@ -436,14 +390,14 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                 </div>
 
                 <div className="space-y-4 relative py-2">
-                  <div className="absolute left-[11px] top-6 bottom-6 w-0.5 bg-[#2a2a2a]" />
+                  <div className="absolute left-[11px] top-6 bottom-6 w-0.5 bg-[var(--border-color)]" />
                   <div className="flex items-start gap-3 relative z-10">
                     <div className="w-6 h-6 rounded-full bg-[#3B82F6]/20 flex items-center justify-center shrink-0 border border-[#3B82F6]/30">
                       <MapPin size={14} className="text-[#3B82F6]" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">Recolha</p>
-                      <p className="text-sm text-white font-medium">{currentRide.pickup_location}</p>
+                      <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold">Recolha</p>
+                      <p className="text-sm text-[var(--text-primary)] font-medium">{currentRide.pickup_location}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 relative z-10">
@@ -451,8 +405,8 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                       <Navigation size={14} className="text-[#FBBF24]" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">Destino</p>
-                      <p className="text-sm text-white font-medium">{currentRide.destination_location}</p>
+                      <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold">Destino</p>
+                      <p className="text-sm text-[var(--text-primary)] font-medium">{currentRide.destination_location}</p>
                     </div>
                   </div>
                 </div>
@@ -461,7 +415,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                   <div className="grid grid-cols-2 gap-3">
                     <Button
                       variant="ghost"
-                      className="border border-[#2a2a2a]"
+                      className="border border-[var(--border-color)] text-[var(--text-primary)]"
                       onClick={async () => {
                         await supabase.from('rides').update({ target_driver_id: null }).eq('id', currentRide.id);
                         setCurrentRide(null);
@@ -489,33 +443,23 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                 )}
               </div>
             </div>
-
-            <div className="bg-[#1a1a1a] p-4 rounded-2xl border border-[#2a2a2a] flex items-center justify-around">
-              <div className="text-center">
-                <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">Ganhos Hoje</p>
-                <p className="text-lg font-bold text-white">{todaysEarnings} MZN</p>
-              </div>
-              <div className="w-px h-8 bg-[#2a2a2a]" />
-              <div className="text-center">
-                <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">Viagens</p>
-                <p className="text-lg font-bold text-white">{todaysRidesCount}</p>
-              </div>
-              <div className="w-px h-8 bg-[#2a2a2a]" />
-              <div className="text-center">
-                <p className="text-[10px] text-[#9CA3AF] uppercase font-bold">Online</p>
-                <p className="text-lg font-bold text-white">Pro</p>
-              </div>
-            </div>
           </div>
         ) : (
-          <div className="px-4 py-8 space-y-6">
-            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] p-8 rounded-3xl border border-[#2a2a2a] text-center space-y-4">
-              <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center transition-all ${isOnline ? 'bg-[#FBBF24]/20' : 'bg-[#1a1a1a] border border-[#2a2a2a]'}`}>
-                {isOnline ? <RouteIcon size={40} className="text-[#FBBF24] animate-pulse" /> : <ToggleLeft size={40} className="text-[#4B5563]" />}
+          <div className="px-4 py-4 space-y-6">
+            <div className="h-[300px] w-full bg-[var(--bg-secondary)] rounded-3xl overflow-hidden border border-[var(--border-color)]">
+              <MapComponent
+                center={lastCoords ? [lastCoords.lat, lastCoords.lng] : [-17.88, 36.88]}
+                height="300px"
+              />
+            </div>
+
+            <div className="bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-8 rounded-3xl border border-[var(--border-color)] text-center space-y-4">
+              <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center transition-all ${isOnline ? 'bg-[#FBBF24]/20' : 'bg-[var(--bg-primary)] border border-[var(--border-color)]'}`}>
+                {isOnline ? <RouteIcon size={40} className="text-[#FBBF24] animate-pulse" /> : <ToggleLeft size={40} className="text-[var(--text-tertiary)]" />}
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white">{isOnline ? 'Procurando passageiros...' : 'Estás Offline'}</h3>
-                <p className="text-sm text-[#9CA3AF] mt-1">{isOnline ? 'Aguarde por novos pedidos na sua zona' : 'Fica online para começar a lucrar'}</p>
+                <h3 className="text-xl font-bold text-[var(--text-primary)]">{isOnline ? 'Procurando passageiros...' : 'Estás Offline'}</h3>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">{isOnline ? 'Aguarde por novos pedidos na sua zona' : 'Fica online para começar a lucrar'}</p>
               </div>
               {!isOnline && (
                 <Button onClick={toggleOnline} className="w-full mt-4">
@@ -525,13 +469,13 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#1a1a1a] p-4 rounded-2xl border border-[#2a2a2a]">
-                <p className="text-[10px] text-[#9CA3AF] uppercase font-bold mb-1">Total Mês</p>
-                <p className="text-xl font-bold text-white">4.500 MZN</p>
+              <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
+                <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Ganhos Hoje</p>
+                <p className="text-xl font-bold text-[var(--text-primary)]">{todaysEarnings} MZN</p>
               </div>
-              <div className="bg-[#1a1a1a] p-4 rounded-2xl border border-[#2a2a2a]">
-                <p className="text-[10px] text-[#9CA3AF] uppercase font-bold mb-1">Avaliação</p>
-                <p className="text-xl font-bold text-white">★ 4.9</p>
+              <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border-color)]">
+                <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-1">Avaliação</p>
+                <p className="text-xl font-bold text-[var(--text-primary)]">★ 4.9</p>
               </div>
             </div>
           </div>
