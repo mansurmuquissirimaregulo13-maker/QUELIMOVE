@@ -96,8 +96,8 @@ function AppContent() {
                   setUser(prev => {
                     const prevStatus = prev?.status;
                     if (updated.status === 'active' && prevStatus === 'pending') {
-                      alert('Sua conta foi aprovada! Bem-vindo ao Quelimove. 🚀');
-                      setCurrentPage('driver-dash');
+                      // Silently update and redirect - safer than alert()
+                      setTimeout(() => setCurrentPage('driver-dash'), 500);
                     }
                     return newUserData as any;
                   });
@@ -180,7 +180,23 @@ function AppContent() {
               </div>
               <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter mb-2">Conta em Análise</h2>
               <p className="text-[var(--text-secondary)] text-sm mb-8">O seu cadastro foi enviado com sucesso. O administrador está a analisar os seus dados. Receberá uma notificação via WhatsApp assim que for aprovado.</p>
-              <Button onClick={() => { localStorage.clear(); window.location.reload(); }} variant="ghost" className="text-red-500 font-bold uppercase tracking-tight">Sair e Entrar com outra conta</Button>
+
+              <div className="w-full max-w-xs space-y-3">
+                <Button
+                  onClick={async () => {
+                    const { data } = await supabase.from('profiles').select('status').eq('id', (user as any).id).single();
+                    if (data?.status === 'active') {
+                      window.location.reload();
+                    } else {
+                      // Feedback visual discreto ou nada
+                    }
+                  }}
+                  className="w-full bg-[#FBBF24] text-black font-bold uppercase"
+                >
+                  Verificar Agora
+                </Button>
+                <Button onClick={() => { localStorage.clear(); window.location.reload(); }} variant="ghost" className="w-full text-red-500 font-bold uppercase tracking-tight">Sair e Entrar com outra conta</Button>
+              </div>
             </div>
           );
         }
@@ -249,25 +265,16 @@ function AppContent() {
     }
   };
 
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
   return (
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-[var(--bg-primary)]">
-      <AnimatePresence mode="wait">
-        {showSplash ? (
-          <SplashScreen key="splash" />
-        ) : (
-          <motion.div
-            key="app-main"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="w-full h-full"
-          >
-            <InstallPrompt />
-            <div className="w-full h-full overflow-hidden">
-              {renderPage()}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <InstallPrompt />
+      <div className="w-full h-full overflow-hidden">
+        {renderPage()}
+      </div>
     </div>
   );
 }
