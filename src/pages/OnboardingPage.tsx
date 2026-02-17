@@ -181,12 +181,12 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                 }
 
                 if (msg.includes('rate limit')) {
-                    throw new Error('Limite de segurança atingido (Supabase). Por favor, aguarde 15 minutos ou tente usar outra conexão (ex: dados móveis vs Wi-Fi).');
+                    throw new Error('Ops! Tivemos muitas tentativas seguidas. Por favor, aguarda alguns minutos antes de tentares novamente. Dica: trocar para dados móveis pode ajudar.');
                 }
 
                 // Se houver erro de "Email confirmation is enabled", vamos sugerir que o sistema está configurado para confirmação
                 if (msg.includes('confirmation')) {
-                    throw new Error('Erro de Configuração: O Supabase está a exigir confirmação por e-mail. Peça ao admin para desativar "Email Confirmation".');
+                    throw new Error('Houve um pequeno problema na criação da conta. Por favor, contacta o suporte para activação imediata.');
                 }
 
                 throw new Error(`Erro: ${error.message}`);

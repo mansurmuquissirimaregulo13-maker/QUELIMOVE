@@ -148,7 +148,7 @@ export function DriverRegistrationPage({
           .single();
 
         // Check metadata as fallback
-        const metaRole = data.session.user.user_metadata?.role;
+        const metaRole = successUser.user_metadata?.role;
 
         if (profile?.role === 'driver' || (!profile && metaRole === 'driver')) {
           const status = profile?.status || 'active'; // Assume active if recovering, or 'pending' if cautious. Let's assume active to unblock.
@@ -156,10 +156,10 @@ export function DriverRegistrationPage({
           // Recovery: If profile missing, try to create it
           if (!profile) {
             const { error: upsertError } = await supabase.from('profiles').upsert({
-              id: data.session.user.id,
+              id: successUser.id,
               role: 'driver',
-              full_name: data.session.user.user_metadata?.full_name || 'Motorista',
-              phone: data.session.user.user_metadata?.phone || data.session.user.phone,
+              full_name: successUser.user_metadata?.full_name || 'Motorista',
+              phone: successUser.user_metadata?.phone || successUser.phone,
               status: 'active'
             });
             if (upsertError) console.error('Profile recovery failed', upsertError);
@@ -203,7 +203,7 @@ export function DriverRegistrationPage({
         options: {
           data: {
             full_name: formData.name,
-            phone: formData.phone,
+            phone: cleanPhone,
             role: 'driver',
             bi_number: formData.bi,
             bairro: formData.bairro,
@@ -231,11 +231,11 @@ export function DriverRegistrationPage({
         }
 
         if (msg.includes('rate limit')) {
-          throw new Error('Limite de segurança atingido. Por favor, aguarde 15 minutos ou tente usar outra conexão (ex: dados móveis vs Wi-Fi).');
+          throw new Error('Ops! Tivemos muitas tentativas seguidas. Por favor, aguarda alguns minutos antes de tentares novamente. Dica: trocar para dados móveis pode ajudar.');
         }
 
         if (msg.includes('confirmation')) {
-          throw new Error('Configuração pendente no servidor: O admin deve desativar "Email Confirmation" no painel Supabase.');
+          throw new Error('Houve um pequeno problema na activação da conta. Por favor, contacta o suporte para activação imediata.');
         }
 
         throw new Error('Erro no registo: ' + error.message);
