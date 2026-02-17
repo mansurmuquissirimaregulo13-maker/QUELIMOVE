@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { QUELIMANE_LOCATIONS } from '../constants';
+import { sanitizeAuthError } from '../lib/authSanitizer';
 
 // Validação de BI Moçambicano: 12 dígitos + 1 letra
 const BI_REGEX = /^\d{12}[A-Z]$/;
@@ -109,10 +110,10 @@ export function DriverRegistrationPage({
       // Internal Email Mapping Strategy Standardized (v3.1)
       const cleanPhone = standardizePhone(formData.phone);
       const patterns = [
-        `${cleanPhone}@app.quelimove.com`,
-        `${cleanPhone}@driver.quelimove.com`,
-        `${cleanPhone}@user.quelimove.com`,
-        `${cleanPhone.slice(-9)}@user.quelimove.com`
+        `${cleanPhone} @app.quelimove.com`,
+        `${cleanPhone} @driver.quelimove.com`,
+        `${cleanPhone} @user.quelimove.com`,
+        `${cleanPhone.slice(-9)} @user.quelimove.com`
       ];
 
       let lastError: any = null;
@@ -178,7 +179,7 @@ export function DriverRegistrationPage({
       }
     } catch (err: any) {
       console.error('Login Error:', err);
-      alert('Erro de login: ' + (err.message || 'Verifique seus dados.'));
+      alert(sanitizeAuthError(err, formData.phone));
     } finally {
       setIsLoading(false);
     }
@@ -223,23 +224,8 @@ export function DriverRegistrationPage({
       });
 
       if (error) {
-        console.error('Supabase SignUp Error (Driver):', error);
-        const msg = error.message.toLowerCase();
-
-        if (msg.includes('already registered') || msg.includes('already in use') || msg.includes('already exists')) {
-          throw new Error('Este número já tem conta. Se já se registou como motorista, por favor use o login.');
-        }
-
-        if (msg.includes('rate limit')) {
-          throw new Error('Ops! Tivemos muitas tentativas seguidas. Por favor, aguarda alguns minutos antes de tentares novamente. Dica: trocar para dados móveis pode ajudar.');
-        }
-
-        if (msg.includes('confirmation')) {
-          throw new Error('Houve um pequeno problema na activação da conta. Por favor, contacta o suporte para activação imediata.');
-        }
-
-        throw new Error('Erro no registo: ' + error.message);
-      };
+        throw new Error(sanitizeAuthError(error, formData.phone));
+      }
 
       if (data.user) {
         // Successfully reached this point. Profile is now handled 100% by the 'handle_new_user' trigger.
@@ -249,7 +235,7 @@ export function DriverRegistrationPage({
       }
     } catch (err: any) {
       console.error('Registration error:', err);
-      alert('Erro ao realizar cadastro: ' + (err.message || 'Verifique seus dados.'));
+      alert('Erro ao realizar cadastro: ' + sanitizeAuthError(err, formData.phone));
     } finally {
       setIsLoading(false);
     }

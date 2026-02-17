@@ -4,6 +4,7 @@ import { User, ArrowRight, Shield, Clock as LucideClock, Phone, Lock, Calendar, 
 import { Button } from '../components/ui/Button';
 import { supabase } from '../lib/supabase';
 import { Input } from '../components/ui/Input';
+import { sanitizeAuthError } from '../lib/authSanitizer';
 
 interface OnboardingPageProps {
     onComplete: (data: { name: string; role?: string }) => void;
@@ -94,7 +95,6 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             let successUser: any = null;
 
             for (const email of patterns) {
-                console.log('Tentando login com pattern:', email);
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email,
                     password: formData.password
@@ -108,11 +108,8 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             }
 
             if (!successUser) {
-                const msg = lastError?.message?.toLowerCase() || '';
-                if (msg.includes('invalid login credentials')) {
-                    throw new Error('Telefone ou senha inválidos.');
-                }
-                throw lastError || new Error('Falha no login.');
+                const sanitized = sanitizeAuthError(lastError, formData.phone);
+                throw new Error(sanitized);
             }
 
             if (successUser) {
@@ -131,7 +128,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             }
         } catch (err: any) {
             console.error('Login Error:', err);
-            setError(err.message || 'Verifique seus dados e tente novamente.');
+            setError(sanitizeAuthError(err, formData.phone));
         } finally {
             setIsLoading(false);
         }
@@ -154,8 +151,6 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             const cleanPhone = normalizePhone(formData.phone);
             const internalEmail = `${cleanPhone}@quelimove.mz`;
 
-            console.log('Tentativa de Registro (v5.0):', { phone: cleanPhone, email: internalEmail });
-
             // 1. Sign Up
             const { data, error } = await supabase.auth.signUp({
                 email: internalEmail,
@@ -172,24 +167,15 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             });
 
             if (error) {
-                const msg = error.message.toLowerCase();
-                console.error('Supabase SignUp Error Details:', error);
+                const sanitized = sanitizeAuthError(error, formData.phone);
 
+                // Transição automática para login se a conta já existe
+                const msg = error.message.toLowerCase();
                 if (msg.includes('already registered') || msg.includes('already in use') || msg.includes('already exists')) {
                     setIsLoginMode(true);
-                    throw new Error('Este número já tem conta. Por favor, introduza a sua palavra-passe para entrar.');
                 }
 
-                if (msg.includes('rate limit')) {
-                    throw new Error('Ops! Tivemos muitas tentativas seguidas. Por favor, aguarda alguns minutos antes de tentares novamente. Dica: trocar para dados móveis pode ajudar.');
-                }
-
-                // Se houver erro de "Email confirmation is enabled", vamos sugerir que o sistema está configurado para confirmação
-                if (msg.includes('confirmation')) {
-                    throw new Error('Houve um pequeno problema na criação da conta. Por favor, contacta o suporte para activação imediata.');
-                }
-
-                throw new Error(`Erro: ${error.message}`);
+                throw new Error(sanitized);
             }
 
             if (data.user) {
