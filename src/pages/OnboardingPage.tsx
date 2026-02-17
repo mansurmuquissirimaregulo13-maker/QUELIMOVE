@@ -186,7 +186,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
 
         } catch (err: any) {
             console.error('Onboarding Error:', err);
-            setError(err.message || 'Tente novamente.');
+            setError(sanitizeAuthError(err, formData.phone));
         } finally {
             setIsLoading(false);
         }
@@ -204,10 +204,10 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                 <AnimatePresence mode="wait" initial={false}>
                     <motion.div
                         key={currentSlide}
-                        initial={{ opacity: 0, x: 10 }}
+                        initial={{ opacity: 0, x: 5 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        exit={{ opacity: 0, x: -5 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
                         className="w-full flex flex-col items-center text-center space-y-8 overflow-x-hidden"
                     >
                         {slide.type === 'splash' && (
@@ -225,7 +225,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                     />
                                 </motion.div>
                                 <div className="space-y-3">
-                                    <h1 className="text-5xl font-black text-white uppercase tracking-tighter leading-none">Quelimove</h1>
+                                    <h1 className="text-5xl font-black text-[var(--text-primary)] uppercase tracking-tighter leading-none">Quelimove</h1>
                                     <p className="text-[#FBBF24] font-bold text-xs uppercase tracking-[0.2em] opacity-80">Qualidade e Movimento</p>
                                 </div>
                             </div>
@@ -237,8 +237,8 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                     {slide.icon}
                                 </div>
                                 <div className="space-y-4">
-                                    <h2 className="text-4xl font-black text-white uppercase tracking-tighter leading-[0.9]">{slide.title}</h2>
-                                    <p className="text-gray-400 text-sm font-medium leading-relaxed px-4">{slide.description}</p>
+                                    <h2 className="text-4xl font-black text-[var(--text-primary)] uppercase tracking-tighter leading-[0.9]">{slide.title}</h2>
+                                    <p className="text-[var(--text-secondary)] text-sm font-medium leading-relaxed px-4">{slide.description}</p>
                                 </div>
                             </div>
                         )}
@@ -246,32 +246,32 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                         {slide.type === 'role' && (
                             <div className="w-full space-y-6">
                                 <div className="space-y-2">
-                                    <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">{slide.title}</h2>
-                                    <p className="text-gray-400 text-xs font-medium">{slide.description}</p>
+                                    <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter leading-none">{slide.title}</h2>
+                                    <p className="text-[var(--text-secondary)] text-xs font-medium">{slide.description}</p>
                                 </div>
                                 <div className="grid grid-cols-1 gap-4">
                                     <button
                                         onClick={() => { setFormData({ ...formData, role: 'user' }); nextSlide(); }}
-                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 backdrop-blur-md ${formData.role === 'user' ? 'bg-[#FBBF24]/20 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-white/5 border-white/10 text-gray-400 opacity-80'}`}
+                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 backdrop-blur-md ${formData.role === 'user' ? 'bg-[#FBBF24]/10 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] opacity-80'}`}
                                     >
-                                        <div className={`p-4 rounded-2xl ${formData.role === 'user' ? 'bg-[#FBBF24] text-black' : 'bg-gray-800'}`}>
+                                        <div className={`p-4 rounded-2xl ${formData.role === 'user' ? 'bg-[#FBBF24] text-black' : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)]'}`}>
                                             <User size={26} strokeWidth={2.5} />
                                         </div>
                                         <div>
-                                            <p className="font-black text-lg uppercase tracking-tight text-white group-hover:text-[var(--primary-color)]">Passageiro</p>
-                                            <p className="text-[11px] font-bold text-gray-400">Quero pedir motas e viajar</p>
+                                            <p className={`font-black text-lg uppercase tracking-tight ${formData.role === 'user' ? 'text-[#FBBF24]' : 'text-[var(--text-primary)]'}`}>Passageiro</p>
+                                            <p className="text-[11px] font-bold text-[var(--text-tertiary)]">Quero pedir motas e viajar</p>
                                         </div>
                                     </button>
                                     <button
                                         onClick={() => { setFormData({ ...formData, role: 'driver' }); nextSlide(); }}
-                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 backdrop-blur-md ${formData.role === 'driver' ? 'bg-[#FBBF24]/20 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-white/5 border-white/10 text-gray-400 opacity-80'}`}
+                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 backdrop-blur-md ${formData.role === 'driver' ? 'bg-[#FBBF24]/10 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] opacity-80'}`}
                                     >
-                                        <div className={`p-4 rounded-2xl ${formData.role === 'driver' ? 'bg-[#FBBF24] text-black' : 'bg-gray-800'}`}>
+                                        <div className={`p-4 rounded-2xl ${formData.role === 'driver' ? 'bg-[#FBBF24] text-black' : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)]'}`}>
                                             <Shield size={26} strokeWidth={2.5} />
                                         </div>
                                         <div>
-                                            <p className="font-black text-lg uppercase tracking-tight text-white group-hover:text-[var(--primary-color)]">Motorista</p>
-                                            <p className="text-[11px] font-bold text-gray-400">Quero trabalhar e ganhar</p>
+                                            <p className={`font-black text-lg uppercase tracking-tight ${formData.role === 'driver' ? 'text-[#FBBF24]' : 'text-[var(--text-primary)]'}`}>Motorista</p>
+                                            <p className="text-[11px] font-bold text-[var(--text-tertiary)]">Quero trabalhar e ganhar</p>
                                         </div>
                                     </button>
                                 </div>

@@ -20,10 +20,10 @@ export function Button({
 
 
   const variants = {
-    primary: 'bg-[#FBBF24] text-black hover:bg-[#F59E0B] focus:ring-[#FBBF24] font-bold',
+    primary: 'bg-[var(--primary-color)] text-black hover:bg-[#F59E0B] focus:ring-[var(--primary-color)] font-bold',
     secondary: 'bg-[#3B82F6] text-white hover:bg-[#2563EB] focus:ring-[#3B82F6]',
-    outline: 'border border-[#2a2a2a] bg-[#1a1a1a] text-white hover:bg-[#222222] hover:border-[#FBBF24] focus:ring-[#FBBF24]',
-    ghost: 'text-[#9CA3AF] hover:text-white hover:bg-[#1a1a1a]',
+    outline: 'border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] hover:border-[var(--primary-color)] focus:ring-[var(--primary-color)]',
+    ghost: 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]',
     danger: 'bg-[#EF4444] text-white hover:bg-[#DC2626] focus:ring-[#EF4444]'
   };
 
@@ -37,7 +37,7 @@ export function Button({
     <motion.button
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.1 }}
-      className={`inline-flex items-center justify-center rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:pointer-events-none ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)] disabled:opacity-50 disabled:pointer-events-none ${variants[variant]} ${sizes[size]} ${className}`}
       disabled={isLoading || props.disabled}
       onClick={props.onClick}
       {...props}

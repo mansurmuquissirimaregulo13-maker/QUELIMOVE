@@ -14,10 +14,9 @@ export function sanitizeAuthError(error: any, phone?: string): string {
     if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
         return 'Telefone ou palavra-passe incorretos.';
     }
-
-    // 3. Erros de Rate Limit (DDoS protection)
+    // 3. Erros de Rate Limit
     if (msg.includes('rate limit')) {
-        return 'Ops! Tivemos muitas tentativas seguidas. Por favor, aguarda alguns minutos antes de tentares novamente. (Dica: reiniciar os dados móveis pode ajudar)';
+        return 'Muitas tentativas em pouco tempo. Por favor, aguarde 1 a 2 minutos e tente novamente. (Dica: Trocar entre Wi-Fi e Dados Móveis pode ajudar)';
     }
 
     // 4. Erros de confirmação de email (que não deve aparecer ao user)
