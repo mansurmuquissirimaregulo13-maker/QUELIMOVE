@@ -277,10 +277,10 @@ export function DriverRegistrationPage({
         <CheckCircle size={64} className="animate-bounce" />
       </div>
 
-      <div className="space-y-2">
-        <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter">CADASTRO CONCLUÍDO!</h2>
-        <p className="text-sm text-[var(--text-secondary)] px-8">
-          Teus dados foram enviados para análise. Agora, avisa o nosso admin no WhatsApp para acelerar a tua aprovação! 🚀
+      <div className="space-y-4 text-center max-w-[280px] mx-auto">
+        <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter leading-tight">REGISTO RECEBIDO!</h2>
+        <p className="text-sm text-[var(--text-secondary)] font-medium leading-relaxed">
+          Os teus dados foram enviados para análise. A tua conta está agora <span className="text-[#FBBF24] font-bold">Pendente de Aprovação</span>.
         </p>
       </div>
 
@@ -325,7 +325,7 @@ export function DriverRegistrationPage({
           </button>
         ) : null}
       />
-      <div className="flex-1 overflow-y-auto mt-[72px] px-4 py-6">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden mt-[72px] px-4 py-6">
         {isSuccess ? (
           renderSuccess()
         ) : (
@@ -336,10 +336,10 @@ export function DriverRegistrationPage({
               {isLoginMode ? (
                 <motion.div
                   key="login"
-                  initial={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-6"
+                  exit={{ opacity: 0, x: -10 }}
+                  className="space-y-6 w-full max-w-full overflow-x-hidden"
                 >
                   <div className="space-y-6">
                     <div className="space-y-1">
@@ -398,10 +398,10 @@ export function DriverRegistrationPage({
               ) : (
                 <motion.div
                   key={step}
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.02 }}
-                  className="space-y-6 pb-32"
+                  initial={{ opacity: 0, scale: 0.98, x: 5 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 1.02, x: -5 }}
+                  className="space-y-6 pb-32 w-full max-w-full overflow-x-hidden"
                 >
                   {/* Step Indicators and Steps */}
                   <div className="space-y-6">
@@ -435,7 +435,7 @@ export function DriverRegistrationPage({
                             value={formData.password}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, password: e.target.value })}
                           />
-                          <div className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Input
                               icon={FileText}
                               label="Número do BI"
@@ -443,13 +443,20 @@ export function DriverRegistrationPage({
                               value={formData.bi}
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, bi: e.target.value })}
                             />
-                            <Input
-                              icon={Calendar}
-                              label="Nascimento"
-                              type="date"
-                              value={formData.birthdate}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, birthdate: e.target.value })}
-                            />
+                            <div className="w-full">
+                              <label className="text-sm font-medium text-[var(--text-secondary)] block mb-2">Nascimento</label>
+                              <div className="relative">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]">
+                                  <Calendar size={20} />
+                                </div>
+                                <input
+                                  type="date"
+                                  value={formData.birthdate}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, birthdate: e.target.value })}
+                                  className="w-full h-12 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] pl-12 pr-4 focus:ring-1 focus:ring-[var(--primary-color)] outline-none text-sm"
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
 

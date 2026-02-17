@@ -214,15 +214,15 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-gradient-to-br from-[#FBBF24]/10 to-transparent blur-[140px] rounded-full pointer-events-none animate-pulse-slow" />
             <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-gradient-to-tr from-blue-500/5 to-transparent blur-[120px] rounded-full pointer-events-none" />
 
-            <div className="flex-1 flex flex-col items-center justify-center p-8 w-full max-w-md mx-auto relative z-10">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 w-full max-w-md mx-auto relative z-10 overflow-hidden">
                 <AnimatePresence mode="wait" initial={false}>
                     <motion.div
                         key={currentSlide}
-                        initial={{ opacity: 0, x: 20 }}
+                        initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
+                        exit={{ opacity: 0, x: -10 }}
                         transition={{ duration: 0.3, ease: "easeInOut" }}
-                        className="w-full flex flex-col items-center text-center space-y-8"
+                        className="w-full flex flex-col items-center text-center space-y-8 overflow-x-hidden"
                     >
                         {slide.type === 'splash' && (
                             <div className="space-y-6">
@@ -272,8 +272,8 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                             <User size={26} strokeWidth={2.5} />
                                         </div>
                                         <div>
-                                            <p className="font-black text-lg uppercase tracking-tight">Passageiro</p>
-                                            <p className="text-[11px] font-bold opacity-60">Quero pedir motas e viajar</p>
+                                            <p className="font-black text-lg uppercase tracking-tight text-white group-hover:text-[var(--primary-color)]">Passageiro</p>
+                                            <p className="text-[11px] font-bold text-gray-400">Quero pedir motas e viajar</p>
                                         </div>
                                     </button>
                                     <button
@@ -284,8 +284,8 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                             <Shield size={26} strokeWidth={2.5} />
                                         </div>
                                         <div>
-                                            <p className="font-black text-lg uppercase tracking-tight">Motorista</p>
-                                            <p className="text-[11px] font-bold opacity-60">Quero trabalhar e ganhar</p>
+                                            <p className="font-black text-lg uppercase tracking-tight text-white group-hover:text-[var(--primary-color)]">Motorista</p>
+                                            <p className="text-[11px] font-bold text-gray-400">Quero trabalhar e ganhar</p>
                                         </div>
                                     </button>
                                 </div>
