@@ -68,7 +68,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
   const [stops, setStops] = React.useState<LocationType[]>([]);
 
   // Match state
-  const [matchStatus, setMatchStatus] = React.useState<'idle' | 'searching' | 'found' | 'arrived' | 'in_progress' | 'busy'>('idle');
+  const [matchStatus, setMatchStatus] = React.useState<'idle' | 'searching' | 'found' | 'arrived' | 'in_progress' | 'busy' | 'error'>('idle');
   const [driverInfo, setDriverInfo] = React.useState<any>(null);
   const [eta, setEta] = React.useState(0);
 
@@ -496,12 +496,19 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
       if (nearbyDrivers.length === 0) {
         if (isMounted.current) {
-          setMatchStatus('busy');
-          notify({ title: 'Info', body: 'Nenhum motorista disponível por perto.' });
+          // No drivers found initially
+          await supabase
+            .from('rides')
+            .update({ status: 'cancelled' })
+            .eq('id', rideId);
+
+          setMatchStatus('busy'); // Reuse 'busy' or new 'error' state
+          notify({ title: 'Sem Motoristas', body: 'Nenhum motorista disponível por perto. Tente novamente.' });
         }
         return;
       }
 
+      // Try each driver
       for (const driver of nearbyDrivers) {
         if (!isMounted.current) break;
 
@@ -518,7 +525,8 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           .update({ target_driver_id: driver.id })
           .eq('id', rideId);
 
-        await new Promise(resolve => setTimeout(resolve, 60000));
+        // Wait 45 seconds per driver (reduced from 60 to be snappier)
+        await new Promise(resolve => setTimeout(resolve, 45000));
 
         const { data: finalCheck } = await supabase
           .from('rides')
@@ -537,13 +545,24 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
           .single();
 
         if (lastCheck?.status === 'pending') {
+          // If still pending after trying all nearby drivers
+          console.log('No driver accepted in time.');
+
+          await supabase
+            .from('rides')
+            .update({ status: 'cancelled' })
+            .eq('id', rideId);
+
           setMatchStatus('busy');
-          notify({ title: 'Info', body: 'Nenhum motorista disponível no momento.' });
+          notify({ title: 'Sem Motoristas', body: 'Lamentamos, os motoristas estão ocupados. Tente novamente em instantes.' });
         }
       }
 
     } catch (err) {
       console.error('Dispatch error:', err);
+      if (rideId && isMounted.current) {
+        setMatchStatus('error');
+      }
     }
   };
 
@@ -615,6 +634,49 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
             onClick={handleMapClick}
           />
         </div>
+
+        {/* SEARCHING OVERLAY */}
+        {matchStatus === 'searching' && (
+          <div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-sm flex flex-col items-center justify-end pb-32">
+            <motion.div
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              className="bg-white p-6 rounded-3xl w-[90%] shadow-2xl flex flex-col items-center space-y-4"
+            >
+              <div className="relative w-20 h-20">
+                <span className="absolute inset-0 rounded-full border-4 border-[#FBBF24]/30 animate-ping"></span>
+                <span className="absolute inset-0 rounded-full border-4 border-t-[#FBBF24] animate-spin"></span>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Navigation size={24} className="text-[#FBBF24] fill-current" />
+                </div>
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-black text-gray-900">PROCURANDO MOTORISTAS</h3>
+                <p className="text-sm text-gray-500">A contactar motoristas próximos...</p>
+              </div>
+              <Button
+                variant="ghost"
+                className="w-full border border-gray-100 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                onClick={async () => {
+                  setMatchStatus('idle');
+                  setStep(1);
+                  notify({ title: 'Cancelado', body: 'A busca foi cancelada' });
+                  // Best effort cancel
+                  const { data: user } = await supabase.auth.getUser();
+                  if (user.user) {
+                    // Find pending ride and cancel it
+                    const { data: rides } = await supabase.from('rides').select('id').eq('user_id', user.user.id).eq('status', 'pending').limit(1);
+                    if (rides && rides.length > 0) {
+                      await supabase.from('rides').update({ status: 'cancelled' }).eq('id', rides[0].id);
+                    }
+                  }
+                }}
+              >
+                Cancelar
+              </Button>
+            </motion.div>
+          </div>
+        )}
 
         {/* Map Selection Overlay - Premium Style */}
         <AnimatePresence>

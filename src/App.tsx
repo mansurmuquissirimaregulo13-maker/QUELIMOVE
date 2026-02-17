@@ -130,6 +130,22 @@ function AppContent() {
         // Re-run initialization to fetch profile and setup listeners
         initializeAuth();
       } else if (event === 'SIGNED_OUT') {
+        // Cleanup: Set driver offline if possible (best effort)
+        const profileStr = localStorage.getItem('user_profile');
+        if (profileStr) {
+          try {
+            const profile = JSON.parse(profileStr);
+            if (profile.role === 'driver' && profile.id) {
+              // We can't use the session here as it's already gone, 
+              // so we rely on RLS allowing the user to update their own profile 
+              // or we might need an edge function. 
+              // Actually, for "SIGNED_OUT", the session is null, so Supabase won't authenticate the request.
+              // We should probably do this BEFORE calling signOut in the components.
+              // However, as a failsafe, we can try to call an edge function or just rely on the component-level unmounts.
+            }
+          } catch (e) { }
+        }
+
         setCurrentPage('home');
         localStorage.clear();
         setUser(null);
@@ -185,7 +201,8 @@ function AppContent() {
       } else if (userProfile.role === 'user') {
         // Passageiros não devem ver a HomePage de escolha se já estiverem logados
         // Mas se estiverem tentando aceder ao ADMIN (Mansur tentando com conta pessoal), permitimos seguir para o caso do switch
-        if ((currentPage === 'home' || currentPage === 'driver-reg') && (currentPage !== 'admin' && currentPage !== 'admin-dash')) {
+        // Simplesmente verificamos se não é uma rota de admin
+        if ((currentPage === 'home' || currentPage === 'driver-reg') && !currentPage.startsWith('admin')) {
           return <RideRequestPage onNavigate={setCurrentPage} />;
         }
       }

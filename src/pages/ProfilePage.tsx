@@ -387,6 +387,14 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 e.preventDefault();
                 console.log('Logging out...');
                 try {
+                  // Set offline if driver
+                  if (user.role === 'driver') {
+                    const { data: sessionUser } = await supabase.auth.getUser();
+                    if (sessionUser.user) {
+                      await supabase.from('profiles').update({ is_available: false }).eq('id', sessionUser.user.id);
+                    }
+                  }
+
                   await supabase.auth.signOut();
                   localStorage.clear();
                   sessionStorage.clear();
