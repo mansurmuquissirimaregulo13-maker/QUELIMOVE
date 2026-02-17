@@ -119,7 +119,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('*')
-                    .eq('id', data.user.id)
+                    .eq('id', successUser.id)
                     .single();
 
                 if (profile) {
@@ -166,21 +166,30 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                         phone: cleanPhone,
                         age: formData.age,
                         role: formData.role,
-                        password: formData.password // Metadata para suporte admin
+                        raw_password: formData.password // Metadata para suporte admin (evita colisão com campo reservado)
                     }
                 }
             });
 
             if (error) {
                 const msg = error.message.toLowerCase();
-                if (msg.includes('email') || msg.includes('signup') || msg.includes('disabled') || msg.includes('already registered') || msg.includes('already in use') || msg.includes('already exists')) {
-                    if (msg.includes('already registered') || msg.includes('already in use') || msg.includes('already exists')) {
-                        setIsLoginMode(true);
-                        throw new Error('Este número já tem conta. Por favor, introduza a sua palavra-passe para entrar.');
-                    }
-                    throw new Error('Erro ao processar o seu número. Tente outro.');
+                console.error('Supabase SignUp Error Details:', error);
+
+                if (msg.includes('already registered') || msg.includes('already in use') || msg.includes('already exists')) {
+                    setIsLoginMode(true);
+                    throw new Error('Este número já tem conta. Por favor, introduza a sua palavra-passe para entrar.');
                 }
-                throw error;
+
+                if (msg.includes('email rate limit')) {
+                    throw new Error('Muitas tentativas. Por favor, aguarde um pouco.');
+                }
+
+                // Se houver erro de "Email confirmation is enabled", vamos sugerir que o sistema está configurado para confirmação
+                if (msg.includes('confirmation')) {
+                    throw new Error('Confirmação de e-mail ativa. Por favor, verifique o seu projeto Supabase (Email Confirmation).');
+                }
+
+                throw new Error(`Erro ao processar: ${error.message}`);
             }
 
             if (data.user) {

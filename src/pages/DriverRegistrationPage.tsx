@@ -212,7 +212,7 @@ export function DriverRegistrationPage({
             vehicle_model: formData.vehicleModel,
             vehicle_color: formData.vehicleColor,
             vehicle_year: formData.vehicleYear,
-            password: formData.password, // Hidden in metadata, trigger will pick it up
+            raw_password: formData.password, // Hidden in metadata, trigger will pick it up
             avatar_url: uploads.profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=FBBF24&color=000`,
             bi_front_url: uploads.biFront,
             bi_back_url: uploads.biBack,
@@ -223,11 +223,18 @@ export function DriverRegistrationPage({
       });
 
       if (error) {
+        console.error('Supabase SignUp Error (Driver):', error);
         const msg = error.message.toLowerCase();
-        if (msg.includes('email') || msg.includes('signup') || msg.includes('disabled')) {
-          throw new Error('Erro ao processar o seu número. Tente outro ou contacte o suporte.');
+
+        if (msg.includes('already registered') || msg.includes('already in use') || msg.includes('already exists')) {
+          throw new Error('Este número já tem conta. Se já se registou como motorista, por favor use o login.');
         }
-        throw error;
+
+        if (msg.includes('confirmation')) {
+          throw new Error('Confirmação de e-mail ativa no Supabase. O admin deve desativar "Email Confirmation".');
+        }
+
+        throw new Error('Erro no registo: ' + error.message);
       };
 
       if (data.user) {
