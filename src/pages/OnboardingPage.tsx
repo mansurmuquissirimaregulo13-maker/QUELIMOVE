@@ -189,15 +189,15 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#FBBF24]/10 blur-[120px] rounded-full pointer-events-none" />
             <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
 
-            <div className="flex-1 flex flex-col items-center justify-center p-8">
-                <AnimatePresence mode="wait">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 w-full max-w-md mx-auto relative z-10">
+                <AnimatePresence mode="wait" initial={false}>
                     <motion.div
-                        key={slide.id}
+                        key={currentSlide}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.4, ease: "easeOut" }}
-                        className="w-full max-w-sm flex flex-col items-center text-center space-y-8"
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="w-full flex flex-col items-center text-center space-y-8"
                     >
                         {slide.type === 'splash' && (
                             <div className="space-y-6">
@@ -276,11 +276,11 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
 
                                 <form onSubmit={handleSubmit} className="space-y-4 text-left">
                                     {error && (
-                                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 flex-shrink-0">
-                                                <AlertCircle size={18} />
+                                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 mb-4">
+                                            <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 flex-shrink-0 mt-0.5">
+                                                <AlertCircle size={14} />
                                             </div>
-                                            <p className="text-[11px] font-bold text-red-500 leading-tight">{error}</p>
+                                            <p className="text-xs font-bold text-red-500 leading-relaxed">{error}</p>
                                         </div>
                                     )}
 
@@ -334,7 +334,10 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                     <div className="pt-4 text-center">
                                         <button
                                             type="button"
-                                            onClick={() => setIsLoginMode(!isLoginMode)}
+                                            onClick={() => {
+                                                setIsLoginMode(!isLoginMode);
+                                                setError(null);
+                                            }}
                                             className="text-xs font-bold text-[#FBBF24] uppercase tracking-widest hover:underline"
                                         >
                                             {isLoginMode ? 'Ainda não tem conta? Clique aqui' : 'Já tem conta? Clique para entrar'}
