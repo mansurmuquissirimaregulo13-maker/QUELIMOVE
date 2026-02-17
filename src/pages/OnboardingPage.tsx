@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ArrowRight, Shield, Clock as LucideClock, Phone, Lock, Calendar } from 'lucide-react';
+import { User, ArrowRight, Shield, Clock as LucideClock, Phone, Lock, Calendar, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { supabase } from '../lib/supabase';
 import { Input } from '../components/ui/Input';
