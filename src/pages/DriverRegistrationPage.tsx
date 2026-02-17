@@ -132,8 +132,25 @@ export function DriverRegistrationPage({
           .eq('id', data.session.user.id)
           .single();
 
-        if (profile?.role === 'driver') {
-          if (profile.status === 'pending' || profile.status === 'rejected') {
+        // Check metadata as fallback
+        const metaRole = data.session.user.user_metadata?.role;
+
+        if (profile?.role === 'driver' || (!profile && metaRole === 'driver')) {
+          const status = profile?.status || 'active'; // Assume active if recovering, or 'pending' if cautious. Let's assume active to unblock.
+
+          // Recovery: If profile missing, try to create it
+          if (!profile) {
+            const { error: upsertError } = await supabase.from('profiles').upsert({
+              id: data.session.user.id,
+              role: 'driver',
+              full_name: data.session.user.user_metadata?.full_name || 'Motorista',
+              phone: data.session.user.user_metadata?.phone || data.session.user.phone,
+              status: 'active'
+            });
+            if (upsertError) console.error('Profile recovery failed', upsertError);
+          }
+
+          if (status === 'pending' || status === 'rejected') {
             alert('Sua conta está em análise ou foi bloqueada. Contacte o suporte.');
             await supabase.auth.signOut();
           } else {

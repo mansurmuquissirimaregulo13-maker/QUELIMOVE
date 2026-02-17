@@ -104,9 +104,28 @@ function AppContent() {
               )
               .subscribe();
           } else {
-            // Logged in but no profile - should technically be onboarding
-            setUser(null);
-            localStorage.removeItem('user_profile');
+            // Session exists but NO Profile (Broken state or Sync issue)
+            console.warn('Session active but Profile missing. Improving robustness...');
+
+            // Create a temporary user object from Session checks
+            const tempUser = {
+              id: session.user.id,
+              name: session.user.user_metadata?.full_name || 'Usuário',
+              role: session.user.user_metadata?.role || 'user',
+              phone: session.user.user_metadata?.phone || session.user.phone,
+              email: session.user.email
+            };
+
+            // Allow them to proceed as "user" (passenger) if generic, or force onboarding if critical data missing
+            setUser(tempUser as any);
+
+            // Use role from metadata if available to route
+            if (tempUser.role === 'driver') {
+              setCurrentPage('driver-dash');
+            } else {
+              // Default to ride, but Onboarding might intercept if we invoke handleRegister logic
+              setCurrentPage('ride');
+            }
           }
         } else {
           // No session
@@ -136,12 +155,7 @@ function AppContent() {
           try {
             const profile = JSON.parse(profileStr);
             if (profile.role === 'driver' && profile.id) {
-              // We can't use the session here as it's already gone, 
-              // so we rely on RLS allowing the user to update their own profile 
-              // or we might need an edge function. 
-              // Actually, for "SIGNED_OUT", the session is null, so Supabase won't authenticate the request.
-              // We should probably do this BEFORE calling signOut in the components.
-              // However, as a failsafe, we can try to call an edge function or just rely on the component-level unmounts.
+              // Attempt to set offline logic handled in components usually
             }
           } catch (e) { }
         }
@@ -163,16 +177,35 @@ function AppContent() {
   }, []);
 
 
-  const handleRegister = (userData: { name: string; age?: number; role?: string }) => {
+  const handleRegister = async (userData: { name: string; age?: number; role?: string }) => {
     // Persist user with role
     const profile = { ...userData, role: userData.role || 'user' };
     localStorage.setItem('user_profile', JSON.stringify(profile));
+
+    // CRITICAL FIX: Ensure this profile exists in Supabase
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user) {
+        const { error } = await supabase.from('profiles').upsert({
+          id: session.user.id,
+          full_name: userData.name,
+          role: userData.role || 'user',
+          phone: session.user.user_metadata?.phone || session.user.phone, // Fallback to session phone
+          status: (userData.role === 'driver') ? 'pending' : 'active',
+          updated_at: new Date().toISOString()
+        });
+
+        if (error) console.error('Failed to sync profile to DB:', error);
+      }
+    } catch (err) {
+      console.error('Error syncing profile:', err);
+    }
+
     setUser(profile as any);
 
     if (profile.role === 'driver') {
       setCurrentPage('driver-dash');
     } else {
-      // Force passenger to map
       setCurrentPage('ride');
     }
   };
@@ -201,8 +234,8 @@ function AppContent() {
       } else if (userProfile.role === 'user') {
         // Passageiros não devem ver a HomePage de escolha se já estiverem logados
         // Mas se estiverem tentando aceder ao ADMIN (Mansur tentando com conta pessoal), permitimos seguir para o caso do switch
-        // Simplesmente verificamos se não é uma rota de admin
-        if ((currentPage === 'home' || currentPage === 'driver-reg') && !currentPage.startsWith('admin')) {
+        // Também permitimos acesso ao registo de motorista caso queiram fazer upgrade
+        if ((currentPage === 'home') && !currentPage.startsWith('admin')) {
           return <RideRequestPage onNavigate={setCurrentPage} />;
         }
       }
