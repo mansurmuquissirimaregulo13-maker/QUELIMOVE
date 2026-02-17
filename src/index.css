@@ -114,7 +114,32 @@ textarea {
 }
 
 [data-theme='dark'] .leaflet-container {
-  --map-filter: grayscale(1) invert(0.9) contrast(1.1);
+  --map-filter: grayscale(0.2) brightness(0.8) contrast(1.2);
+}
+
+/* Premium Clean Map Styles */
+.clean-map-light .leaflet-tile-pane {
+  filter: saturate(0.8) brightness(1.05) contrast(0.9);
+}
+
+.clean-map-dark .leaflet-tile-pane {
+  filter: grayscale(1) invert(0.9) contrast(1.2) brightness(0.9);
+}
+
+/* Floating Sheet & Glassmorphism */
+.floating-sheet {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+  border-radius: 24px 24px 0 0;
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Premium Button Hover state */
