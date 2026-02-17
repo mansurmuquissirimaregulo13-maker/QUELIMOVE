@@ -194,7 +194,7 @@ export function DriverRegistrationPage({
     try {
       // Internal Email Mapping Strategy Standardized (v3.1)
       const cleanPhone = standardizePhone(formData.phone);
-      const internalEmail = `${cleanPhone}@app.quelimove.com`;
+      const internalEmail = `${cleanPhone}@quelimove.mz`;
 
       // 1. Sign Up the User using mapped email with full metadata (including raw password for admin)
       const { data, error } = await supabase.auth.signUp({
@@ -230,8 +230,12 @@ export function DriverRegistrationPage({
           throw new Error('Este número já tem conta. Se já se registou como motorista, por favor use o login.');
         }
 
+        if (msg.includes('rate limit')) {
+          throw new Error('Limite de segurança atingido. Por favor, aguarde 15 minutos ou tente usar outra conexão (ex: dados móveis vs Wi-Fi).');
+        }
+
         if (msg.includes('confirmation')) {
-          throw new Error('Confirmação de e-mail ativa no Supabase. O admin deve desativar "Email Confirmation".');
+          throw new Error('Configuração pendente no servidor: O admin deve desativar "Email Confirmation" no painel Supabase.');
         }
 
         throw new Error('Erro no registo: ' + error.message);

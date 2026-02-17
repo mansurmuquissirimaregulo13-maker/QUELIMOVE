@@ -152,9 +152,9 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         setError(null);
         try {
             const cleanPhone = normalizePhone(formData.phone);
-            const internalEmail = `${cleanPhone}@app.quelimove.com`;
+            const internalEmail = `${cleanPhone}@quelimove.mz`;
 
-            console.log('Tentativa de Registro (v4.0):', { phone: cleanPhone, email: internalEmail });
+            console.log('Tentativa de Registro (v5.0):', { phone: cleanPhone, email: internalEmail });
 
             // 1. Sign Up
             const { data, error } = await supabase.auth.signUp({
@@ -166,7 +166,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                         phone: cleanPhone,
                         age: formData.age,
                         role: formData.role,
-                        raw_password: formData.password // Metadata para suporte admin (evita colisão com campo reservado)
+                        raw_password: formData.password // Metadata para suporte admin
                     }
                 }
             });
@@ -180,16 +180,16 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                     throw new Error('Este número já tem conta. Por favor, introduza a sua palavra-passe para entrar.');
                 }
 
-                if (msg.includes('email rate limit')) {
-                    throw new Error('Muitas tentativas. Por favor, aguarde um pouco.');
+                if (msg.includes('rate limit')) {
+                    throw new Error('Limite de segurança atingido (Supabase). Por favor, aguarde 15 minutos ou tente usar outra conexão (ex: dados móveis vs Wi-Fi).');
                 }
 
                 // Se houver erro de "Email confirmation is enabled", vamos sugerir que o sistema está configurado para confirmação
                 if (msg.includes('confirmation')) {
-                    throw new Error('Confirmação de e-mail ativa. Por favor, verifique o seu projeto Supabase (Email Confirmation).');
+                    throw new Error('Erro de Configuração: O Supabase está a exigir confirmação por e-mail. Peça ao admin para desativar "Email Confirmation".');
                 }
 
-                throw new Error(`Erro ao processar: ${error.message}`);
+                throw new Error(`Erro: ${error.message}`);
             }
 
             if (data.user) {
