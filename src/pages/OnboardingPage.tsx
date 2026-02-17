@@ -10,6 +10,15 @@ interface OnboardingPageProps {
     onComplete: (data: { name: string; role?: string }) => void;
 }
 
+const BackgroundGlow = React.memo(() => (
+    <>
+        <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-gradient-to-br from-[#FBBF24]/10 to-transparent blur-[140px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-gradient-to-tr from-blue-500/5 to-transparent blur-[120px] rounded-full pointer-events-none" />
+    </>
+));
+
+BackgroundGlow.displayName = 'BackgroundGlow';
+
 const slides = [
     {
         id: 'splash',
@@ -196,18 +205,17 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
 
     return (
         <div className="h-[100dvh] w-full bg-[var(--bg-primary)] overflow-hidden flex flex-col relative select-none">
-            {/* Premium Background Background Glow */}
-            <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-gradient-to-br from-[#FBBF24]/10 to-transparent blur-[140px] rounded-full pointer-events-none animate-pulse-slow" />
-            <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-gradient-to-tr from-blue-500/5 to-transparent blur-[120px] rounded-full pointer-events-none" />
+            {/* Premium Background Background Glow - Memoized to prevent re-renders during typing */}
+            <BackgroundGlow />
 
             <div className="flex-1 flex flex-col items-center justify-center p-8 w-full max-w-md mx-auto relative z-10 overflow-hidden">
                 <AnimatePresence mode="wait" initial={false}>
                     <motion.div
                         key={currentSlide}
-                        initial={{ opacity: 0, x: 5 }}
+                        initial={{ opacity: 0, x: slide.type === 'form' ? 0 : 5 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -5 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        exit={{ opacity: 0, x: slide.type === 'form' ? 0 : -5 }}
+                        transition={{ duration: 0.4, ease: [0.175, 0.885, 0.32, 1.275] }} // Premium backOut transition
                         className="w-full flex flex-col items-center text-center space-y-8 overflow-x-hidden"
                     >
                         {slide.type === 'splash' && (
@@ -252,26 +260,26 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                 <div className="grid grid-cols-1 gap-4">
                                     <button
                                         onClick={() => { setFormData({ ...formData, role: 'user' }); nextSlide(); }}
-                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 backdrop-blur-md ${formData.role === 'user' ? 'bg-[#FBBF24]/10 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] opacity-80'}`}
+                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 ${formData.role === 'user' ? 'bg-[#FBBF24]/10 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] opacity-80'}`}
                                     >
-                                        <div className={`p-4 rounded-2xl ${formData.role === 'user' ? 'bg-[#FBBF24] text-black' : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)]'}`}>
+                                        <div className={`p-4 rounded-2xl ${formData.role === 'user' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)]'}`}>
                                             <User size={26} strokeWidth={2.5} />
                                         </div>
                                         <div>
                                             <p className={`font-black text-lg uppercase tracking-tight ${formData.role === 'user' ? 'text-[#FBBF24]' : 'text-[var(--text-primary)]'}`}>Passageiro</p>
-                                            <p className="text-[11px] font-bold text-[var(--text-tertiary)]">Quero pedir motas e viajar</p>
+                                            <p className={`text-[11px] font-bold ${formData.role === 'user' ? 'text-black/40' : 'text-[var(--text-tertiary)]'}`}>Quero pedir motas e viajar</p>
                                         </div>
                                     </button>
                                     <button
                                         onClick={() => { setFormData({ ...formData, role: 'driver' }); nextSlide(); }}
-                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 backdrop-blur-md ${formData.role === 'driver' ? 'bg-[#FBBF24]/10 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] opacity-80'}`}
+                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 ${formData.role === 'driver' ? 'bg-[#FBBF24]/10 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] opacity-80'}`}
                                     >
-                                        <div className={`p-4 rounded-2xl ${formData.role === 'driver' ? 'bg-[#FBBF24] text-black' : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)]'}`}>
+                                        <div className={`p-4 rounded-2xl ${formData.role === 'driver' ? 'bg-[#FBBF24] text-black shadow-lg shadow-[#FBBF24]/20' : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)]'}`}>
                                             <Shield size={26} strokeWidth={2.5} />
                                         </div>
                                         <div>
                                             <p className={`font-black text-lg uppercase tracking-tight ${formData.role === 'driver' ? 'text-[#FBBF24]' : 'text-[var(--text-primary)]'}`}>Motorista</p>
-                                            <p className="text-[11px] font-bold text-[var(--text-tertiary)]">Quero trabalhar e ganhar</p>
+                                            <p className={`text-[11px] font-bold ${formData.role === 'driver' ? 'text-black/40' : 'text-[var(--text-tertiary)]'}`}>Quero trabalhar e ganhar</p>
                                         </div>
                                     </button>
                                 </div>
