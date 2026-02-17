@@ -20,15 +20,15 @@ const slides = [
         id: 'value-1',
         type: 'content',
         icon: <LucideClock className="text-[#FBBF24]" size={48} />,
-        title: 'Rapidez Total',
-        description: 'Chegue ao seu destino em tempo recorde com nossos motoristas parceiros.'
+        title: 'Move-te sem stress',
+        description: 'Chega ao teu destino com rapidez e o conforto que mereces. Em Quelimane, nós somos o teu parceiro.'
     },
     {
         id: 'value-2',
         type: 'content',
         icon: <Shield className="text-[#FBBF24]" size={48} />,
-        title: 'Segurança Primeiro',
-        description: 'Viagens monitoradas e motoristas verificados para sua tranquilidade.'
+        title: 'Segurança & Confiança',
+        description: 'Motoristas verificados e viagens monitoradas. A tua paz de espírito é o nosso compromisso.'
     },
     {
         id: 'role-select',
@@ -59,10 +59,11 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
 
     const [isLoginMode, setIsLoginMode] = React.useState(false);
 
-    // Normalização rigorosa: extrai apenas os últimos 9 dígitos significativos
+    // Unified Normalization (v4.0): Always 258 + 9 digits
     const normalizePhone = (phone: string) => {
         const clean = phone.replace(/\D/g, '');
-        return clean.length >= 9 ? clean.slice(-9) : clean;
+        if (clean.length === 9 && clean.startsWith('8')) return '258' + clean;
+        return clean;
     };
 
     const nextSlide = () => {
@@ -82,24 +83,39 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         setError(null);
         try {
             const cleanPhone = normalizePhone(formData.phone);
-            const internalEmail = `${cleanPhone}@user.quelimove.com`;
+            const patterns = [
+                `${cleanPhone}@app.quelimove.com`,
+                `${cleanPhone}@user.quelimove.com`,
+                `${cleanPhone}@driver.quelimove.com`,
+                `${cleanPhone.slice(-9)}@user.quelimove.com` // Deep fallback for older formats
+            ];
 
-            console.log('Tentativa de Login:', { phone: cleanPhone, email: internalEmail });
+            let lastError: any = null;
+            let successUser: any = null;
 
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: internalEmail,
-                password: formData.password
-            });
+            for (const email of patterns) {
+                console.log('Tentando login com pattern:', email);
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password: formData.password
+                });
 
-            if (error) {
-                const msg = error.message.toLowerCase();
+                if (!error && data.user) {
+                    successUser = data.user;
+                    break;
+                }
+                lastError = error;
+            }
+
+            if (!successUser) {
+                const msg = lastError?.message?.toLowerCase() || '';
                 if (msg.includes('invalid login credentials')) {
                     throw new Error('Telefone ou senha inválidos.');
                 }
-                throw error;
+                throw lastError || new Error('Falha no login.');
             }
 
-            if (data.user) {
+            if (successUser) {
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('*')
@@ -136,9 +152,9 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         setError(null);
         try {
             const cleanPhone = normalizePhone(formData.phone);
-            const internalEmail = `${cleanPhone}@user.quelimove.com`;
+            const internalEmail = `${cleanPhone}@app.quelimove.com`;
 
-            console.log('Tentativa de Registro:', { phone: cleanPhone, email: internalEmail });
+            console.log('Tentativa de Registro (v4.0):', { phone: cleanPhone, email: internalEmail });
 
             // 1. Sign Up
             const { data, error } = await supabase.auth.signUp({
@@ -185,9 +201,9 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
 
     return (
         <div className="h-[100dvh] w-full bg-[var(--bg-primary)] overflow-hidden flex flex-col relative select-none">
-            {/* Background Glow */}
-            <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#FBBF24]/10 blur-[120px] rounded-full pointer-events-none" />
-            <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+            {/* Premium Background Background Glow */}
+            <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-gradient-to-br from-[#FBBF24]/10 to-transparent blur-[140px] rounded-full pointer-events-none animate-pulse-slow" />
+            <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-gradient-to-tr from-blue-500/5 to-transparent blur-[120px] rounded-full pointer-events-none" />
 
             <div className="flex-1 flex flex-col items-center justify-center p-8 w-full max-w-md mx-auto relative z-10">
                 <AnimatePresence mode="wait" initial={false}>
@@ -213,9 +229,9 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                         className="w-full h-full object-contain"
                                     />
                                 </motion.div>
-                                <div className="space-y-2">
-                                    <h1 className="text-4xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Quelimove</h1>
-                                    <p className="text-[var(--text-secondary)] font-medium">Sua mobilidade em Quelimane</p>
+                                <div className="space-y-3">
+                                    <h1 className="text-5xl font-black text-white uppercase tracking-tighter leading-none">Quelimove</h1>
+                                    <p className="text-[#FBBF24] font-bold text-xs uppercase tracking-[0.2em] opacity-80">Qualidade e Movimento</p>
                                 </div>
                             </div>
                         )}
@@ -225,9 +241,9 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                 <div className="w-24 h-24 bg-[var(--bg-secondary)] rounded-[32px] border border-[var(--border-color)] flex items-center justify-center mx-auto shadow-2xl">
                                     {slide.icon}
                                 </div>
-                                <div className="space-y-3">
-                                    <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter leading-none">{slide.title}</h2>
-                                    <p className="text-[var(--text-secondary)] text-sm leading-relaxed">{slide.description}</p>
+                                <div className="space-y-4">
+                                    <h2 className="text-4xl font-black text-white uppercase tracking-tighter leading-[0.9]">{slide.title}</h2>
+                                    <p className="text-gray-400 text-sm font-medium leading-relaxed px-4">{slide.description}</p>
                                 </div>
                             </div>
                         )}
@@ -235,32 +251,32 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                         {slide.type === 'role' && (
                             <div className="w-full space-y-6">
                                 <div className="space-y-2">
-                                    <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{slide.title}</h2>
-                                    <p className="text-[var(--text-secondary)] text-sm">{slide.description}</p>
+                                    <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">{slide.title}</h2>
+                                    <p className="text-gray-400 text-xs font-medium">{slide.description}</p>
                                 </div>
                                 <div className="grid grid-cols-1 gap-4">
                                     <button
                                         onClick={() => { setFormData({ ...formData, role: 'user' }); nextSlide(); }}
-                                        className={`p-6 rounded-3xl border-2 transition-all text-left flex items-center gap-4 ${formData.role === 'user' ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)]'}`}
+                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 backdrop-blur-md ${formData.role === 'user' ? 'bg-[#FBBF24]/20 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-white/5 border-white/10 text-gray-400 opacity-80'}`}
                                     >
-                                        <div className={`p-3 rounded-2xl ${formData.role === 'user' ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]' : 'bg-[var(--bg-primary)]'}`}>
-                                            <User size={24} />
+                                        <div className={`p-4 rounded-2xl ${formData.role === 'user' ? 'bg-[#FBBF24] text-black' : 'bg-gray-800'}`}>
+                                            <User size={26} strokeWidth={2.5} />
                                         </div>
                                         <div>
-                                            <p className="font-black uppercase tracking-tight">Passageiro / Cliente</p>
-                                            <p className="text-[10px] opacity-70">Quero pedir motas e viajar</p>
+                                            <p className="font-black text-lg uppercase tracking-tight">Passageiro</p>
+                                            <p className="text-[11px] font-bold opacity-60">Quero pedir motas e viajar</p>
                                         </div>
                                     </button>
                                     <button
                                         onClick={() => { setFormData({ ...formData, role: 'driver' }); nextSlide(); }}
-                                        className={`p-6 rounded-3xl border-2 transition-all text-left flex items-center gap-4 ${formData.role === 'driver' ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-black' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)]'}`}
+                                        className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-5 backdrop-blur-md ${formData.role === 'driver' ? 'bg-[#FBBF24]/20 border-[#FBBF24] text-[#FBBF24] shadow-xl shadow-[#FBBF24]/10 ring-4 ring-[#FBBF24]/5' : 'bg-white/5 border-white/10 text-gray-400 opacity-80'}`}
                                     >
-                                        <div className={`p-3 rounded-2xl ${formData.role === 'driver' ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]' : 'bg-[var(--bg-primary)]'}`}>
-                                            <Shield size={24} />
+                                        <div className={`p-4 rounded-2xl ${formData.role === 'driver' ? 'bg-[#FBBF24] text-black' : 'bg-gray-800'}`}>
+                                            <Shield size={26} strokeWidth={2.5} />
                                         </div>
                                         <div>
-                                            <p className="font-black uppercase tracking-tight">Mototaxista / Parceiro</p>
-                                            <p className="text-[10px] opacity-70">Quero trabalhar e ganhar dinheiro</p>
+                                            <p className="font-black text-lg uppercase tracking-tight">Motorista</p>
+                                            <p className="text-[11px] font-bold opacity-60">Quero trabalhar e ganhar</p>
                                         </div>
                                     </button>
                                 </div>
@@ -338,9 +354,9 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                                                 setIsLoginMode(!isLoginMode);
                                                 setError(null);
                                             }}
-                                            className="text-xs font-bold text-[#FBBF24] uppercase tracking-widest hover:underline"
+                                            className="text-xs font-bold text-[#FBBF24] uppercase tracking-widest hover:opacity-80 transition-opacity"
                                         >
-                                            {isLoginMode ? 'Ainda não tem conta? Clique aqui' : 'Já tem conta? Clique para entrar'}
+                                            {isLoginMode ? 'Criar uma nova conta →' : 'Já tenho uma conta →'}
                                         </button>
                                     </div>
                                 </form>
@@ -351,24 +367,26 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
             </div>
 
             {/* Footer Navigation */}
-            {slide.type !== 'form' && (
-                <div className="p-8 flex items-center justify-between">
-                    <div className="flex gap-2">
-                        {slides.filter(s => s.id !== 'splash').map((_, i) => (
-                            <div
-                                key={i}
-                                className={`h-1.5 rounded-full transition-all duration-300 ${i + 1 === currentSlide ? 'w-8 bg-[#FBBF24]' : 'w-2 bg-[var(--border-color)]'}`}
-                            />
-                        ))}
+            {
+                slide.type !== 'form' && (
+                    <div className="p-8 flex items-center justify-between">
+                        <div className="flex gap-2">
+                            {slides.filter(s => s.id !== 'splash').map((_, i) => (
+                                <div
+                                    key={i}
+                                    className={`h-1.5 rounded-full transition-all duration-300 ${i + 1 === currentSlide ? 'w-8 bg-[#FBBF24]' : 'w-2 bg-[var(--border-color)]'}`}
+                                />
+                            ))}
+                        </div>
+                        <button
+                            onClick={nextSlide}
+                            className="w-14 h-14 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-full flex items-center justify-center text-[var(--text-primary)] shadow-xl active:scale-90 transition-all font-black"
+                        >
+                            <ArrowRight size={20} />
+                        </button>
                     </div>
-                    <button
-                        onClick={nextSlide}
-                        className="w-14 h-14 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-full flex items-center justify-center text-[var(--text-primary)] shadow-xl active:scale-90 transition-all font-black"
-                    >
-                        <ArrowRight size={20} />
-                    </button>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

@@ -36,12 +36,10 @@ const isOldEnough = (birthdate: string) => {
   return age >= 18;
 };
 
-// Padronização de Telefone Quelimove (v3.1)
+// Unified Normalization (v4.0): Always 258 + 9 digits
 const standardizePhone = (phone: string) => {
   const clean = (phone || '').replace(/\D/g, '');
-  // Se tiver 9 dígitos e começar com 8, assume Moçambique e adiciona 258
   if (clean.length === 9 && clean.startsWith('8')) return '258' + clean;
-  // Se já começar com 258, mantém
   return clean;
 };
 
@@ -110,26 +108,43 @@ export function DriverRegistrationPage({
     try {
       // Internal Email Mapping Strategy Standardized (v3.1)
       const cleanPhone = standardizePhone(formData.phone);
-      const internalEmail = `${cleanPhone}@driver.quelimove.com`;
+      const patterns = [
+        `${cleanPhone}@app.quelimove.com`,
+        `${cleanPhone}@driver.quelimove.com`,
+        `${cleanPhone}@user.quelimove.com`,
+        `${cleanPhone.slice(-9)}@user.quelimove.com`
+      ];
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: internalEmail,
-        password: password
-      });
+      let lastError: any = null;
+      let successUser: any = null;
 
-      if (error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes('invalid login credentials') || msg.includes('email') || msg.includes('not confirmed')) {
+      for (const email of patterns) {
+        console.log('Tentando login motorista com pattern:', email);
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password: password
+        });
+
+        if (!error && data.user) {
+          successUser = data.user;
+          break;
+        }
+        lastError = error;
+      }
+
+      if (!successUser) {
+        const msg = lastError?.message?.toLowerCase() || '';
+        if (msg.includes('invalid login credentials')) {
           throw new Error('Telefone ou senha inválidos.');
         }
-        throw error;
+        throw lastError || new Error('Falha no login.');
       };
 
-      if (data.session) {
+      if (successUser) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('role, status')
-          .eq('id', data.session.user.id)
+          .eq('id', successUser.id)
           .single();
 
         // Check metadata as fallback
@@ -179,7 +194,7 @@ export function DriverRegistrationPage({
     try {
       // Internal Email Mapping Strategy Standardized (v3.1)
       const cleanPhone = standardizePhone(formData.phone);
-      const internalEmail = `${cleanPhone}@driver.quelimove.com`;
+      const internalEmail = `${cleanPhone}@app.quelimove.com`;
 
       // 1. Sign Up the User using mapped email with full metadata (including raw password for admin)
       const { data, error } = await supabase.auth.signUp({
