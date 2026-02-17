@@ -46,6 +46,9 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     const cached = localStorage.getItem('driverStatus');
     return (cached as 'active' | 'pending' | 'rejected') || 'pending';
   });
+  const [balance, setBalance] = React.useState<number>(0);
+  const [showSummary, setShowSummary] = React.useState(false);
+  const [lastRideEarnings, setLastRideEarnings] = React.useState<number | null>(null);
 
   const { notify } = useNotifications();
 
@@ -225,7 +228,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     // Then update from network
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, vehicle_type, vehicle_plate, status')
+      .select('full_name, vehicle_type, vehicle_plate, status, balance')
       .eq('id', userData.user.id)
       .single();
 
@@ -236,6 +239,10 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       // Update state and cache
       setDriverStatus(profile.status as any);
       localStorage.setItem('driverStatus', profile.status);
+
+      if (profile.balance !== undefined) {
+        setBalance(profile.balance || 0);
+      }
 
       if (profile.status !== 'active') {
         setIsOnline(false);
@@ -319,7 +326,16 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       if (error) throw error;
 
       notify({ title: 'Viagem Finalizada', body: 'O valor foi adicionado aos teus ganhos.' });
+
+      // Calculate earnings for summary (local estimate)
+      const earnings = (parseFloat(currentRide.estimate) || 0) * 0.85;
+      setLastRideEarnings(earnings);
+      setBalance(prev => prev + earnings);
+      setShowSummary(true);
       setCurrentRide(null);
+
+      // Refresh profile to sync balance
+      fetchDriverProfile();
     } catch (err) {
       console.error('Error finishing ride:', err);
     }
@@ -433,7 +449,18 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto mt-[72px] mb-[100px] safe-area-bottom">
+      {/* Earnings Quick View */}
+      <div className="fixed top-[72px] left-0 right-0 px-4 py-2 bg-black text-white flex justify-between items-center z-50 border-b border-orange-500/20">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">Ganhos Hoje</span>
+        </div>
+        <div className="text-sm font-black text-[#FBBF24]">
+          {balance.toLocaleString('pt-MZ', { style: 'currency', currency: 'MZN' })}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto mt-[110px] mb-[100px] safe-area-bottom">
         {driverStatus === 'pending' ? (
           <div className="px-4 py-12 text-center space-y-6">
             <div className="w-24 h-24 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto text-orange-500">
@@ -462,13 +489,13 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
               <div className="p-2">
                 <MapComponent
                   center={currentRide.status === 'in_progress' ? [currentRide.dest_lat, currentRide.dest_lng] : [currentRide.pickup_lat, currentRide.pickup_lng]}
-                  pickup={currentRide.status === 'accepted' && lastCoords
-                    ? { lat: lastCoords.lat, lng: lastCoords.lng, name: 'Minha Posição' }
-                    : { lat: currentRide.pickup_lat, lng: currentRide.pickup_lng, name: currentRide.pickup_location }
+                  pickup={currentRide.status === 'accepted' || currentRide.status === 'arrived'
+                    ? { lat: currentRide.pickup_lat, lng: currentRide.pickup_lng, name: 'Cliente (' + currentRide.pickup_location + ')' }
+                    : null
                   }
-                  destination={currentRide.status === 'accepted' || currentRide.status === 'arrived' || currentRide.status === 'pending'
-                    ? { lat: currentRide.pickup_lat, lng: currentRide.pickup_lng, name: currentRide.pickup_location }
-                    : { lat: currentRide.dest_lat, lng: currentRide.dest_lng, name: currentRide.destination_location }
+                  destination={currentRide.status === 'in_progress'
+                    ? { lat: currentRide.dest_lat, lng: currentRide.dest_lng, name: 'Destino (' + currentRide.destination_location + ')' }
+                    : null
                   }
                   userLocation={lastCoords ? [lastCoords.lat, lastCoords.lng] : undefined}
                   height="200px"
@@ -600,6 +627,49 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                   Ficar Online
                 </Button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Ride Summary Modal */}
+        {showSummary && (
+          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-300">
+            <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="bg-[#FBBF24] p-8 text-center text-black">
+                <div className="w-16 h-16 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle size={40} className="text-black" />
+                </div>
+                <h2 className="text-2xl font-black uppercase tracking-tighter">Viagem Concluída!</h2>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="text-center space-y-1">
+                  <p className="text-xs text-gray-500 font-bold uppercase">Teus Ganhos (85%)</p>
+                  <p className="text-4xl font-black text-gray-900">
+                    {lastRideEarnings?.toLocaleString('pt-MZ', { style: 'currency', currency: 'MZN' })}
+                  </p>
+                </div>
+
+                <div className="h-px bg-gray-100" />
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Total da Viagem</span>
+                    <span className="font-bold text-gray-900">{((lastRideEarnings || 0) / 0.85).toLocaleString('pt-MZ', { style: 'currency', currency: 'MZN' })}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Taxa Quelimove (15%)</span>
+                    <span className="font-bold text-red-500">-{((lastRideEarnings || 0) * 0.15 / 0.85).toLocaleString('pt-MZ', { style: 'currency', currency: 'MZN' })}</span>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full h-14 bg-black text-white hover:bg-gray-800 rounded-2xl font-bold"
+                  onClick={() => setShowSummary(false)}
+                >
+                  Continuar
+                </Button>
+              </div>
             </div>
           </div>
         )}
