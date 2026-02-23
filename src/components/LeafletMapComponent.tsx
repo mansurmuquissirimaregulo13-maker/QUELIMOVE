@@ -235,7 +235,7 @@ export const LeafletMapComponent: React.FC<LeafletMapComponentProps> = ({
                     if (data.routes && data.routes.length > 0 && mapRef.current) {
                         const route = data.routes[0];
                         console.log('Route found:', route.distance, 'meters');
-                        const coords = route.geometry.coordinates.map((c: any) => [c[1], c[0]]) as [number, number][];
+                        const coords = route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]) as [number, number][];
 
                         if (routeLayerRef.current) {
                             routeLayerRef.current.setLatLngs(coords);

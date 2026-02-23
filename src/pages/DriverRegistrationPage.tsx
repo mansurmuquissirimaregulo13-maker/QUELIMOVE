@@ -107,38 +107,21 @@ export function DriverRegistrationPage({
 
     setIsLoading(true);
     try {
-      // Internal Email Mapping Strategy Standardized (v3.1)
       const cleanPhone = standardizePhone(formData.phone);
-      const patterns = [
-        `${cleanPhone} @app.quelimove.com`,
-        `${cleanPhone} @driver.quelimove.com`,
-        `${cleanPhone} @user.quelimove.com`,
-        `${cleanPhone.slice(-9)} @user.quelimove.com`
-      ];
-
-      let lastError: any = null;
+      const internalEmail = `${cleanPhone}@quelimove.mz`;
       let successUser: any = null;
 
-      for (const email of patterns) {
-        console.log('Tentando login motorista com pattern:', email);
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password: password
-        });
+      console.log('Tentando login motorista:', internalEmail);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: internalEmail,
+        password: password
+      });
 
-        if (!error && data.user) {
-          successUser = data.user;
-          break;
-        }
-        lastError = error;
-      }
+      if (error) throw error;
+      successUser = data.user;
 
       if (!successUser) {
-        const msg = lastError?.message?.toLowerCase() || '';
-        if (msg.includes('invalid login credentials')) {
-          throw new Error('Telefone ou senha inválidos.');
-        }
-        throw lastError || new Error('Falha no login.');
+        throw new Error('Falha no login.');
       };
 
       if (successUser) {

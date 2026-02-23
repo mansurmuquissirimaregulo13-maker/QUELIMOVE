@@ -55,7 +55,8 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
   }, [activeView]);
 
   const fetchHistory = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: authData } = await supabase.auth.getSession();
+    const session = authData?.session;
     if (!session) return;
 
     const { data } = await supabase
@@ -70,7 +71,8 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
   const handleSaveProfile = async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: authData } = await supabase.auth.getSession();
+      const session = authData?.session;
       if (!session) throw new Error('No session');
 
       const { error } = await supabase
@@ -147,7 +149,8 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                         try {
                           // [SIMULAÇÃO DE UPLOAD] 
                           const url = URL.createObjectURL(file);
-                          const { data: { session } } = await supabase.auth.getSession();
+                          const { data: authData } = await supabase.auth.getSession();
+                          const session = authData?.session;
                           if (!session) throw new Error('No session');
 
                           const { error } = await supabase
@@ -259,7 +262,8 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
               onClick={async () => {
                 if (window.confirm('Tem certeza que deseja apagar sua conta? Esta ação não pode ser desfeita.')) {
                   try {
-                    const { data: { user } } = await supabase.auth.getUser();
+                    const { data: authData } = await supabase.auth.getUser();
+                    const user = authData?.user;
                     if (user) {
                       await supabase.from('profiles').update({ is_available: false, full_name: 'DELETED USER' }).eq('id', user.id);
                       await supabase.auth.signOut();
@@ -389,9 +393,9 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 try {
                   // Set offline if driver
                   if (user.role === 'driver') {
-                    const { data: sessionUser } = await supabase.auth.getUser();
-                    if (sessionUser.user) {
-                      await supabase.from('profiles').update({ is_available: false }).eq('id', sessionUser.user.id);
+                    const { data: authData } = await supabase.auth.getUser();
+                    if (authData?.user) {
+                      await supabase.from('profiles').update({ is_available: false }).eq('id', authData.user.id);
                     }
                   }
 

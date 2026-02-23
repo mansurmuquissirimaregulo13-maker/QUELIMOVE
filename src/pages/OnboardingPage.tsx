@@ -93,32 +93,24 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
         setError(null);
         try {
             const cleanPhone = normalizePhone(formData.phone);
-            const patterns = [
-                `${cleanPhone}@app.quelimove.com`,
-                `${cleanPhone}@user.quelimove.com`,
-                `${cleanPhone}@driver.quelimove.com`,
-                `${cleanPhone.slice(-9)}@user.quelimove.com` // Deep fallback for older formats
-            ];
-
-            let lastError: any = null;
+            const internalEmail = `${cleanPhone}@quelimove.mz`;
             let successUser: any = null;
 
-            for (const email of patterns) {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password: formData.password
-                });
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: internalEmail,
+                password: formData.password
+            });
 
-                if (!error && data.user) {
-                    successUser = data.user;
-                    break;
-                }
-                lastError = error;
+            if (error) {
+                // If it fails with "Invalid credentials", we don't try others anymore for performance
+                throw error;
             }
 
+            successUser = data.user;
+
             if (!successUser) {
-                const sanitized = sanitizeAuthError(lastError, formData.phone);
-                throw new Error(sanitized);
+                // Should be caught by the throw above, but keeping for safety
+                throw new Error('Falha no login.');
             }
 
             if (successUser) {
@@ -187,7 +179,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
                 throw new Error(sanitized);
             }
 
-            if (data.user) {
+            if (data?.user) {
                 // Profile is now handled by the 'on_auth_user_created' database trigger
                 // which captures 'full_name', 'phone', and 'role' from raw_user_meta_data
                 onComplete({ name: formData.name, role: formData.role });
@@ -204,7 +196,7 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
     const slide = slides[currentSlide];
 
     return (
-        <div className="h-[100dvh] w-full bg-[var(--bg-primary)] overflow-hidden flex flex-col relative select-none">
+        <div className="h-[100dvh] w-full bg-[var(--bg-primary)] overflow-hidden flex flex-col relative select-none notranslate" translate="no">
             {/* Premium Background Background Glow - Memoized to prevent re-renders during typing */}
             <BackgroundGlow />
 

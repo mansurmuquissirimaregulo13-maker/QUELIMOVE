@@ -16,6 +16,8 @@ import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
 import { BottomNav } from '../components/BottomNav';
 import { useNotifications } from '../hooks/useNotifications';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { Profile } from '../types';
 
 interface SearchResult {
   description: string;
@@ -43,15 +45,22 @@ function calculateDistance(loc1: LocationType, loc2: LocationType): number {
   return R * c;
 }
 
+interface DriverNearby {
+  id: string;
+  lat: number;
+  lng: number;
+  type: string;
+}
+
 export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
   const { notify } = useNotifications();
   const isMounted = React.useRef(true);
-  const activeChannels = React.useRef<any[]>([]);
+  const activeChannels = React.useRef<RealtimeChannel[]>([]);
   const [step, setStep] = React.useState(1);
   const [isLoading, setIsLoading] = React.useState(false);
   const [pickup, setPickup] = React.useState<LocationType | null>(null);
   const [destination, setDestination] = React.useState<LocationType | null>(null);
-  const [paymentMethod, setPaymentMethod] = React.useState<'cash' | 'mpesa' | 'emola'>('cash');
+  const [paymentMethod] = React.useState<'cash' | 'mpesa' | 'emola'>('cash');
   const [serviceType, setServiceType] = React.useState<'moto' | 'txopela'>('moto');
 
   const [mapCenter, setMapCenter] = React.useState<[number, number]>([-17.8764, 36.8878]);
@@ -69,14 +78,14 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
 
   // Match state
   const [matchStatus, setMatchStatus] = React.useState<'idle' | 'searching' | 'found' | 'arrived' | 'in_progress' | 'busy' | 'error'>('idle');
-  const [driverInfo, setDriverInfo] = React.useState<any>(null);
+  const [driverInfo, setDriverInfo] = React.useState<Profile | null>(null);
   const [eta, setEta] = React.useState(0);
 
-  const [nearbyDrivers, setNearbyDrivers] = React.useState<any[]>([]);
+  const [nearbyDrivers, setNearbyDrivers] = React.useState<DriverNearby[]>([]);
 
 
 
-  const reverseGeocode = async (lat: number, lng: number) => {
+  const reverseGeocode = React.useCallback(async (lat: number, lng: number) => {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
@@ -100,9 +109,9 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     }
     // Fallback to coordinates if everything fails, better than "Unknown"
     return `Local: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-  };
+  }, []);
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = React.useCallback(async () => {
     // 1. Try to get real drivers from Supabase
     const { data } = await supabase
       .from('profiles')
@@ -111,15 +120,15 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       .eq('is_available', true)
       .eq('status', 'active');
 
-    let validDrivers: any[] = [];
+    let validDrivers: DriverNearby[] = [];
 
     if (data && data.length > 0) {
       validDrivers = data
         .filter(d => typeof d.current_lat === 'number' && typeof d.current_lng === 'number')
         .map(d => ({
           id: d.id,
-          lat: d.current_lat,
-          lng: d.current_lng,
+          lat: d.current_lat as number,
+          lng: d.current_lng as number,
           type: d.vehicle_type || 'moto'
         }));
     }
@@ -146,7 +155,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     }
 
     setNearbyDrivers(validDrivers);
-  };
+  }, [mapCenter]);
 
   React.useEffect(() => {
     fetchDrivers();
@@ -176,7 +185,6 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         },
         (error) => {
           console.error("Error getting initial location:", error);
-          if (!mapCenter) setMapCenter([-17.8764, 36.8878]);
         },
         { enableHighAccuracy: true }
       );
@@ -225,7 +233,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       });
       activeChannels.current = [];
     };
-  }, []);
+  }, [fetchDrivers, pickup, destination, reverseGeocode]);
 
   const handleSearch = async (query: string) => {
     setSearchTerm(query);
@@ -252,7 +260,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     const hasStrongLocalMatch = localResults.some(r => r.description.toLowerCase().startsWith(normalizedQuery));
 
     if (hasStrongLocalMatch || query.length < 3) {
-      setSearchResults(localResults as any);
+      setSearchResults(localResults);
       return;
     }
 
@@ -271,7 +279,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       });
       const data = await response.json();
 
-      const osmResults = data.map((item: any) => ({
+      const osmResults = data.map((item: { display_name: string; place_id: { toString: () => string }; lat: string; lon: string; type: string }) => ({
         description: item.display_name, // Nome completo do OSM
         place_id: item.place_id.toString(),
         lat: item.lat,
@@ -281,20 +289,20 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       }));
 
       // Combinar, mas manter locais no topo
-      setSearchResults([...localResults, ...osmResults] as any);
+      setSearchResults([...localResults, ...osmResults]);
     } catch (error) {
       console.error('Nominatim search error:', error);
-      setSearchResults(localResults as any);
+      setSearchResults(localResults);
     } finally {
       // Finalizado
     }
   };
 
-  const selectLocation = (result: any) => {
+  const selectLocation = (result: SearchResult) => {
     const loc: LocationType = {
       name: result.description.split(',')[0],
-      lat: parseFloat(result.lat),
-      lng: parseFloat(result.lon)
+      lat: parseFloat(result.lat || '0'),
+      lng: parseFloat(result.lon || '0')
     };
 
     if (activeSearchField === 'pickup') {
@@ -352,7 +360,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     if (nearbyDrivers.length > 0 && nearbyDrivers[0].id.startsWith('mock_')) {
       fetchDrivers();
     }
-  }, [pickup, destination]); // Removing the geolocation logic from here as it's now handled in the initial useEffect
+  }, [pickup, destination, fetchDrivers, nearbyDrivers]);
 
   React.useEffect(() => {
     if (pickup && destination) {
@@ -380,7 +388,8 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     setStep(3);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
 
       // 1. Criar entrada da viagem no Supabase
       const { data: ride, error: rideError } = await supabase
@@ -472,7 +481,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
     }
   };
 
-  const startDispatchSystem = async (rideId: string) => {
+  const startDispatchSystem = React.useCallback(async (rideId: string) => {
     try {
       const { data: drivers } = await supabase
         .from('profiles')
@@ -486,7 +495,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         return;
       }
 
-      const nearbyDrivers = drivers
+      const nearbyDriversList = drivers
         .map(d => ({
           ...d,
           dist: calculateDistance(pickup, { lat: d.current_lat, lng: d.current_lng, name: '' })
@@ -494,7 +503,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         .filter(d => d.dist <= 5)
         .sort((a, b) => (a.dist || 0) - (b.dist || 0));
 
-      if (nearbyDrivers.length === 0) {
+      if (nearbyDriversList.length === 0) {
         if (isMounted.current) {
           // No drivers found initially
           await supabase
@@ -509,7 +518,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       }
 
       // Try each driver
-      for (const driver of nearbyDrivers) {
+      for (const driver of nearbyDriversList) {
         if (!isMounted.current) break;
 
         const { data: currentRideStatus } = await supabase
@@ -564,9 +573,9 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         setMatchStatus('error');
       }
     }
-  };
+  }, [pickup, notify]);
 
-  const subscribeToDriverLocation = (driverId: string) => {
+  const subscribeToDriverLocation = React.useCallback((driverId: string) => {
     const driverChannel = supabase
       .channel(`driver-location-${driverId}`)
       .on(
@@ -579,15 +588,16 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
         },
         (payload) => {
           if (!isMounted.current) return;
-          const newLat = payload.new.current_lat;
-          const newLng = payload.new.current_lng;
+          const updated = payload.new as Profile;
+          const newLat = updated.current_lat;
+          const newLng = updated.current_lng;
 
           if (typeof newLat === 'number' && typeof newLng === 'number') {
             setNearbyDrivers([{
               id: driverId,
               lat: newLat,
               lng: newLng,
-              type: payload.new.vehicle_type || 'moto'
+              type: updated.vehicle_type || 'moto'
             }]);
 
             if (pickup) {
@@ -603,7 +613,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
       .subscribe();
 
     activeChannels.current.push(driverChannel);
-  };
+  }, [pickup]);
 
   return (
     <div className="h-[100dvh] w-full flex flex-col relative bg-[var(--bg-primary)] overflow-hidden transition-colors duration-300 select-none">
@@ -662,10 +672,10 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                   setStep(1);
                   notify({ title: 'Cancelado', body: 'A busca foi cancelada' });
                   // Best effort cancel
-                  const { data: user } = await supabase.auth.getUser();
-                  if (user.user) {
+                  const { data: userData } = await supabase.auth.getUser();
+                  if (userData?.user) {
                     // Find pending ride and cancel it
-                    const { data: rides } = await supabase.from('rides').select('id').eq('user_id', user.user.id).eq('status', 'pending').limit(1);
+                    const { data: rides } = await supabase.from('rides').select('id').eq('user_id', userData.user.id).eq('status', 'pending').limit(1);
                     if (rides && rides.length > 0) {
                       await supabase.from('rides').update({ status: 'cancelled' }).eq('id', rides[0].id);
                     }
@@ -841,7 +851,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                       <ChevronRight size={16} className="ml-auto text-[var(--text-tertiary)]" />
                     </button>
 
-                    {(searchTerm ? searchResults : QUELIMANE_LOCATIONS.slice(0, 8).map(l => ({ description: `${l.name}, Quelimane`, is_local: true, type: l.type, lat: l.lat.toString(), lon: l.lng.toString() }))).map((result: any, index) => {
+                    {(searchTerm ? searchResults : QUELIMANE_LOCATIONS.slice(0, 8).map(l => ({ description: `${l.name}, Quelimane`, is_local: true, type: l.type, lat: l.lat.toString(), lon: l.lng.toString(), place_id: `suggest-${l.name}` }))).map((result, index) => {
                       const name = result.description.split(',')[0];
                       const type = result.type || 'landmark';
                       return (
@@ -1007,7 +1017,7 @@ export function RideRequestPage({ onNavigate }: RideRequestPageProps) {
                     </div>
                   )}
                   {/* ... existing match status UI with updated text colors ... */}
-                  {matchStatus === 'found' && (
+                  {['found', 'arrived', 'in_progress'].includes(matchStatus) && (
                     <div className="flex items-center gap-4 bg-[var(--bg-secondary)] p-4 rounded-3xl border border-[var(--border-color)] text-left shadow-sm">
                       <div className="w-16 h-16 rounded-2xl bg-[#FBBF24] overflow-hidden shadow-inner">
                         <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${driverInfo?.id}`} alt="Driver" />

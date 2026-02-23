@@ -4,15 +4,21 @@ import {
   Users,
   TrendingUp,
   DollarSign,
+  LineChart,
+  Settings,
   Activity,
-  Loader2,
-  X,
-  FileText,
-  MapPin,
-  Clock as LucideClock,
+  UserCheck,
+  Phone,
+  Search,
   ChevronRight,
-  Eye,
-  EyeOff,
+  AlertCircle,
+  FileText,
+  Clock,
+  Car,
+  MapPin,
+  Map as MapIcon,
+  X,
+  Loader2,
   Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,7 +27,8 @@ import { supabase } from '../lib/supabase';
 import { LeafletMapComponent as MapComponent } from '../components/LeafletMapComponent';
 import { useNotifications } from '../hooks/useNotifications';
 import { Button } from '../components/ui/Button';
-import { QUELIMANE_LOCATIONS } from '../constants';
+import { QUELIMANE_LOCATIONS, Location } from '../constants';
+import { Profile, Ride } from '../types';
 
 interface AdminDashboardPageProps {
   onNavigate: (page: string) => void;
@@ -32,7 +39,6 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   const [loading, setLoading] = React.useState(true);
   const [subView, setSubView] = React.useState<'none' | 'bairros' | 'prices' | 'logs'>('none');
   const [driverFilter, setDriverFilter] = React.useState<'all' | 'pending' | 'rejected'>('all');
-  const [zoomImage, setZoomImage] = React.useState<string | null>(null);
 
   // Estados de Gestão
   const [locations, setLocations] = React.useState([...QUELIMANE_LOCATIONS]);
@@ -61,8 +67,23 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
     const oldName = updated[editingLocation.index].name;
     updated[editingLocation.index].name = editingLocation.name;
     setLocations(updated);
-    addLog('Gestão Bairros', `Bairro editado: ${oldName} -> ${editingLocation.name}`);
+    addLog('Gestão Bairros', `Bairro editado: ${oldName} -> ${editingLocation.name} `);
     setEditingLocation(null);
+  };
+
+  const handleAddBairro = () => {
+    if (!newBairroName.trim()) return;
+    const newBairro: Location = { name: newBairroName.trim(), type: 'bairro', lat: -17.876, lng: 36.887 }; // Default coords
+    setLocations(prev => [...prev, newBairro]);
+    addLog('Gestão Bairros', `Bairro adicionado: ${newBairroName} `);
+    setNewBairroName('');
+  };
+
+  const handleRemoveBairro = (index: number) => {
+    if (!window.confirm('Tem certeza que deseja remover este bairro?')) return;
+    const removed = locations[index].name;
+    setLocations(prev => prev.filter((_, i) => i !== index));
+    addLog('Gestão Bairros', `Bairro removido: ${removed} `);
   };
 
   // --- Lógica Real de Estatísticas e Aprovações ---
@@ -74,10 +95,10 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
     { label: 'Pendentes', value: '0', icon: TrendingUp, color: 'text-orange-500', bg: 'bg-orange-500/10' }
   ]);
 
-  const [recentRides, setRecentRides] = React.useState<any[]>([]);
-  const [allDrivers, setAllDrivers] = React.useState<any[]>([]);
-  const [selectedRide, setSelectedRide] = React.useState<any | null>(null);
-  const [selectedDriver, setSelectedDriver] = React.useState<any | null>(null);
+  const [recentRides, setRecentRides] = React.useState<Ride[]>([]);
+  const [allDrivers, setAllDrivers] = React.useState<Profile[]>([]);
+  const [selectedRide, setSelectedRide] = React.useState<Ride | null>(null);
+  const [selectedDriver, setSelectedDriver] = React.useState<Profile | null>(null);
 
   const fetchStats = async () => {
     try {
@@ -144,15 +165,16 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         if (cleanPhone.startsWith('8')) cleanPhone = '258' + cleanPhone;
 
         if (cleanPhone) {
-          const msg = encodeURIComponent(`Olá! Sua conta no Quelimove foi APROVADA! 🎉\n\nAgora já podes entrar na aplicação e começar a faturar.\n\nSeus dados de acesso:\n📲 Número: ${phone}\n🔑 Senha: (Aquela que escolheste no registo)\n\nEstamos felizes por te ter connosco! 🚀🚖\n\nAtt: Equipa Quelimove`);
+          const msg = encodeURIComponent(`Olá! Sua conta no Quelimove foi APROVADA! 🎉\n\nAgora já podes entrar na aplicação e começar a faturar.\n\nSeus dados de acesso: \n📲 Número: ${phone} \n🔑 Senha: (Aquela que escolheste no registo) \n\nEstamos felizes por te ter connosco! 🚀🚖\n\nAtt: Equipa Quelimove`);
           window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
         } else {
           alert('Motorista aprovado, mas o telefone não foi encontrado para enviar WhatsApp.');
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error approving driver:', err);
-      alert('Erro ao aprovar: ' + err.message);
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      alert('Erro ao aprovar: ' + message);
     }
   };
 
@@ -170,9 +192,10 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         fetchStats();
         alert('Motorista bloqueado/rejeitado com sucesso.');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error rejecting driver:', err);
-      alert('Erro ao rejeitar: ' + err.message);
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      alert('Erro ao rejeitar: ' + message);
     }
   };
 
@@ -208,7 +231,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
     }
   };
 
-  const fetchStatsCallback = React.useCallback(fetchStats, [selectedRide]);
+  const fetchStatsCallback = React.useCallback(fetchStats, []);
 
   React.useEffect(() => {
     fetchStatsCallback();
@@ -216,18 +239,19 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
     const channelName = 'admin-dashboard-channel';
     const channel = supabase
       .channel(channelName)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rides' }, (payload: any) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rides' }, (payload) => { // Added payload parameter
         if (payload.new.status === 'pending') {
           new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
           notify({ title: 'Nova Viagem!', body: 'Um cliente solicitou uma moto agora.' });
         }
         fetchStatsCallback();
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload: any) => {
-        if (payload.new.role === 'driver' && payload.new.status === 'pending') {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+        const updated = payload.new as Profile;
+        if (updated.role === 'driver' && updated.status === 'pending') {
           new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch((e) => console.error('Audio play error:', e));
-          alert('Um utilizador acaba de concluir o registo de motorista: ' + payload.new.full_name);
-          notify({ title: 'Novo Motorista!', body: `${payload.new.full_name} concluiu o registo.` });
+          alert('Um utilizador acaba de concluir o registo de motorista: ' + updated.full_name);
+          notify({ title: 'Novo Motorista!', body: `${updated.full_name} concluiu o registo.` });
           fetchStatsCallback();
         } else {
           fetchStatsCallback();
@@ -433,7 +457,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
                             <div>
                               <p className="text-sm font-bold text-[var(--text-primary)]">{selectedRide.pickup_location} → {selectedRide.destination_location}</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <LucideClock size={12} className="text-[var(--text-secondary)]" />
+                                <Clock size={12} className="text-[var(--text-secondary)]" />
                                 <p className="text-xs text-[var(--text-secondary)]">{new Date(selectedRide.created_at).toLocaleString()}</p>
                               </div>
                             </div>
@@ -897,7 +921,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
         activeTab={activeTab}
         onTabChange={(tab) => {
           if (tab === 'metrics' || tab === 'drivers' || tab === 'settings' || tab === 'rides') {
-            setActiveTab(tab as any);
+            setActiveTab(tab as 'metrics' | 'rides' | 'drivers' | 'settings');
             setSubView('none');
           } else {
             onNavigate(tab);

@@ -75,7 +75,8 @@ export const useNotifications = () => {
         localStorage.setItem('notifications_enabled', String(value));
 
         // Persistir no Supabase
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: authData } = await supabase.auth.getSession();
+        const session = authData?.session;
         if (session?.user?.id) {
             await supabase
                 .from('profiles')

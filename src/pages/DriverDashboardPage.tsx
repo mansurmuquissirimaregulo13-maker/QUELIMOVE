@@ -2,13 +2,11 @@ import * as React from 'react';
 import { Button } from '../components/ui/Button';
 import { BottomNav } from '../components/BottomNav';
 import {
-  ToggleRight,
   ToggleLeft,
-  MapPin,
   Navigation,
   CheckCircle,
-  XCircle,
   Phone,
+  User,
   Clock as LucideClock
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -17,6 +15,7 @@ import { requestForToken } from '../lib/firebase';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { useNotifications } from '../hooks/useNotifications';
+import { Ride } from '../types';
 
 // Haversine formula to calculate distance in KM
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -36,11 +35,13 @@ interface DriverDashboardPageProps {
 }
 
 export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
-  const [isOnline, setIsOnline] = React.useState(false);
+  const [isOnline, setIsOnline] = React.useState(() => {
+    const saved = localStorage.getItem('driverOnlineStatus');
+    return saved === 'true';
+  });
   const [lastCoords, setLastCoords] = React.useState<{ lat: number; lng: number } | null>(null);
-  const [currentRide, setCurrentRide] = React.useState<any | null>(null);
+  const [currentRide, setCurrentRide] = React.useState<Ride | null>(null);
   const [driverName, setDriverName] = React.useState('Motorista');
-  const [vehicleInfo, setVehicleInfo] = React.useState('Carregando...');
   // Initialize with cached status to prevent flashing "Analysis" screen
   const [driverStatus, setDriverStatus] = React.useState<'active' | 'pending' | 'rejected'>(() => {
     const cached = localStorage.getItem('driverStatus');
@@ -49,6 +50,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   const [balance, setBalance] = React.useState<number>(0);
   const [showSummary, setShowSummary] = React.useState(false);
   const [lastRideEarnings, setLastRideEarnings] = React.useState<number | null>(null);
+  const [vehicleInfo, setVehicleInfo] = React.useState('');
 
   const { notify } = useNotifications();
 
@@ -71,7 +73,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             notify({ title: 'Atenção', body: 'A viagen foi cancelada pelo cliente.' });
             setCurrentRide(null);
           } else {
-            setCurrentRide(payload.new);
+            setCurrentRide(payload.new as Ride);
           }
         }
       )
@@ -80,9 +82,9 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     return () => {
       supabase.removeChannel(rideChannel);
     };
-  }, [currentRide?.id]);
+  }, [currentRide?.id, notify]);
 
-  const fetchPotentialRides = async () => {
+  const fetchPotentialRides = React.useCallback(async () => {
     if (!isOnline) return;
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
@@ -98,15 +100,15 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       .limit(1);
 
     if (data && data.length > 0) {
-      setCurrentRide(data[0]);
+      setCurrentRide(data[0] as Ride);
     }
-  };
+  }, [isOnline, currentRide]);
 
-  const fetchPotentialRidesCallback = React.useCallback(fetchPotentialRides, [isOnline, currentRide]);
+  // Removed fetchPotentialRidesCallback as it's now fetchPotentialRides itself (memoized)
 
   const lastSavedCoords = React.useRef<{ lat: number; lng: number } | null>(null);
 
-  const updateLocationInDB = async (lat: number, lng: number) => {
+  const updateLocationInDB = React.useCallback(async (lat: number, lng: number) => {
     try {
       if (lastSavedCoords.current) {
         const dist = calculateDistance(lat, lng, lastSavedCoords.current.lat, lastSavedCoords.current.lng);
@@ -138,7 +140,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
     } catch (err) {
       console.error('Location update failed:', err);
     }
-  };
+  }, [isOnline]);
 
   React.useEffect(() => {
     let watchId: number | undefined;
@@ -162,7 +164,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
         }
       }, 5000);
 
-      fetchPotentialRidesCallback();
+      fetchPotentialRides();
 
       const channelName = 'driver-rides-presence';
       const subscription = supabase
@@ -171,11 +173,12 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'rides' },
           (payload) => {
-            if (payload.new.status === 'pending' && !currentRide) {
-              setCurrentRide(payload.new);
+            const newRide = payload.new as Ride;
+            if (newRide.status === 'pending' && !currentRide) {
+              setCurrentRide(newRide);
               notify({
                 title: 'Nova Corrida!',
-                body: `Passageiro em ${payload.new.pickup_location}. Valor: ${payload.new.estimate} MZN`
+                body: `Passageiro em ${newRide.pickup_location}. Valor: ${newRide.estimate} MZN`
               });
               const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2505/2505-preview.mp3');
               audio.play().catch(e => console.log('Audio error', e));
@@ -202,7 +205,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       setOffline();
       setCurrentRide(null);
     }
-  }, [isOnline, fetchPotentialRidesCallback, lastCoords]);
+  }, [isOnline, fetchPotentialRides, lastCoords, updateLocationInDB, currentRide, notify]);
 
   const [passengerPhone, setPassengerPhone] = React.useState<string | null>(null);
 
@@ -224,14 +227,14 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
 
 
-  const fetchDriverProfile = async () => {
+  const fetchDriverProfile = React.useCallback(async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
 
     // First try to get from cache to display immediately
     const cachedStatus = localStorage.getItem('driverStatus');
     if (cachedStatus) {
-      setDriverStatus(cachedStatus as any);
+      setDriverStatus(cachedStatus as 'active' | 'pending' | 'rejected');
       if (cachedStatus !== 'active') setIsOnline(false);
     }
 
@@ -247,8 +250,9 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
       setVehicleInfo(`${profile.vehicle_type || 'Moto'} • ${profile.vehicle_plate || 'S/M'}`);
 
       // Update state and cache
-      setDriverStatus(profile.status as any);
-      localStorage.setItem('driverStatus', profile.status);
+      const status = profile.status as 'active' | 'pending' | 'rejected';
+      setDriverStatus(status);
+      localStorage.setItem('driverStatus', status);
 
       if (profile.balance !== undefined) {
         setBalance(profile.balance || 0);
@@ -258,11 +262,11 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
         setIsOnline(false);
       }
     }
-  };
+  }, []);
 
   React.useEffect(() => {
     fetchDriverProfile();
-  }, []);
+  }, [fetchDriverProfile]);
 
   const handleAcceptRide = async (rideId: string) => {
     try {
@@ -295,7 +299,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
         if (legacyData && legacyData.length > 0) {
           notify({ title: 'Viagem Aceite!', body: 'Vá ao encontro do cliente.' });
-          setCurrentRide(legacyData[0]);
+          setCurrentRide(legacyData[0] as Ride);
         } else {
           alert('Esta viagem já foi aceite por outro motorista.');
           setCurrentRide(null);
@@ -312,7 +316,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
           .select('*')
           .eq('id', rideId)
           .single();
-        if (ride) setCurrentRide(ride);
+        if (ride) setCurrentRide(ride as Ride);
       } else {
         alert('Esta viagem já foi aceite por outro motorista.');
         setCurrentRide(null);
@@ -398,6 +402,16 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   const toggleOnline = async () => {
     const nextState = !isOnline;
     setIsOnline(nextState);
+    localStorage.setItem('driverOnlineStatus', nextState.toString());
+
+    // Update DB immediately
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData.user) {
+      await supabase
+        .from('profiles')
+        .update({ is_available: nextState })
+        .eq('id', userData.user.id);
+    }
 
     if (nextState) {
       try {
@@ -455,6 +469,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             <div className="flex items-center gap-1.5">
               <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{isOnline ? 'Em Trabalho' : 'Descansando'}</p>
+              {vehicleInfo && <span className="text-[8px] text-gray-400 font-medium ml-1">({vehicleInfo})</span>}
             </div>
           </div>
         </div>
@@ -475,9 +490,9 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
 
 
-      <div className="flex-1 overflow-y-auto mt-[110px] mb-[100px] safe-area-bottom">
-        {driverStatus === 'pending' ? (
-          <div className="px-6 py-12 text-center space-y-8 bg-white/90 backdrop-blur-xl rounded-t-[40px] shadow-2xl mt-32 h-full">
+      <div className="flex-1 overflow-y-auto mt-[110px] mb-[100px] safe-area-bottom relative">
+        {driverStatus === 'pending' && (
+          <div className="absolute inset-x-0 bottom-0 top-0 z-[70] px-6 py-12 text-center space-y-8 bg-white/95 backdrop-blur-md rounded-t-[40px] shadow-2xl flex flex-col justify-center animate-in slide-in-from-bottom-20 duration-500">
             <div className="w-24 h-24 bg-[#FBBF24]/10 rounded-full flex items-center justify-center mx-auto text-[#FBBF24] border-2 border-white shadow-xl relative">
               <LucideClock size={48} className="animate-pulse" />
               <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full p-1 shadow-md">
@@ -487,8 +502,8 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             <div className="space-y-3">
               <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-tight">Quase Lá!<br />CONTA EM ANÁLISE</h2>
               <p className="text-sm text-gray-500 font-medium px-4">
-                Obrigado pelo registo, <span className="text-black font-bold">{driverName.split(' ')[0]}</span>! 🚀<br />
-                Os teus dados estão com o <span className="text-black font-bold">Admin Mansur</span>. Clica abaixo para ativar agora.
+                Obrigado pelo registo! 🚀<br />
+                Os teus dados estão com o <span className="text-black font-bold">Admin Mansur</span>.
               </p>
             </div>
             <Button
@@ -499,10 +514,16 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
               }}
             >
               <Phone size={24} />
-              Chamar no WhatsApp
+              Ativar no WhatsApp
             </Button>
+            <div className="mt-4">
+              <button onClick={() => setDriverStatus('active')} className="text-[10px] text-gray-400 font-bold uppercase underline">
+                Ver Mapa (Modo Prévia)
+              </button>
+            </div>
           </div>
-        ) : isOnline && currentRide ? (
+        )}
+        {isOnline && currentRide ? (
           <div className="fixed bottom-[100px] left-0 right-0 z-50 px-4 animate-in slide-in-from-bottom-10 duration-500">
             <div className="bg-white/95 backdrop-blur-xl rounded-[32px] shadow-2xl border border-white overflow-hidden pb-4">
               <div className="h-1.5 w-12 bg-gray-200 rounded-full mx-auto mt-3 mb-1" />

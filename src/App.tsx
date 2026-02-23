@@ -1,5 +1,8 @@
 import * as React from 'react';
 import { supabase } from './lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { Profile, UserProfile } from './types';
 import { HomePage } from './pages/HomePage';
 import { RideRequestPage } from './pages/RideRequestPage';
 import { DriverRegistrationPage } from './pages/DriverRegistrationPage';
@@ -22,7 +25,7 @@ function AppContent() {
 
   /* App State */
   const [currentPage, setCurrentPage] = React.useState<string>('home');
-  const [user, setUser] = React.useState<{ name: string; age?: number; role?: string; status?: string; phone?: string; avatar_url?: string } | null>(() => {
+  const [user, setUser] = React.useState<UserProfile | null>(() => {
     try {
       const saved = localStorage.getItem('user_profile');
       return saved ? JSON.parse(saved) : null;
@@ -33,13 +36,16 @@ function AppContent() {
     }
   });
 
+  const isInitialized = React.useRef(false);
+
   React.useEffect(() => {
-    let subscription: any;
+    let subscription: RealtimeChannel | null = null;
 
     const initializeAuth = async () => {
       try {
         // 1. Initial auth check
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: authData, error: sessionError } = await supabase.auth.getSession();
+        const session = authData?.session;
 
         if (sessionError) throw sessionError;
 
@@ -63,7 +69,7 @@ function AppContent() {
               ...profile,
               name: profile.full_name || session.user.user_metadata?.full_name || (session.user.email ? session.user.email.split('@')[0] : 'Usuário')
             };
-            setUser(userData as any);
+            setUser(userData);
             localStorage.setItem('user_profile', JSON.stringify(userData));
 
             // Set initial page based on role
@@ -85,7 +91,7 @@ function AppContent() {
                   filter: `id=eq.${session.user.id}`
                 },
                 (payload) => {
-                  const updated = payload.new as any;
+                  const updated = payload.new as Profile;
                   const newUserData = {
                     ...updated,
                     name: updated.full_name
@@ -94,10 +100,10 @@ function AppContent() {
                   setUser(prev => {
                     const prevStatus = prev?.status;
                     if (updated.status === 'active' && prevStatus === 'pending') {
-                      // Silently update and redirect - safer than alert()
-                      setTimeout(() => setCurrentPage('driver-dash'), 500);
+                      // Use a direct update - AppContent's stable structure will handle this better
+                      setCurrentPage('driver-dash');
                     }
-                    return newUserData as any;
+                    return newUserData;
                   });
                   localStorage.setItem('user_profile', JSON.stringify(newUserData));
                 }
@@ -110,14 +116,16 @@ function AppContent() {
             // Create a temporary user object from Session checks
             const tempUser = {
               id: session.user.id,
+              full_name: session.user.user_metadata?.full_name || 'Usuário',
               name: session.user.user_metadata?.full_name || 'Usuário',
-              role: session.user.user_metadata?.role || 'user',
+              role: (session.user.user_metadata?.role || 'user') as 'user' | 'driver' | 'admin',
               phone: session.user.user_metadata?.phone || session.user.phone,
-              email: session.user.email
+              email: session.user.email,
+              status: 'active' as const
             };
 
             // Allow them to proceed as "user" (passenger) if generic, or force onboarding if critical data missing
-            setUser(tempUser as any);
+            setUser(tempUser as UserProfile);
 
             // Use role from metadata if available to route
             if (tempUser.role === 'driver') {
@@ -132,18 +140,25 @@ function AppContent() {
           setUser(null);
           localStorage.removeItem('user_profile');
         }
-      } catch (err) {
-        console.error('initializeAuth failure', err);
       } finally {
-        // Delay extra para garantir que o DOM está pronto antes de remover o Splash
-        setTimeout(() => setShowSplash(false), 800);
+        // Ensure atomic update of splash screen state
+        if (!isInitialized.current) {
+          isInitialized.current = true;
+          // Use a requestAnimationFrame to delay splash removal until after next paint
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              // Component might have unmounted during the timeout
+              setShowSplash(false);
+            }, 800);
+          });
+        }
       }
     };
 
     initializeAuth();
 
     // 3. Listen for Auth State Changes (Login/Logout)
-    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: authData } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth event:', event);
       if (event === 'SIGNED_IN' && session) {
         // Re-run initialization to fetch profile and setup listeners
@@ -157,7 +172,9 @@ function AppContent() {
             if (profile.role === 'driver' && profile.id) {
               // Attempt to set offline logic handled in components usually
             }
-          } catch (e) { }
+          } catch (e) {
+            console.error('Failed to parse profile for cleanup', e);
+          }
         }
 
         setCurrentPage('home');
@@ -171,7 +188,9 @@ function AppContent() {
     });
 
     return () => {
-      authListener.unsubscribe();
+      if (authData?.subscription) {
+        authData.subscription.unsubscribe();
+      }
       if (subscription) supabase.removeChannel(subscription);
     };
   }, []);
@@ -201,7 +220,7 @@ function AppContent() {
       console.error('Error syncing profile:', err);
     }
 
-    setUser(profile as any);
+    setUser(profile as UserProfile);
 
     if (profile.role === 'driver') {
       setCurrentPage('driver-dash');
@@ -216,7 +235,7 @@ function AppContent() {
 
     // Se estiver autenticado, aplica redirecionamento automático estrito
     if (user) {
-      const userProfile = user as any;
+      const userProfile = user;
       if (userProfile.role === 'driver') {
         // Motoristas aprovados ou em análise serão redirecionados para o dashboard
         // O Dashboard controlará a exibição de "Em Análise" internamente com cache local para evitar flash
@@ -250,8 +269,9 @@ function AppContent() {
             if (adminEmail === 'mansurmuquissirimaregulo13@gmail.com') {
               // Promove o usuário atual para Admin se as credenciais baterem
               const currentProfile = JSON.parse(localStorage.getItem('user_profile') || '{}');
-              localStorage.setItem('user_profile', JSON.stringify({ ...currentProfile, role: 'admin', email: adminEmail }));
-              setUser({ ...currentProfile, role: 'admin' } as any);
+              const newProfile = { ...currentProfile, role: 'admin', email: adminEmail } as UserProfile;
+              localStorage.setItem('user_profile', JSON.stringify(newProfile));
+              setUser(newProfile);
             }
             setCurrentPage('admin-dash');
           }}
@@ -288,16 +308,47 @@ function AppContent() {
     }
   };
 
-  if (showSplash) {
-    return <SplashScreen />;
-  }
-
   return (
-    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[var(--bg-primary)]">
-      <InstallPrompt />
-      <div className="w-full h-full overflow-hidden">
-        {renderPage()}
-      </div>
+    <div
+      className="relative h-[100dvh] w-screen overflow-hidden bg-[var(--bg-primary)] notranslate"
+      translate="no"
+    >
+      <AnimatePresence mode="wait">
+        {showSplash ? (
+          <motion.div
+            key="splash"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 z-[9999]"
+          >
+            <SplashScreen />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="main-content"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="w-full h-full relative"
+          >
+            <InstallPrompt />
+            <div className="w-full h-full overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentPage}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full h-full"
+                >
+                  {renderPage()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
