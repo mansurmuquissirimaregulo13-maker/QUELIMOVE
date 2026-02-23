@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React from 'react';
 import { Header } from '../components/Header';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -17,6 +17,8 @@ import {
   EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { QUELIMANE_LOCATIONS } from '../constants';
 import { sanitizeAuthError } from '../lib/authSanitizer';
@@ -51,6 +53,8 @@ interface DriverRegistrationPageProps {
 export function DriverRegistrationPage({
   onNavigate
 }: DriverRegistrationPageProps) {
+
+  const { t } = useLanguage();
   const [step, setStep] = React.useState(1);
   const [isLoading, setIsLoading] = React.useState(false);
   const [vehicleType, setVehicleType] = React.useState<'moto' | 'carro' | 'txopela'>('moto');
@@ -101,7 +105,7 @@ export function DriverRegistrationPage({
 
   const handleLogin = async () => {
     if (!formData.phone || !password) {
-      alert('Por favor, preencha o telefone e a senha.');
+      alert(t('driver.reg.fill_phone_password'));
       return;
     }
 
@@ -122,7 +126,7 @@ export function DriverRegistrationPage({
 
       if (!successUser) {
         throw new Error('Falha no login.');
-      };
+      }
 
       if (successUser) {
         const { data: profile } = await supabase
@@ -150,13 +154,13 @@ export function DriverRegistrationPage({
           }
 
           if (status === 'pending' || status === 'rejected') {
-            alert('Sua conta está em análise ou foi bloqueada. Contacte o suporte.');
+            alert(t('driver.reg.account_pending_blocked'));
             await supabase.auth.signOut();
           } else {
             onNavigate('driver-dash');
           }
         } else {
-          alert('Conta não é de motorista.');
+          alert(t('driver.reg.not_driver_account'));
           await supabase.auth.signOut();
         }
       }
@@ -170,7 +174,7 @@ export function DriverRegistrationPage({
 
   const handleFinish = async () => {
     if (!formData.password || formData.password.length < 6) {
-      alert('A senha deve ter pelo menos 6 caracteres.');
+      alert(t('driver.reg.password_min_length'));
       return;
     }
 
@@ -218,7 +222,7 @@ export function DriverRegistrationPage({
       }
     } catch (err: any) {
       console.error('Registration error:', err);
-      alert('Erro ao realizar cadastro: ' + sanitizeAuthError(err, formData.phone));
+      alert(t('driver.reg.registration_error') + sanitizeAuthError(err, formData.phone));
     } finally {
       setIsLoading(false);
     }
@@ -247,9 +251,9 @@ export function DriverRegistrationPage({
       </div>
 
       <div className="space-y-4 text-center max-w-[280px] mx-auto">
-        <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter leading-tight">REGISTO RECEBIDO!</h2>
+        <h2 className="text-3xl font-black text-[var(--text-primary)] uppercase tracking-tighter leading-tight">{t('driver.reg.success_title')}</h2>
         <p className="text-sm text-[var(--text-secondary)] font-medium leading-relaxed">
-          Os teus dados foram enviados para análise. A tua conta está agora <span className="text-[#FBBF24] font-bold">Pendente de Aprovação</span>.
+          {t('driver.reg.success_desc')} <span className="text-[#FBBF24] font-bold">{t('driver.reg.pending_approval')}</span>.
         </p>
       </div>
 
@@ -262,7 +266,7 @@ export function DriverRegistrationPage({
           }}
         >
           <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" className="w-6 h-6 invert" />
-          Avisar no WhatsApp
+          {t('driver.reg.notify_whatsapp')}
         </Button>
 
         <Button
@@ -270,12 +274,12 @@ export function DriverRegistrationPage({
           className="w-full h-14"
           onClick={() => onNavigate('home')}
         >
-          Voltar ao Início
+          {t('common.back_to_home')}
         </Button>
       </div>
 
       <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest opacity-50">
-        QUELIMOVE v2.6 - QUALIDADE E MOVIMENTO
+        {t('common.app_tagline')}
       </p>
     </motion.div>
   );
@@ -283,14 +287,14 @@ export function DriverRegistrationPage({
   return (
     <div className="h-[100dvh] w-full bg-[var(--bg-primary)] overflow-hidden flex flex-col relative select-none">
       <Header
-        title={isLoginMode ? "Login Motorista" : "Cadastro Motorista"}
+        title={isLoginMode ? t('driver.reg.login_title') : t('driver.reg.register_title')}
         onBack={step === 1 || isLoginMode ? () => onNavigate('home') : prevStep}
         rightAction={!isLoginMode && step === 1 ? (
           <button
             onClick={() => setIsLoginMode(true)}
             className="px-3 py-1.5 bg-[var(--primary-color)] text-black text-[10px] font-black rounded-lg uppercase tracking-tight active:scale-95"
           >
-            Entrar
+            {t('common.login')}
           </button>
         ) : null}
       />
@@ -312,14 +316,14 @@ export function DriverRegistrationPage({
                 >
                   <div className="space-y-6">
                     <div className="space-y-1">
-                      <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Bem-vindo de volta</h2>
-                      <p className="text-xs text-[var(--text-secondary)]">Entre com seu telefone e senha para acessar.</p>
+                      <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{t('driver.reg.welcome_back')}</h2>
+                      <p className="text-xs text-[var(--text-secondary)]">{t('driver.reg.login_desc')}</p>
                     </div>
 
                     <div className="space-y-4">
                       <Input
                         icon={Phone}
-                        label="WhatsApp / Telefone"
+                        label={t('driver.reg.phone')}
                         placeholder="+258 84..."
                         type="tel"
                         value={formData.phone}
@@ -329,7 +333,7 @@ export function DriverRegistrationPage({
                       <div className="relative">
                         <Input
                           icon={FileText}
-                          label="Palavra-passe"
+                          label={t('driver.reg.password')}
                           placeholder="******"
                           type={passwordVisible ? "text" : "password"}
                           value={password}
@@ -349,7 +353,7 @@ export function DriverRegistrationPage({
                         isLoading={isLoading}
                         onClick={handleLogin}
                       >
-                        Entrar Agora
+                        {t('driver.reg.login_btn')}
                       </Button>
 
                       <div className="pt-4">
@@ -358,7 +362,7 @@ export function DriverRegistrationPage({
                           className="w-full"
                           onClick={() => setIsLoginMode(false)}
                         >
-                          Criar Nova Conta
+                          {t('driver.reg.create_acc')}
                         </Button>
                       </div>
                     </div>
@@ -377,20 +381,20 @@ export function DriverRegistrationPage({
                     {step === 1 && (
                       <div className="space-y-6">
                         <div className="space-y-1">
-                          <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Conta e Dados</h2>
-                          <p className="text-xs text-[var(--text-secondary)]">Insira seus dados pessoais para começar.</p>
+                          <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{t('driver.reg.step1.title')}</h2>
+                          <p className="text-xs text-[var(--text-secondary)]">{t('driver.reg.step1.desc')}</p>
                         </div>
                         <div className="space-y-4">
                           <Input
                             icon={User}
-                            label="Nome Completo"
-                            placeholder="Seu nome"
+                            label={t('driver.reg.name')}
+                            placeholder={t('driver.reg.name_placeholder')}
                             value={formData.name}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
                           />
                           <Input
                             icon={Phone}
-                            label="WhatsApp / Telefone"
+                            label={t('driver.reg.phone')}
                             placeholder="+258 84..."
                             type="tel"
                             value={formData.phone}
@@ -398,8 +402,8 @@ export function DriverRegistrationPage({
                           />
                           <Input
                             icon={FileText}
-                            label="Escolha uma Senha"
-                            placeholder="Mínimo 6 caracteres"
+                            label={t('driver.reg.password_choice')}
+                            placeholder={t('driver.reg.password_placeholder')}
                             type="password"
                             value={formData.password}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, password: e.target.value })}
@@ -407,13 +411,13 @@ export function DriverRegistrationPage({
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Input
                               icon={FileText}
-                              label="Número do BI"
-                              placeholder="BI..."
+                              label={t('driver.reg.bi')}
+                              placeholder={t('driver.reg.bi_placeholder')}
                               value={formData.bi}
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, bi: e.target.value })}
                             />
                             <div className="w-full">
-                              <label className="text-sm font-medium text-[var(--text-secondary)] block mb-2">Nascimento</label>
+                              <label className="text-sm font-medium text-[var(--text-secondary)] block mb-2">{t('driver.reg.birth')}</label>
                               <div className="relative">
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]">
                                   <Calendar size={20} />
@@ -437,13 +441,13 @@ export function DriverRegistrationPage({
                     {step === 2 && (
                       <div className="space-y-6">
                         <div className="space-y-1">
-                          <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Informação do Veículo</h2>
-                          <p className="text-xs text-[var(--text-secondary)]">Diga-nos o que você conduz.</p>
+                          <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{t('driver.reg.step2.title')}</h2>
+                          <p className="text-xs text-[var(--text-secondary)]">{t('driver.reg.step2.desc')}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           {[
-                            { id: 'moto', icon: Bike, label: 'Moto' },
-                            { id: 'txopela', icon: Bike, label: 'Txopela' }
+                            { id: 'moto', icon: Bike, label: t('vehicle_type.moto') },
+                            { id: 'txopela', icon: Bike, label: t('vehicle_type.txopela') }
                           ].map((type) => (
                             <button
                               key={type.id}
@@ -466,14 +470,14 @@ export function DriverRegistrationPage({
                         </div>
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <label className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Bairro de Atuação</label>
+                            <label className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">{t('driver.reg.bairro')}</label>
                             <div className="relative">
                               <select
                                 className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl p-4 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--primary-color)] outline-none appearance-none cursor-pointer"
                                 value={formData.bairro}
                                 onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
                               >
-                                <option value="">Selecionar Bairro...</option>
+                                <option value="">{t('driver.reg.select_bairro')}</option>
                                 {QUELIMANE_LOCATIONS.filter(l => l.type === 'bairro').map(l => (
                                   <option key={l.name} value={l.name}>{l.name}</option>
                                 ))}
@@ -484,27 +488,27 @@ export function DriverRegistrationPage({
                             </div>
                           </div>
                           <Input
-                            label="Marca e Modelo"
-                            placeholder="Ex: Honda Ace 125"
+                            label={t('driver.reg.model')}
+                            placeholder={t('driver.reg.model_placeholder')}
                             value={formData.vehicleModel}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleModel: e.target.value })}
                           />
                           <Input
-                            label="Matrícula"
-                            placeholder="ABC-123-MC"
+                            label={t('driver.reg.plate')}
+                            placeholder={t('driver.reg.plate_placeholder')}
                             value={formData.plate}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, plate: e.target.value })}
                           />
                           <div className="grid grid-cols-2 gap-4">
                             <Input
-                              label="Cor"
-                              placeholder="Vermelha"
+                              label={t('driver.reg.color')}
+                              placeholder={t('driver.reg.color_placeholder')}
                               value={formData.vehicleColor}
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleColor: e.target.value })}
                             />
                             <Input
-                              label="Ano"
-                              placeholder="2020"
+                              label={t('driver.reg.year')}
+                              placeholder={t('driver.reg.year_placeholder')}
                               type="number"
                               value={formData.vehicleYear}
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, vehicleYear: e.target.value })}
@@ -516,16 +520,16 @@ export function DriverRegistrationPage({
                     {step === 3 && (
                       <div className="space-y-6">
                         <div className="space-y-1">
-                          <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Documentação</h2>
-                          <p className="text-xs text-[var(--text-secondary)]">Carregue fotos legíveis para validação.</p>
+                          <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{t('driver.reg.step3.title')}</h2>
+                          <p className="text-xs text-[var(--text-secondary)]">{t('driver.reg.step3.desc')}</p>
                         </div>
                         <div className="grid grid-cols-1 gap-4">
                           {[
-                            { key: 'biFront', label: 'BI (Frente)' },
-                            { key: 'biBack', label: 'BI (Verso)' },
-                            { key: 'license', label: 'Carta de Condução' },
-                            { key: 'profile', label: 'Sua Foto (Selfie)', icon: Camera },
-                            { key: 'vehicleDoc', label: 'Livrete/Viatura' }
+                            { key: 'biFront', label: t('driver.reg.doc.bi_front') },
+                            { key: 'biBack', label: t('driver.reg.doc.bi_back') },
+                            { key: 'license', label: t('driver.reg.doc.license') },
+                            { key: 'profile', label: t('driver.reg.doc.profile'), icon: Camera },
+                            { key: 'vehicleDoc', label: t('driver.reg.doc.vehicle') }
                           ].map((doc) => (
                             <div key={doc.key} className="relative">
                               <input
@@ -548,7 +552,7 @@ export function DriverRegistrationPage({
                                   </div>
                                   <div>
                                     <span className="text-sm font-black uppercase tracking-tighter block">{doc.label}</span>
-                                    <span className="text-[10px] opacity-60">{uploads[doc.key as keyof typeof uploads] ? 'Ficheiro selecionado' : 'Clique para carregar'}</span>
+                                    <span className="text-[10px] opacity-60">{uploads[doc.key as keyof typeof uploads] ? t('common.file_selected') : t('common.click_to_upload')}</span>
                                   </div>
                                 </div>
                                 {uploads[doc.key as keyof typeof uploads] ? (
@@ -572,30 +576,30 @@ export function DriverRegistrationPage({
                     {step === 4 && (
                       <div className="space-y-6">
                         <div className="space-y-1">
-                          <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Revisar e Finalizar</h2>
-                          <p className="text-xs text-[var(--text-secondary)]">Confirme se tudo está correto.</p>
+                          <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">{t('driver.reg.step4.title')}</h2>
+                          <p className="text-xs text-[var(--text-secondary)]">{t('driver.reg.step4.desc')}</p>
                         </div>
                         <div className="bg-[var(--bg-secondary)] p-6 rounded-[32px] border border-[var(--border-color)] space-y-4 shadow-xl">
                           <div className="space-y-1">
-                            <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Nome Completo</p>
+                            <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">{t('driver.reg.name')}</p>
                             <p className="text-lg text-[var(--text-primary)] font-bold">{formData.name}</p>
                           </div>
                           <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-1">
-                              <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Veículo</p>
+                              <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">{t('driver.reg.step2.title')}</p>
                               <p className="text-sm text-[var(--text-primary)] font-bold">{formData.vehicleModel}</p>
                             </div>
                             <div className="space-y-1">
-                              <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">Matrícula</p>
+                              <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-tertiary)]">{t('driver.reg.plate')}</p>
                               <p className="text-sm text-[var(--text-primary)] font-bold uppercase">{formData.plate}</p>
                             </div>
                           </div>
                         </div>
                         <div className="space-y-3">
-                          <h3 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">Método de Pagamento</h3>
+                          <h3 className="text-[10px] uppercase font-black tracking-widest text-[var(--text-secondary)] ml-1">{t('driver.reg.payment_method')}</h3>
                           <div className="p-4 rounded-2xl border-2 border-[var(--primary-color)] bg-[var(--primary-color)]/10 text-[var(--primary-color)] flex items-center justify-center gap-3">
                             <DollarSign size={18} />
-                            <span className="text-xs font-black uppercase">Apenas Dinheiro (Cash)</span>
+                            <span className="text-xs font-black uppercase">{t('driver.reg.cash_only')}</span>
                           </div>
                         </div>
                         <label className="flex items-start gap-4 p-5 rounded-[28px] bg-[var(--bg-secondary)] border border-[var(--border-color)] cursor-pointer group active:scale-[0.98] transition-all">
@@ -609,7 +613,7 @@ export function DriverRegistrationPage({
                             <CheckCircle className="absolute inset-0 m-auto text-[var(--primary-color)] opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" size={16} />
                           </div>
                           <span className="text-[10px] text-[var(--text-secondary)] leading-relaxed font-medium">
-                            Declaro que as informações acima são verdadeiras e aceito os <span className="text-[var(--primary-color)] font-bold">Termos e Condições</span> da Quelimove para parceiros.
+                            {t('driver.reg.terms')}
                           </span>
                         </label>
                       </div>
@@ -651,10 +655,10 @@ export function DriverRegistrationPage({
                         }
                       >
                         {step === 1 && formData.bi && !BI_REGEX.test(formData.bi)
-                          ? 'BI Inválido (12 dígitos + Letra)'
+                          ? (t('driver.reg.bi_invalid') || 'BI Inválido (12 dígitos + Letra)')
                           : step === 1 && formData.birthdate && !isOldEnough(formData.birthdate)
-                            ? 'Deve ter +18 anos'
-                            : 'Continuar'}
+                            ? (t('driver.reg.underage') || 'Deve ter +18 anos')
+                            : (t('common.continue') || 'Continuar')}
                         <ChevronRight className="ml-2" size={24} />
                       </Button>
                     ) : (
@@ -667,7 +671,7 @@ export function DriverRegistrationPage({
                         isLoading={isLoading}
                         onClick={handleFinish}
                       >
-                        Criar Conta Agora
+                        {t('driver.reg.login_btn')}
                       </Button>
                     )}
                     {/* Botão de login removido do fluxo de passos para evitar confusão v3 */}

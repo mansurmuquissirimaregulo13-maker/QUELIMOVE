@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React from 'react';
 import { Button } from '../components/ui/Button';
 import { BottomNav } from '../components/BottomNav';
 import {
@@ -15,6 +15,7 @@ import { requestForToken } from '../lib/firebase';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { useNotifications } from '../hooks/useNotifications';
+import { useLanguage } from '../context/LanguageContext';
 import { Ride } from '../types';
 
 // Haversine formula to calculate distance in KM
@@ -53,6 +54,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
   const [vehicleInfo, setVehicleInfo] = React.useState('');
 
   const { notify } = useNotifications();
+  const { t } = useLanguage();
 
   // Monitorar mudanças na corrida atual
   React.useEffect(() => {
@@ -70,7 +72,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
         },
         (payload) => {
           if (payload.new.status === 'cancelled') {
-            notify({ title: 'Atenção', body: 'A viagen foi cancelada pelo cliente.' });
+            notify({ title: t('common.attention') || 'Atenção', body: t('driver.dash.ride.cancelled_by_client') || 'A viagen foi cancelada pelo cliente.' });
             setCurrentRide(null);
           } else {
             setCurrentRide(payload.new as Ride);
@@ -465,10 +467,10 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
             <User size={20} className="text-[#FBBF24] group-hover:scale-110 transition-transform" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-gray-900 tracking-tight">Olá, {driverName.split(' ')[0]}</h1>
+            <h1 className="text-lg font-black text-gray-900 tracking-tight">{t('driver.dash.greeting')}{driverName.split(' ')[0]}</h1>
             <div className="flex items-center gap-1.5">
               <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{isOnline ? 'Em Trabalho' : 'Descansando'}</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{isOnline ? t('driver.dash.online') : t('driver.dash.offline')}</p>
               {vehicleInfo && <span className="text-[8px] text-gray-400 font-medium ml-1">({vehicleInfo})</span>}
             </div>
           </div>
@@ -476,7 +478,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
         <div className="flex items-center gap-3">
           <div className="text-right mr-2">
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">Saldo</p>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">{t('driver.dash.balance')}</p>
             <p className="text-lg font-black text-gray-900">{balance.toLocaleString('pt-MZ', { minimumFractionDigits: 0 })} <span className="text-[10px]">MT</span></p>
           </div>
           <button
@@ -500,10 +502,9 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
               </div>
             </div>
             <div className="space-y-3">
-              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-tight">Quase Lá!<br />CONTA EM ANÁLISE</h2>
+              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-tight">{t('driver.dash.analysis.title')}</h2>
               <p className="text-sm text-gray-500 font-medium px-4">
-                Obrigado pelo registo! 🚀<br />
-                Os teus dados estão com o <span className="text-black font-bold">Admin Mansur</span>.
+                {t('driver.dash.analysis.desc')}
               </p>
             </div>
             <Button
@@ -514,11 +515,11 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
               }}
             >
               <Phone size={24} />
-              Ativar no WhatsApp
+              {t('driver.dash.analysis.whatsapp')}
             </Button>
             <div className="mt-4">
               <button onClick={() => setDriverStatus('active')} className="text-[10px] text-gray-400 font-bold uppercase underline">
-                Ver Mapa (Modo Prévia)
+                {t('driver.dash.analysis.preview')}
               </button>
             </div>
           </div>
@@ -536,7 +537,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                     </div>
                     <div>
                       <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${currentRide.status === 'pending' ? 'bg-[#FBBF24] text-black' : 'bg-green-500 text-white'}`}>
-                        {currentRide.status === 'pending' ? 'Novo Pedido' : 'Em Curso'}
+                        {currentRide.status === 'pending' ? t('driver.dash.ride.new') : t('driver.dash.ride.in_progress')}
                       </span>
                       <h3 className="text-gray-900 font-black text-lg mt-0.5">{currentRide.pickup_location}</h3>
                     </div>
@@ -551,14 +552,14 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                   <div className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-black leading-none">Recolha</p>
+                      <p className="text-[10px] text-gray-400 uppercase font-black leading-none">{t('driver.dash.ride.pickup')}</p>
                       <p className="text-sm text-gray-900 font-bold">{currentRide.pickup_location}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full bg-[#FBBF24] mt-1.5 shrink-0" />
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-black leading-none">Destino</p>
+                      <p className="text-[10px] text-gray-400 uppercase font-black leading-none">{t('driver.dash.ride.destination')}</p>
                       <p className="text-sm text-gray-900 font-bold">{currentRide.destination_location}</p>
                     </div>
                   </div>
@@ -574,13 +575,13 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                         setCurrentRide(null);
                       }}
                     >
-                      Recusar
+                      {t('driver.dash.ride.refuse')}
                     </Button>
                     <Button
                       className="h-14 bg-[#FBBF24] text-black font-black rounded-2xl shadow-lg shadow-[#FBBF24]/30"
                       onClick={() => handleAcceptRide(currentRide.id)}
                     >
-                      ACEITAR
+                      {t('driver.dash.ride.accept')}
                     </Button>
                   </div>
                 ) : (
@@ -592,7 +593,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                           className="flex-1 h-12 bg-white border border-gray-100 rounded-2xl flex items-center justify-center gap-2 text-gray-600 font-bold text-sm shadow-sm"
                         >
                           <Phone size={16} />
-                          Ligar Cliente
+                          {t('driver.dash.ride.call')}
                         </button>
                       )}
                       <button
@@ -603,7 +604,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                         className="flex-1 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm shadow-sm border border-blue-100"
                       >
                         <Navigation size={16} />
-                        Navegação
+                        {t('driver.dash.ride.nav')}
                       </button>
                     </div>
 
@@ -612,21 +613,21 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                         className={`w-full h-16 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-500/20 transform transition-all active:scale-95 ${distToPickup !== null && distToPickup <= 0.1 ? 'animate-bounce' : ''}`}
                         onClick={handleArriveAtPickup}
                       >
-                        {distToPickup !== null && distToPickup <= 0.1 ? 'CHEGUEI AO LOCAL' : 'AVISAR CHEGADA'}
+                        {distToPickup !== null && distToPickup <= 0.1 ? t('driver.dash.ride.arrived') : t('driver.dash.ride.notify_arrival')}
                       </Button>
                     ) : currentRide.status === 'arrived' ? (
                       <Button
                         className="w-full h-16 bg-[#FBBF24] text-black font-black rounded-2xl shadow-xl shadow-[#FBBF24]/20"
                         onClick={handleStartRide}
                       >
-                        INICIAR VIAGEM
+                        {t('driver.dash.ride.start')}
                       </Button>
                     ) : (
                       <Button
                         className="w-full h-16 bg-red-500 text-white font-black rounded-2xl shadow-xl shadow-red-500/20"
                         onClick={handleFinishRide}
                       >
-                        FINALIZAR VIAGEM
+                        {t('driver.dash.ride.finish')}
                       </Button>
                     )}
                   </div>
@@ -647,10 +648,10 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-black text-gray-900 tracking-tighter leading-none">
-                    {isOnline ? 'À Procura...' : 'Estás Offline'}
+                    {isOnline ? t('driver.dash.status.searching') : t('driver.dash.status.offline')}
                   </h3>
                   <p className="text-[11px] text-gray-500 mt-1 font-bold uppercase tracking-widest opacity-80">
-                    {isOnline ? 'Pedidoss ativos na zona' : 'Fica online para faturar'}
+                    {isOnline ? t('driver.dash.status.active_rides') : t('driver.dash.status.go_online')}
                   </p>
                 </div>
                 {!isOnline && (
@@ -658,7 +659,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                     onClick={toggleOnline}
                     className="bg-black text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-white shadow-lg"
                   >
-                    Entrar
+                    {t('driver.dash.ride.accept')}
                   </button>
                 )}
               </div>
@@ -674,12 +675,12 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                 <div className="w-16 h-16 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle size={40} className="text-black" />
                 </div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter">Viagem Concluída!</h2>
+                <h2 className="text-2xl font-black uppercase tracking-tighter">{t('driver.dash.summary.title')}</h2>
               </div>
 
               <div className="p-8 space-y-6">
                 <div className="text-center space-y-1">
-                  <p className="text-xs text-gray-500 font-bold uppercase">Teus Ganhos (85%)</p>
+                  <p className="text-xs text-gray-500 font-bold uppercase">{t('driver.dash.summary.earnings')}</p>
                   <p className="text-4xl font-black text-gray-900">
                     {lastRideEarnings?.toLocaleString('pt-MZ', { style: 'currency', currency: 'MZN' })}
                   </p>
@@ -689,11 +690,11 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
 
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Total da Viagem</span>
+                    <span className="text-gray-500">{t('driver.dash.summary.total')}</span>
                     <span className="font-bold text-gray-900">{((lastRideEarnings || 0) / 0.85).toLocaleString('pt-MZ', { style: 'currency', currency: 'MZN' })}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Taxa Quelimove (15%)</span>
+                    <span className="text-gray-500">{t('driver.dash.summary.fee')}</span>
                     <span className="font-bold text-red-500">-{((lastRideEarnings || 0) * 0.15 / 0.85).toLocaleString('pt-MZ', { style: 'currency', currency: 'MZN' })}</span>
                   </div>
                 </div>
@@ -702,7 +703,7 @@ export function DriverDashboardPage({ onNavigate }: DriverDashboardPageProps) {
                   className="w-full h-14 bg-black text-white hover:bg-gray-800 rounded-2xl font-bold"
                   onClick={() => setShowSummary(false)}
                 >
-                  Continuar
+                  {t('common.continue')}
                 </Button>
               </div>
             </div>
